@@ -3,6 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:browser/main.dart';
 
+const testTimeout = Timeout(Duration(seconds: 30));
+
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
@@ -21,17 +23,19 @@ void main() {
     expect(find.byIcon(Icons.arrow_back), findsOneWidget);
     expect(find.byIcon(Icons.arrow_forward), findsOneWidget);
     expect(find.byIcon(Icons.refresh), findsOneWidget);
-  });
+  }, timeout: testTimeout);
 
-  testWidgets('URL input', (WidgetTester tester) async {
+  testWidgets('URL input and https prepend', (WidgetTester tester) async {
     await tester.pumpWidget(const MyApp());
     await tester.pumpAndSettle();
 
-    // Enter a URL
+    // Enter a URL without https
     await tester.enterText(find.byType(TextField), 'example.com');
-    await tester.pump();
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle(); // Allow time for webview callback and state update
 
-    // Check the text is entered
-    expect(find.text('example.com'), findsOneWidget);
-  });
+    // Verify that the TextField's controller has the updated text with https:// prepended
+    final textField = tester.widget<TextField>(find.byType(TextField));
+    expect(textField.controller!.text, 'https://example.com');
+  }, timeout: testTimeout);
 }
