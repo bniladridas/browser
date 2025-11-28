@@ -18,5 +18,5 @@ jobs:
     - run: flutter pub get
     - run: flutter analyze
     - run: flutter test
-    - run: flutter test integration_test/
+    - run: flutter test e2e/
     - run: flutter build macos

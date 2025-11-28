@@ -54,7 +54,7 @@ flutter test
 Run integration tests (requires GUI and accessibility permissions on macOS):
 
 ```bash
-flutter test integration_test/
+flutter test e2e/
 ```
 
 Note: On macOS, grant Terminal accessibility permissions in System Settings > Privacy & Security > Accessibility for integration tests to run properly.
@@ -73,7 +73,7 @@ This project uses GitHub Actions for continuous integration. The workflow:
 
 - Runs on macOS
 - Installs Flutter 3.38.3
-- Executes `flutter pub get`, `flutter analyze`, `flutter test`, `flutter test integration_test/`, and `flutter build macos`
+- Executes `flutter pub get`, `flutter analyze`, `flutter test`, `flutter test e2e/`, and `flutter build macos`
 - Triggers on pushes and pull requests to main and master branches
 
 ## Contributing
