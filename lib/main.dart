@@ -59,6 +59,27 @@ class _BrowserPageState extends State<BrowserPage> {
     webViewController?.loadUrl(urlRequest: URLRequest(url: WebUri(url)));
   }
 
+  Widget _buildBody() {
+    try {
+      return InAppWebView(
+        initialUrlRequest: URLRequest(url: WebUri(currentUrl)),
+        onWebViewCreated: (controller) {
+          webViewController = controller;
+        },
+        onLoadStart: (controller, url) {
+          if (url != null) {
+            setState(() {
+              currentUrl = url.toString();
+              urlController.text = currentUrl;
+            });
+          }
+        },
+      );
+    } catch (e) {
+      return Container();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -102,20 +123,7 @@ class _BrowserPageState extends State<BrowserPage> {
           ],
         ),
       ),
-      body: InAppWebView(
-        initialUrlRequest: URLRequest(url: WebUri(currentUrl)),
-        onWebViewCreated: (controller) {
-          webViewController = controller;
-        },
-        onLoadStart: (controller, url) {
-          if (url != null) {
-            setState(() {
-              currentUrl = url.toString();
-              urlController.text = currentUrl;
-            });
-          }
-        },
-      ),
+       body: _buildBody(),
     );
   }
 }
