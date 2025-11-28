@@ -4,7 +4,11 @@
 // Use of this source code is governed by a MIT license that can be
 // found in the LICENSE file.
 
+// ignore_for_file: use_build_context_synchronously
+
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
 class BrowserPage extends StatefulWidget {
@@ -20,18 +24,118 @@ class _BrowserPageState extends State<BrowserPage> {
   final TextEditingController urlController = TextEditingController();
   InAppWebViewController? webViewController;
   late String currentUrl;
+  final List<String> bookmarks = [];
 
   @override
   void initState() {
     super.initState();
     currentUrl = _initialUrl;
     urlController.text = currentUrl;
+    _loadBookmarks();
   }
 
   @override
   void dispose() {
     urlController.dispose();
+    _saveBookmarks();
     super.dispose();
+  }
+
+  Future<void> _loadBookmarks() async {
+    final prefs = await SharedPreferences.getInstance();
+    final bookmarksJson = prefs.getString('bookmarks');
+    if (bookmarksJson != null) {
+      setState(() {
+        bookmarks.clear();
+        bookmarks.addAll(List<String>.from(jsonDecode(bookmarksJson)));
+      });
+    }
+  }
+
+  Future<void> _saveBookmarks() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('bookmarks', jsonEncode(bookmarks));
+  }
+
+  void _addBookmark() async {
+    if (!bookmarks.contains(currentUrl)) {
+      setState(() {
+        bookmarks.add(currentUrl);
+      });
+      await _saveBookmarks();
+    }
+  }
+
+  void _showBookmarks() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Bookmarks'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.builder(
+            itemCount: bookmarks.length,
+            itemBuilder: (context, index) {
+              return ListTile(
+                title: Text(bookmarks[index]),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  if (index < bookmarks.length) {
+                    _loadUrl(bookmarks[index]);
+                  }
+                },
+                trailing: IconButton(
+                  icon: const Icon(Icons.delete),
+                  onPressed: () async {
+                    final confirm = await showDialog<bool>(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: const Text('Delete Bookmark'),
+                        content: const Text('Are you sure you want to delete this bookmark?'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(false),
+                            child: const Text('Cancel'),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(true),
+                            child: const Text('Delete'),
+                          ),
+                        ],
+                      ),
+                    );
+                    if (confirm == true) {
+                      setState(() {
+                        if (index < bookmarks.length) {
+                          bookmarks.removeAt(index);
+                        }
+                      });
+                      await _saveBookmarks();
+                    }
+                  },
+                ),
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              setState(() {
+                bookmarks.clear();
+              });
+              await _saveBookmarks();
+              Navigator.of(context).pop();
+            },
+            child: const Text('Clear All'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _loadUrl(String url) {
@@ -97,6 +201,14 @@ class _BrowserPageState extends State<BrowserPage> {
             onPressed: () async {
               await webViewController?.reload();
             },
+          ),
+          IconButton(
+            icon: const Icon(Icons.bookmark_add),
+            onPressed: _addBookmark,
+          ),
+          IconButton(
+            icon: const Icon(Icons.bookmarks),
+            onPressed: _showBookmarks,
           ),
         ],
         title: Row(
