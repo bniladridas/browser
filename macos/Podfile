@@ -38,11 +38,13 @@ end
 post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_macos_build_settings(target)
-    # Suppress warnings from third-party flutter_inappwebview_macos package
+    # Suppress warnings only for flutter_inappwebview_macos pod
     # These are harmless deprecation and unused variable warnings
-    target.build_configurations.each do |config|
-      config.build_settings['GCC_WARN_INHIBIT_ALL_WARNINGS'] = 'YES'
-      config.build_settings['SWIFT_SUPPRESS_WARNINGS'] = 'YES'
+    if target.name == 'flutter_inappwebview_macos'
+      target.build_configurations.each do |config|
+        config.build_settings['GCC_WARN_INHIBIT_ALL_WARNINGS'] = 'YES'
+        config.build_settings['SWIFT_SUPPRESS_WARNINGS'] = 'YES'
+      end
     end
   end
 end
