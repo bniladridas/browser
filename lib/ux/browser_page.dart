@@ -59,11 +59,28 @@ class _BrowserPageState extends State<BrowserPage> {
                   Navigator.of(context).pop();
                   _loadUrl(bookmarks[index]);
                 },
+                trailing: IconButton(
+                  icon: const Icon(Icons.delete),
+                  onPressed: () {
+                    setState(() {
+                      bookmarks.removeAt(index);
+                    });
+                  },
+                ),
               );
             },
           ),
         ),
         actions: [
+          TextButton(
+            onPressed: () {
+              setState(() {
+                bookmarks.clear();
+              });
+              Navigator.of(context).pop();
+            },
+            child: const Text('Clear All'),
+          ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
             child: const Text('Close'),
