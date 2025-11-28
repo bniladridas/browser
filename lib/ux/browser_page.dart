@@ -5,6 +5,7 @@
 // found in the LICENSE file.
 
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
 class BrowserPage extends StatefulWidget {
@@ -15,13 +16,16 @@ class BrowserPage extends StatefulWidget {
 }
 
 class _BrowserPageState extends State<BrowserPage> {
+  static const String _initialUrl = 'https://www.google.com';
+
   final TextEditingController urlController = TextEditingController();
   InAppWebViewController? webViewController;
-  String currentUrl = 'https://www.google.com';
+  late String currentUrl;
 
   @override
   void initState() {
     super.initState();
+    currentUrl = _initialUrl;
     urlController.text = currentUrl;
   }
 
@@ -55,8 +59,11 @@ class _BrowserPageState extends State<BrowserPage> {
           }
         },
       );
-    } catch (e) {
-      return Container();
+    } catch (e, s) {
+      debugPrint('Error creating InAppWebView: $e\n$s');
+      return const Center(
+        child: Text('Failed to load browser.'),
+      );
     }
   }
 
