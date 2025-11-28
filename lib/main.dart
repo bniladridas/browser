@@ -15,8 +15,21 @@ void main() async {
   runApp(const MyApp());
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  ThemeMode _themeMode = ThemeMode.system;
+
+  void _toggleTheme() {
+    setState(() {
+      _themeMode = _themeMode == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
+    });
+  }
 
   // This widget is the root of your application.
   @override
@@ -25,8 +38,14 @@ class MyApp extends StatelessWidget {
       title: 'Browser',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+        brightness: Brightness.light,
       ),
-      home: const BrowserPage(),
+      darkTheme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue, brightness: Brightness.dark),
+        brightness: Brightness.dark,
+      ),
+      themeMode: _themeMode,
+      home: BrowserPage(onToggleTheme: _toggleTheme),
     );
   }
 }
