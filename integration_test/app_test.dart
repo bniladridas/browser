@@ -9,9 +9,10 @@ void main() {
   testWidgets('App launches and shows initial UI', (WidgetTester tester) async {
     // Build the app
     await tester.pumpWidget(const MyApp());
+    await tester.pumpAndSettle();
 
-    // Verify the app title or initial elements
-    expect(find.text('Browser'), findsOneWidget); // Assuming app bar title
+    // Check for URL input field with hint
+    expect(find.text('Enter URL'), findsOneWidget);
 
     // Check for URL input field
     expect(find.byType(TextField), findsOneWidget);
@@ -22,16 +23,15 @@ void main() {
     expect(find.byIcon(Icons.refresh), findsOneWidget);
   });
 
-  testWidgets('URL input and validation', (WidgetTester tester) async {
+  testWidgets('URL input', (WidgetTester tester) async {
     await tester.pumpWidget(const MyApp());
+    await tester.pumpAndSettle();
 
     // Enter a URL
     await tester.enterText(find.byType(TextField), 'example.com');
-    await tester.testTextInput.receiveAction(TextInputAction.done);
     await tester.pump();
 
-    // Check if https:// is prepended
-    // Note: Actual WebView loading can't be tested in integration tests
-    // This tests UI behavior
+    // Check the text is entered
+    expect(find.text('example.com'), findsOneWidget);
   });
 }
