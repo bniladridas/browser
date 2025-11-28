@@ -69,7 +69,7 @@ flutter build macos
 This project uses GitHub Actions for continuous integration. The workflow:
 
 - Runs on macOS
-- Installs latest stable Flutter
+- Installs Flutter 3.22.0
 - Executes `flutter pub get`, `flutter analyze`, `flutter test`, and `flutter build macos`
 - Triggers on pushes and pull requests to main and master branches
 
