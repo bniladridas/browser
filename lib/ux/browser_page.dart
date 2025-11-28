@@ -37,6 +37,8 @@ class _BrowserPageState extends State<BrowserPage> {
   InAppWebViewController? webViewController;
   late String currentUrl;
   bool isLoading = false;
+  bool hasError = false;
+  String? errorMessage;
   final List<String> bookmarks = [];
 
   @override
@@ -193,6 +195,29 @@ class _BrowserPageState extends State<BrowserPage> {
   }
 
   Widget _buildBody() {
+    if (hasError) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error, size: 64, color: Colors.red),
+            const SizedBox(height: 16),
+            const Text('Failed to load page.', style: TextStyle(fontSize: 18)),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () {
+                setState(() {
+                  hasError = false;
+                });
+                _loadUrl(currentUrl);
+              },
+              child: const Text('Retry'),
+            ),
+          ],
+        ),
+      );
+    }
+
     try {
       return Stack(
         children: [
@@ -208,19 +233,44 @@ class _BrowserPageState extends State<BrowserPage> {
                     currentUrl = url.toString();
                     urlController.text = currentUrl;
                     isLoading = true;
+                    hasError = false;
+                    errorMessage = null;
                   });
                 }
               }
             },
-            onLoadStop: (_, __) => _hideLoadingIndicator(),
-            onReceivedError: (_, __, ___) => _hideLoadingIndicator(),
-            onReceivedHttpError: (_, __, ___) => _hideLoadingIndicator(),
+            onLoadStop: (controller, url) {
+              if (mounted) {
+                setState(() {
+                  isLoading = false;
+                });
+              }
+            },
+            onReceivedError: (controller, request, error) {
+              if (mounted) {
+                setState(() {
+                  hasError = true;
+                  errorMessage = error.description;
+                  isLoading = false;
+                });
+              }
+            },
+            onReceivedHttpError: (controller, request, error) {
+              if (mounted) {
+                setState(() {
+                  hasError = true;
+                  errorMessage = error.description;
+                  isLoading = false;
+                });
+              }
+            },
           ),
           if (isLoading)
             const Center(
               child: CircularProgressIndicator(),
             ),
         ],
+      );
       );
     } catch (e, s) {
       debugPrint('Error creating InAppWebView: $e\n$s');
