@@ -27,12 +27,17 @@ else
   echo "Error: Unsupported architecture '$ARCH' for actionlint download." >&2
   exit 1
 fi
-mkdir -p temp_actionlint
-cd temp_actionlint
-curl -fsSL -o ../actionlint.tar.gz "https://github.com/rhysd/actionlint/releases/download/v1.7.1/actionlint_1.7.1_${OS}_${ARCH}.tar.gz"
-tar -xzf ../actionlint.tar.gz
-./actionlint ../.github/workflows/*.yml
-cd ..
-rm -rf temp_actionlint
+TMP_DIR=$(mktemp -d)
+(
+  cd "$TMP_DIR"
+  curl -fsSL -o actionlint.tar.gz "https://github.com/rhysd/actionlint/releases/download/v1.7.1/actionlint_1.7.1_${OS}_${ARCH}.tar.gz"
+  tar -xzf actionlint.tar.gz
+  ./actionlint ../.github/workflows/*.yml
+)
+EXIT_CODE=$?
+rm -rf "$TMP_DIR"
+if [ $EXIT_CODE -ne 0 ]; then
+  exit $EXIT_CODE
+fi
 
 echo "All checks passed!"
