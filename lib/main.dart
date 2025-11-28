@@ -64,7 +64,7 @@ class _BrowserPageState extends State<BrowserPage> {
             icon: Icon(Icons.arrow_back),
             onPressed: () async {
               if (await webViewController?.canGoBack() ?? false) {
-                webViewController?.goBack();
+                await webViewController?.goBack();
               }
             },
           ),
