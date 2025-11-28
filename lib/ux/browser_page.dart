@@ -20,6 +20,7 @@ class BrowserPage extends StatefulWidget {
 
 class _BrowserPageState extends State<BrowserPage> {
   static const String _initialUrl = 'https://www.google.com';
+  static const String _searchUrl = 'https://www.google.com/search?q=';
 
   final TextEditingController urlController = TextEditingController();
   InAppWebViewController? webViewController;
@@ -140,9 +141,12 @@ class _BrowserPageState extends State<BrowserPage> {
 
   void _loadUrl(String url) {
     if (!url.startsWith('http://') && !url.startsWith('https://')) {
-      // Check if it's a search query (contains spaces or no dots)
-      if (url.contains(' ') || !url.contains('.')) {
-        url = 'https://www.google.com/search?q=${Uri.encodeComponent(url)}';
+      // Check if it's a search query
+      if (url.contains(' ') ||
+          (!url.contains('.') &&
+              !url.contains(':') &&
+              url.toLowerCase() != 'localhost')) {
+        url = '${_searchUrl}${Uri.encodeComponent(url)}';
       } else {
         url = 'https://$url';
       }
