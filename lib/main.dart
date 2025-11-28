@@ -5,6 +5,7 @@
 // found in the LICENSE file.
 
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:window_manager/window_manager.dart';
 import 'ux/browser_page.dart';
@@ -15,8 +16,28 @@ void main() async {
   runApp(const MyApp());
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  String _initialUrl = 'https://www.google.com';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSettings();
+  }
+
+  Future<void> _loadSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _initialUrl = prefs.getString('homepage') ?? 'https://www.google.com';
+    });
+  }
 
   // This widget is the root of your application.
   @override
@@ -30,7 +51,7 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue, brightness: Brightness.dark),
       ),
       themeMode: ThemeMode.system,
-      home: const BrowserPage(),
+      home: BrowserPage(initialUrl: _initialUrl),
     );
   }
 }
