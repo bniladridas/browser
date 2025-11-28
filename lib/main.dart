@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:window_manager/window_manager.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await windowManager.ensureInitialized();
   runApp(const MyApp());
 }
 
@@ -35,6 +38,11 @@ class _BrowserPageState extends State<BrowserPage> {
   void initState() {
     super.initState();
     urlController.text = 'https://www.google.com';
+    _focusWindow();
+  }
+
+  void _focusWindow() async {
+    await windowManager.focus();
   }
 
   void _loadUrl(String url) async {
