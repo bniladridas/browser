@@ -45,7 +45,7 @@ class _MyAppState extends State<MyApp> {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue, brightness: Brightness.dark),
       ),
       themeMode: _themeMode,
-      home: BrowserPage(onToggleTheme: _toggleTheme),
+      home: const BrowserPage(),
     );
   }
 }
