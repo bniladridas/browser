@@ -44,7 +44,8 @@ class _BrowserPageState extends State<BrowserPage> {
     final bookmarksJson = prefs.getString('bookmarks');
     if (bookmarksJson != null) {
       setState(() {
-        bookmarks = List<String>.from(jsonDecode(bookmarksJson));
+        bookmarks.clear();
+        bookmarks.addAll(List<String>.from(jsonDecode(bookmarksJson)));
       });
     }
   }
