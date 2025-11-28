@@ -337,10 +337,10 @@ packages:
     dependency: "direct main"
     description:
       name: xterm
-      sha256: "6a02b15d03152b8186e12790902ff28c8a932fc441e89fa7255a7491661a8e69"
+      sha256: "8297122d5fc7b7a126ac60c0d770e28aadc7dad7a511ebb9008bc85577750ebd"
       url: "https://pub.dev"
     source: hosted
-    version: "3.5.0"
+    version: "3.2.6"
 sdks:
   dart: ">=3.9.0 <4.0.0"
   flutter: ">=3.35.0"
