@@ -4,6 +4,8 @@
 // Use of this source code is governed by a MIT license that can be
 // found in the LICENSE file.
 
+// TODO: Implement tabs for multiple browsing sessions
+
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
