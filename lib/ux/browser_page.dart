@@ -8,9 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
 class BrowserPage extends StatefulWidget {
-  const BrowserPage({super.key, required this.onToggleTheme});
-
-  final Function(Brightness) onToggleTheme;
+  const BrowserPage({super.key});
 
   @override
   State<BrowserPage> createState() => _BrowserPageState();
@@ -22,6 +20,7 @@ class _BrowserPageState extends State<BrowserPage> {
   final TextEditingController urlController = TextEditingController();
   InAppWebViewController? webViewController;
   late String currentUrl;
+  final List<String> bookmarks = [];
 
   @override
   void initState() {
@@ -34,6 +33,44 @@ class _BrowserPageState extends State<BrowserPage> {
   void dispose() {
     urlController.dispose();
     super.dispose();
+  }
+
+  void _addBookmark() {
+    if (!bookmarks.contains(currentUrl)) {
+      setState(() {
+        bookmarks.add(currentUrl);
+      });
+    }
+  }
+
+  void _showBookmarks() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Bookmarks'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.builder(
+            itemCount: bookmarks.length,
+            itemBuilder: (context, index) {
+              return ListTile(
+                title: Text(bookmarks[index]),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _loadUrl(bookmarks[index]);
+                },
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _loadUrl(String url) {
@@ -96,8 +133,12 @@ class _BrowserPageState extends State<BrowserPage> {
             },
           ),
           IconButton(
-            icon: const Icon(Icons.brightness_6),
-            onPressed: () => widget.onToggleTheme(MediaQuery.of(context).platformBrightness),
+            icon: const Icon(Icons.bookmark_add),
+            onPressed: _addBookmark,
+          ),
+          IconButton(
+            icon: const Icon(Icons.bookmarks),
+            onPressed: _showBookmarks,
           ),
         ],
         title: Row(
