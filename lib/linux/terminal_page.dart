@@ -57,11 +57,10 @@ class _TerminalPageState extends State<TerminalPage> {
         _handleCd(args);
         break;
       case 'pwd':
-        terminal.write('$currentDir\r\n');
-        _printPrompt();
+        _runCommand('pwd', []);
         break;
       case 'ls':
-        _handleLs(args);
+        _runCommand('ls', args);
         break;
       default:
         _runCommand(cmd, args);
@@ -87,19 +86,7 @@ class _TerminalPageState extends State<TerminalPage> {
     _printPrompt();
   }
 
-  void _handleLs(List<String> args) {
-    try {
-      final dir = Directory(currentDir);
-      final entities = dir.listSync();
-      for (final entity in entities) {
-        final name = entity.path.split('/').last;
-        terminal.write('$name\r\n');
-      }
-    } catch (e) {
-      terminal.write('ls: $e\r\n');
-    }
-    _printPrompt();
-  }
+
 
   void _runCommand(String cmd, List<String> args) async {
     try {
