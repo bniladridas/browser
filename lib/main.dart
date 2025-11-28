@@ -40,11 +40,9 @@ class _MyAppState extends State<MyApp> {
       title: 'Browser',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-        brightness: Brightness.light,
       ),
       darkTheme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue, brightness: Brightness.dark),
-        brightness: Brightness.dark,
       ),
       themeMode: _themeMode,
       home: BrowserPage(onToggleTheme: _toggleTheme),
