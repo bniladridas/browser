@@ -146,7 +146,7 @@ class _BrowserPageState extends State<BrowserPage> {
           (!url.contains('.') &&
               !url.contains(':') &&
               url.toLowerCase() != 'localhost')) {
-        url = '${_searchUrl}${Uri.encodeComponent(url)}';
+        url = _searchUrl + Uri.encodeComponent(url);
       } else {
         url = 'https://$url';
       }
@@ -163,7 +163,7 @@ class _BrowserPageState extends State<BrowserPage> {
           webViewController = controller;
         },
         onLoadStart: (controller, url) {
-          if (url != null) {
+          if (url != null && mounted) {
             setState(() {
               currentUrl = url.toString();
               urlController.text = currentUrl;
