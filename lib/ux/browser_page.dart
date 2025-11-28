@@ -22,14 +22,15 @@ class GoBackIntent extends Intent {}
 class GoForwardIntent extends Intent {}
 
 class BrowserPage extends StatefulWidget {
-  const BrowserPage({super.key});
+  const BrowserPage({super.key, required this.initialUrl});
+
+  final String initialUrl;
 
   @override
   State<BrowserPage> createState() => _BrowserPageState();
 }
 
 class _BrowserPageState extends State<BrowserPage> {
-  static const String _initialUrl = 'https://www.google.com';
   static const String _searchUrl = 'https://www.google.com/search?q=';
 
   final TextEditingController urlController = TextEditingController();
@@ -44,7 +45,7 @@ class _BrowserPageState extends State<BrowserPage> {
   @override
   void initState() {
     super.initState();
-    currentUrl = _initialUrl;
+    currentUrl = widget.initialUrl;
     urlController.text = currentUrl;
     _loadBookmarks();
   }
@@ -150,6 +151,40 @@ class _BrowserPageState extends State<BrowserPage> {
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
             child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showSettings() {
+    final homepageController = TextEditingController(text: widget.initialUrl);
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Settings'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: homepageController,
+              decoration: const InputDecoration(labelText: 'Homepage'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.setString('homepage', homepageController.text);
+              Navigator.of(context).pop();
+              // Optionally, reload or notify
+            },
+            child: const Text('Save'),
           ),
         ],
       ),
@@ -319,10 +354,14 @@ class _BrowserPageState extends State<BrowserPage> {
             icon: const Icon(Icons.bookmark_add),
             onPressed: _addBookmark,
           ),
-          IconButton(
-            icon: const Icon(Icons.bookmarks),
-            onPressed: _showBookmarks,
-          ),
+           IconButton(
+             icon: const Icon(Icons.bookmarks),
+             onPressed: _showBookmarks,
+           ),
+           IconButton(
+             icon: const Icon(Icons.settings),
+             onPressed: _showSettings,
+           ),
         ],
         title: Row(
           children: [
