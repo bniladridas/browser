@@ -65,6 +65,7 @@ class _BrowserPageState extends State<BrowserPage> {
   }
 
   void _showBookmarks() {
+    // ignore: use_build_context_synchronously
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
