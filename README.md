@@ -33,8 +33,8 @@ The app automatically prepends `https://` if the URL does not start with `http:/
 
 ### Prerequisites
 
-- Flutter SDK >=3.38.3
-- Dart SDK >=3.5.0
+- Flutter SDK >=3.0.0 <4.0.0
+- Dart SDK >=3.0.0
 
 ### Running Checks
 
