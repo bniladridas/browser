@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/bniladridas/browser/workflows/Flutter%20CI/badge.svg)](https://github.com/bniladridas/browser/actions)
 
-A simple Flutter desktop application that provides a URL launcher interface.
+A simple Flutter desktop application that provides an in-app web browser interface.
 
 ## Installation
 
@@ -15,29 +15,17 @@ flutter run
 
 ## Usage
 
-Launch the application and enter a URL in the text field at the top. Press Enter to open the URL in your system's default web browser.
+Launch the application and enter a URL in the text field at the top. Press Enter to load the URL in the in-app web view.
+
+Use the navigation buttons (back, forward, refresh) in the app bar to control browsing.
 
 The app automatically prepends `https://` if the URL does not start with `http://` or `https://`.
 
-<!-- prettier-ignore -->
-```dart
-// Example usage in code
-void _loadUrl(String url) async {
-  if (!url.startsWith('http://') && !url.startsWith('https://')) {
-    url = 'https://$url';
-  }
-  final uri = Uri.parse(url);
-  if (await canLaunchUrl(uri)) {
-    await launchUrl(uri);
-  }
-}
-```
-
 ## Features
 
-- Simple URL input interface
-- Automatic protocol detection and addition
-- Error handling with snackbar notifications
+- In-app web browsing with WebView
+- URL input with automatic protocol detection
+- Navigation controls (back, forward, refresh)
 - Window focus on startup
 - Cross-platform desktop support (macOS, Windows, Linux)
 
@@ -45,8 +33,8 @@ void _loadUrl(String url) async {
 
 ### Prerequisites
 
-- Flutter SDK >=3.0.0
-- Dart SDK >=3.0.0
+- Flutter SDK >=3.38.3
+- Dart SDK >=3.5.0
 
 ### Running Checks
 
@@ -69,7 +57,7 @@ flutter build macos
 This project uses GitHub Actions for continuous integration. The workflow:
 
 - Runs on macOS
-- Installs Flutter 3.22.0
+- Installs Flutter 3.38.3
 - Executes `flutter pub get`, `flutter analyze`, `flutter test`, and `flutter build macos`
 - Triggers on pushes and pull requests to main and master branches
 
