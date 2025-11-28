@@ -20,6 +20,7 @@ class _BrowserPageState extends State<BrowserPage> {
   final TextEditingController urlController = TextEditingController();
   InAppWebViewController? webViewController;
   late String currentUrl;
+  final List<String> history = [];
 
   @override
   void initState() {
@@ -32,6 +33,36 @@ class _BrowserPageState extends State<BrowserPage> {
   void dispose() {
     urlController.dispose();
     super.dispose();
+  }
+
+  void _showHistory() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('History'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.builder(
+            itemCount: history.length,
+            itemBuilder: (context, index) {
+              return ListTile(
+                title: Text(history[history.length - 1 - index]), // Reverse order, latest first
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _loadUrl(history[history.length - 1 - index]);
+                },
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _loadUrl(String url) {
@@ -54,6 +85,9 @@ class _BrowserPageState extends State<BrowserPage> {
             setState(() {
               currentUrl = url.toString();
               urlController.text = currentUrl;
+              if (history.isEmpty || history.last != currentUrl) {
+                history.add(currentUrl);
+              }
             });
           }
         },
@@ -92,6 +126,10 @@ class _BrowserPageState extends State<BrowserPage> {
             onPressed: () async {
               await webViewController?.reload();
             },
+          ),
+          IconButton(
+            icon: const Icon(Icons.history),
+            onPressed: _showHistory,
           ),
         ],
         title: Row(
