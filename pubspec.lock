@@ -41,14 +41,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.19.1"
-  convert:
-    dependency: transitive
-    description:
-      name: convert
-      sha256: b30acd5944035672bc15c6b7a8b47d773e41e2f17de064350988c5d02adb1c68
-      url: "https://pub.dev"
-    source: hosted
-    version: "3.1.2"
   cupertino_icons:
     dependency: "direct main"
     description:
@@ -57,14 +49,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.0.8"
-  equatable:
-    dependency: transitive
-    description:
-      name: equatable
-      sha256: "567c64b3cb4cf82397aac55f4f0cbd3ca20d77c6c03bedbc4ceaddc08904aef7"
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.0.7"
   fake_async:
     dependency: transitive
     description:
@@ -160,14 +144,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.9.1"
-  platform_info:
-    dependency: transitive
-    description:
-      name: platform_info
-      sha256: "012e73712166cf0b56d3eb95c0d33491f56b428c169eca385f036448474147e4"
-      url: "https://pub.dev"
-    source: hosted
-    version: "3.2.0"
   plugin_platform_interface:
     dependency: transitive
     description:
@@ -176,14 +152,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.1.8"
-  quiver:
-    dependency: transitive
-    description:
-      name: quiver
-      sha256: ea0b925899e64ecdfbf9c7becb60d5b50e706ade44a85b2363be2a22d88117d2
-      url: "https://pub.dev"
-    source: hosted
-    version: "3.2.2"
   sky_engine:
     dependency: transitive
     description: flutter
@@ -237,14 +205,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.7.7"
-  typed_data:
-    dependency: transitive
-    description:
-      name: typed_data
-      sha256: f9049c039ebfeb4cf7a7104a675823cd72dba8297f264b6637062516699fa006
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.4.0"
   url_launcher:
     dependency: "direct main"
     description:
@@ -333,14 +293,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.1.1"
-  xterm:
-    dependency: "direct main"
-    description:
-      name: xterm
-      sha256: "8297122d5fc7b7a126ac60c0d770e28aadc7dad7a511ebb9008bc85577750ebd"
-      url: "https://pub.dev"
-    source: hosted
-    version: "3.2.6"
 sdks:
   dart: ">=3.9.0 <4.0.0"
   flutter: ">=3.35.0"

@@ -1,11 +1,10 @@
-# Browser with Terminal
+# Browser
 
-A Flutter application that provides a simple URL launcher and a basic Linux terminal emulator.
+A Flutter application that provides a simple URL launcher.
 
 ## Features
 
-- **Browser Tab**: Enter URLs to launch in your system's default browser.
-- **Terminal Tab**: Emulate a Linux terminal with support for basic commands like `cd`, `pwd`, `ls`, and execution of system commands.
+- **Browser**: Enter URLs to launch in your system's default browser.
 
 ## Getting Started
 
@@ -34,9 +33,7 @@ A Flutter application that provides a simple URL launcher and a basic Linux term
 
 ## Usage
 
-- Switch between Browser and Terminal tabs using the bottom navigation.
-- In Browser tab, enter a URL and press Enter to open it.
-- In Terminal tab, type commands and press Enter. Supports `cd`, `pwd`, `ls`, and other executables.
+- Enter a URL in the text field and press Enter to open it in your default browser.
 
 ## Development
 
