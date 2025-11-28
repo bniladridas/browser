@@ -36,7 +36,12 @@ class _BrowserPageState extends State<BrowserPage> {
 
   void _loadUrl(String url) {
     if (!url.startsWith('http://') && !url.startsWith('https://')) {
-      url = 'https://$url';
+      // Check if it's a search query (contains spaces or no dots)
+      if (url.contains(' ') || !url.contains('.')) {
+        url = 'https://www.google.com/search?q=${Uri.encodeComponent(url)}';
+      } else {
+        url = 'https://$url';
+      }
     }
     urlController.text = url;
     webViewController?.loadUrl(urlRequest: URLRequest(url: WebUri(url)));
