@@ -15,23 +15,8 @@ void main() async {
   runApp(const MyApp());
 }
 
-class MyApp extends StatefulWidget {
+class MyApp extends StatelessWidget {
   const MyApp({super.key});
-
-  @override
-  State<MyApp> createState() => _MyAppState();
-}
-
-class _MyAppState extends State<MyApp> {
-  ThemeMode _themeMode = ThemeMode.system;
-
-  void _toggleTheme(Brightness currentBrightness) {
-    setState(() {
-      final isCurrentlyDark = _themeMode == ThemeMode.dark ||
-          (_themeMode == ThemeMode.system && currentBrightness == Brightness.dark);
-      _themeMode = isCurrentlyDark ? ThemeMode.light : ThemeMode.dark;
-    });
-  }
 
   // This widget is the root of your application.
   @override
@@ -44,7 +29,7 @@ class _MyAppState extends State<MyApp> {
       darkTheme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue, brightness: Brightness.dark),
       ),
-      themeMode: _themeMode,
+      themeMode: ThemeMode.system,
       home: const BrowserPage(),
     );
   }
