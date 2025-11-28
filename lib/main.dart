@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:window_manager/window_manager.dart';
+import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -33,11 +34,13 @@ class BrowserPage extends StatefulWidget {
 
 class _BrowserPageState extends State<BrowserPage> {
   final TextEditingController urlController = TextEditingController();
+  InAppWebViewController? webViewController;
+  String currentUrl = 'https://www.google.com';
 
   @override
   void initState() {
     super.initState();
-    urlController.text = 'https://www.google.com';
+    urlController.text = currentUrl;
     _focusWindow();
   }
 
@@ -45,45 +48,67 @@ class _BrowserPageState extends State<BrowserPage> {
     await windowManager.focus();
   }
 
-  void _loadUrl(String url) async {
+  void _loadUrl(String url) {
     if (!url.startsWith('http://') && !url.startsWith('https://')) {
       url = 'https://$url';
     }
-    final uri = Uri.parse(url);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri);
-    } else {
-      // Handle error
-      // Display error message to user if URL launch fails
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not launch $url')),
-        );
-      }
-    }
-    if (mounted) {
-      urlController.text = url;
-    }
+    webViewController?.loadUrl(urlRequest: URLRequest(url: WebUri(url)));
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: TextField(
-          controller: urlController,
-          decoration: const InputDecoration(
-            hintText: 'Enter URL',
-            border: InputBorder.none,
+        actions: [
+          IconButton(
+            icon: Icon(Icons.arrow_back),
+            onPressed: () async {
+              if (await webViewController?.canGoBack() ?? false) {
+                webViewController?.goBack();
+              }
+            },
           ),
-          onSubmitted: _loadUrl,
+          IconButton(
+            icon: Icon(Icons.arrow_forward),
+            onPressed: () async {
+              if (await webViewController?.canGoForward() ?? false) {
+                webViewController?.goForward();
+              }
+            },
+          ),
+          IconButton(
+            icon: Icon(Icons.refresh),
+            onPressed: () {
+              webViewController?.reload();
+            },
+          ),
+        ],
+        title: Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: urlController,
+                decoration: const InputDecoration(
+                  hintText: 'Enter URL',
+                  border: InputBorder.none,
+                ),
+                onSubmitted: _loadUrl,
+              ),
+            ),
+          ],
         ),
       ),
-      body: const Center(
-        child: Text(
-          'Enter a URL in the bar above and press Enter to open it in your default browser.',
-          textAlign: TextAlign.center,
-        ),
+      body: InAppWebView(
+        initialUrlRequest: URLRequest(url: WebUri(currentUrl)),
+        onWebViewCreated: (controller) {
+          webViewController = controller;
+        },
+        onLoadStart: (controller, url) {
+          setState(() {
+            currentUrl = url.toString();
+            urlController.text = currentUrl;
+          });
+        },
       ),
     );
   }
