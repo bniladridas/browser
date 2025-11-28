@@ -43,7 +43,7 @@ void main() {
 
        // Verify that the TextField's controller has the updated text with https:// prepended
        final textField = tester.widget<TextField>(find.byType(TextField));
-        expect(textField.controller!.text.startsWith('https://example.com'), true);
+       expect(textField.controller!.text, startsWith('https://example.com'));
     }, timeout: testTimeout);
   });
 }
