@@ -45,8 +45,8 @@ void _loadUrl(String url) async {
 
 ### Prerequisites
 
-- Flutter SDK >=3.38.3
-- Dart SDK >=3.10.1
+- Flutter SDK >=3.0.0
+- Dart SDK >=3.0.0
 
 ### Running Checks
 
@@ -69,7 +69,7 @@ flutter build macos
 This project uses GitHub Actions for continuous integration. The workflow:
 
 - Runs on macOS
-- Installs Flutter 3.38.3
+- Installs latest stable Flutter
 - Executes `flutter pub get`, `flutter analyze`, `flutter test`, and `flutter build macos`
 - Triggers on pushes and pull requests to main and master branches
 
