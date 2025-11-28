@@ -67,7 +67,7 @@ class _TerminalPageState extends State<TerminalPage> {
         // Maybe navigate back
         break;
       default:
-        _runCommand(command);
+        _runCommand(cmd, args);
         break;
     }
   }
@@ -104,15 +104,17 @@ class _TerminalPageState extends State<TerminalPage> {
     _printPrompt();
   }
 
-  void _runCommand(String command) async {
+  void _runCommand(String cmd, List<String> args) async {
     try {
-      final result = await Process.run('bash', ['-c', 'cd "$currentDir" && $command']);
+      final result = await Process.run(cmd, args, workingDirectory: currentDir);
       if (result.stdout.isNotEmpty) {
-        terminal.write('${result.stdout}');
+        terminal.write('${result.stdout}'.replaceAll('\n', '\r\n'));
       }
       if (result.stderr.isNotEmpty) {
-        terminal.write('${result.stderr}');
+        terminal.write('${result.stderr}'.replaceAll('\n', '\r\n'));
       }
+    } on ProcessException catch (e) {
+      terminal.write('Error: ${e.message}\r\n');
     } catch (e) {
       terminal.write('Error: $e\r\n');
     }
