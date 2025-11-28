@@ -24,6 +24,5 @@ jobs:
     - run: flutter pub get
     - run: flutter analyze
     - run: flutter test
-    - run: "echo 'Note: The integration_test plugin warning is expected since tests are in e2e/ instead of integration_test/.'"
-    - run: flutter test e2e/
+    - run: flutter test integration_test/
     - run: flutter build macos
