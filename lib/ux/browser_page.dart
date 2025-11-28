@@ -10,7 +10,7 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 class BrowserPage extends StatefulWidget {
   const BrowserPage({super.key, required this.onToggleTheme});
 
-  final VoidCallback onToggleTheme;
+  final Function(Brightness) onToggleTheme;
 
   @override
   State<BrowserPage> createState() => _BrowserPageState();
@@ -97,7 +97,7 @@ class _BrowserPageState extends State<BrowserPage> {
           ),
           IconButton(
             icon: const Icon(Icons.brightness_6),
-            onPressed: widget.onToggleTheme,
+            onPressed: () => widget.onToggleTheme(MediaQuery.of(context).platformBrightness),
           ),
         ],
         title: Row(
