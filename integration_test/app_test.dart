@@ -30,6 +30,10 @@ void main() {
       expect(find.byIcon(Icons.arrow_back), findsOneWidget);
       expect(find.byIcon(Icons.arrow_forward), findsOneWidget);
       expect(find.byIcon(Icons.refresh), findsOneWidget);
+
+      // Check for bookmarks buttons
+      expect(find.byIcon(Icons.bookmark_add), findsOneWidget);
+      expect(find.byIcon(Icons.bookmarks), findsOneWidget);
     }, timeout: testTimeout);
 
     testWidgets('URL input and https prepend', (WidgetTester tester) async {
