@@ -78,8 +78,8 @@ class _BrowserPageState extends State<BrowserPage> {
           ),
           IconButton(
             icon: Icon(Icons.refresh),
-            onPressed: () {
-              webViewController?.reload();
+            onPressed: () async {
+              await webViewController?.reload();
             },
           ),
         ],
