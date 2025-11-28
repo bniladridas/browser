@@ -63,9 +63,6 @@ class _TerminalPageState extends State<TerminalPage> {
       case 'ls':
         _handleLs(args);
         break;
-      case 'exit':
-        // Maybe navigate back
-        break;
       default:
         _runCommand(cmd, args);
         break;
