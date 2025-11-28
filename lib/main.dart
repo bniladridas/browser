@@ -72,7 +72,7 @@ class _BrowserPageState extends State<BrowserPage> {
             icon: Icon(Icons.arrow_forward),
             onPressed: () async {
               if (await webViewController?.canGoForward() ?? false) {
-                webViewController?.goForward();
+                await webViewController?.goForward();
               }
             },
           ),
