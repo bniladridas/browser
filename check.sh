@@ -27,7 +27,7 @@ else
   echo "Error: Unsupported architecture '$ARCH' for actionlint download." >&2
   exit 1
 fi
-curl -L -o actionlint.tar.gz "https://github.com/rhysd/actionlint/releases/download/v1.7.1/actionlint_1.7.1_${OS}_${ARCH}.tar.gz"
+curl -fsSL -o actionlint.tar.gz "https://github.com/rhysd/actionlint/releases/download/v1.7.1/actionlint_1.7.1_${OS}_${ARCH}.tar.gz"
 tar -xzf actionlint.tar.gz
 ./actionlint .github/workflows/*.yml
 
