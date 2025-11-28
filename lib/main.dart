@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
+
 import 'package:window_manager/window_manager.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
@@ -61,7 +61,7 @@ class _BrowserPageState extends State<BrowserPage> {
       appBar: AppBar(
         actions: [
           IconButton(
-            icon: Icon(Icons.arrow_back),
+            icon: const Icon(Icons.arrow_back),
             onPressed: () async {
               if (await webViewController?.canGoBack() ?? false) {
                 await webViewController?.goBack();
@@ -69,7 +69,7 @@ class _BrowserPageState extends State<BrowserPage> {
             },
           ),
           IconButton(
-            icon: Icon(Icons.arrow_forward),
+            icon: const Icon(Icons.arrow_forward),
             onPressed: () async {
               if (await webViewController?.canGoForward() ?? false) {
                 await webViewController?.goForward();
@@ -77,7 +77,7 @@ class _BrowserPageState extends State<BrowserPage> {
             },
           ),
           IconButton(
-            icon: Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh),
             onPressed: () async {
               await webViewController?.reload();
             },
