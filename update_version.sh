@@ -1,4 +1,10 @@
 #!/bin/bash
+# SPDX-License-Identifier: MIT
+#
+# Copyright 2025 bniladridas. All rights reserved.
+# Use of this source code is governed by a MIT license that can be
+# found in the LICENSE file.
+
 # Script to update pubspec.yaml version from VERSION file
 
 if [ ! -f VERSION ]; then
