@@ -104,10 +104,12 @@ class _BrowserPageState extends State<BrowserPage> {
           webViewController = controller;
         },
         onLoadStart: (controller, url) {
-          setState(() {
-            currentUrl = url.toString();
-            urlController.text = currentUrl;
-          });
+          if (url != null) {
+            setState(() {
+              currentUrl = url.toString();
+              urlController.text = currentUrl;
+            });
+          }
         },
       ),
     );
