@@ -54,13 +54,16 @@ class _BrowserPageState extends State<BrowserPage> {
       await launchUrl(uri);
     } else {
       // Handle error
+      // Display error message to user if URL launch fails
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Could not launch $url')),
         );
       }
     }
-    urlController.text = url;
+    if (mounted) {
+      urlController.text = url;
+    }
   }
 
   @override
