@@ -11,12 +11,14 @@ class TerminalPage extends StatefulWidget {
 
 class _TerminalPageState extends State<TerminalPage> {
   late final Terminal terminal;
-  String currentDir = Directory.current.path; // Default to current dir, can be changed to home
+  late final String currentDir;
   String inputBuffer = '';
 
   @override
   void initState() {
     super.initState();
+    final home = Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'] ?? '/';
+    currentDir = home;
     terminal = Terminal();
     terminal.onOutput = _handleOutput;
     terminal.write('Welcome to Linux Terminal Emulator\r\n');
