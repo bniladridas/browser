@@ -5,6 +5,8 @@
 // found in the LICENSE file.
 
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
 class BrowserPage extends StatefulWidget {
@@ -27,19 +29,37 @@ class _BrowserPageState extends State<BrowserPage> {
     super.initState();
     currentUrl = _initialUrl;
     urlController.text = currentUrl;
+    _loadBookmarks();
   }
 
   @override
   void dispose() {
     urlController.dispose();
+    _saveBookmarks();
     super.dispose();
   }
 
-  void _addBookmark() {
+  Future<void> _loadBookmarks() async {
+    final prefs = await SharedPreferences.getInstance();
+    final bookmarksJson = prefs.getString('bookmarks');
+    if (bookmarksJson != null) {
+      setState(() {
+        bookmarks = List<String>.from(jsonDecode(bookmarksJson));
+      });
+    }
+  }
+
+  Future<void> _saveBookmarks() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('bookmarks', jsonEncode(bookmarks));
+  }
+
+  void _addBookmark() async {
     if (!bookmarks.contains(currentUrl)) {
       setState(() {
         bookmarks.add(currentUrl);
       });
+      await _saveBookmarks();
     }
   }
 
@@ -63,12 +83,32 @@ class _BrowserPageState extends State<BrowserPage> {
                 },
                 trailing: IconButton(
                   icon: const Icon(Icons.delete),
-                  onPressed: () {
-                    setState(() {
-                      if (index < bookmarks.length) {
-                        bookmarks.removeAt(index);
-                      }
-                    });
+                  onPressed: () async {
+                    final confirm = await showDialog<bool>(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: const Text('Delete Bookmark'),
+                        content: const Text('Are you sure you want to delete this bookmark?'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(false),
+                            child: const Text('Cancel'),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(true),
+                            child: const Text('Delete'),
+                          ),
+                        ],
+                      ),
+                    );
+                    if (confirm == true) {
+                      setState(() {
+                        if (index < bookmarks.length) {
+                          bookmarks.removeAt(index);
+                        }
+                      });
+                      await _saveBookmarks();
+                    }
                   },
                 ),
               );
@@ -77,10 +117,11 @@ class _BrowserPageState extends State<BrowserPage> {
         ),
         actions: [
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               setState(() {
                 bookmarks.clear();
               });
+              await _saveBookmarks();
               Navigator.of(context).pop();
             },
             child: const Text('Clear All'),
