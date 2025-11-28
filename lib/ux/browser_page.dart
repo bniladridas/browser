@@ -25,6 +25,12 @@ class _BrowserPageState extends State<BrowserPage> {
     urlController.text = currentUrl;
   }
 
+  @override
+  void dispose() {
+    urlController.dispose();
+    super.dispose();
+  }
+
   void _loadUrl(String url) {
     if (!url.startsWith('http://') && !url.startsWith('https://')) {
       url = 'https://$url';
