@@ -47,17 +47,15 @@ class _BrowserPageState extends State<BrowserPage> {
   void initState() {
     super.initState();
     urlController.text = currentUrl;
-    _focusWindow();
   }
 
-  void _focusWindow() async {
-    await windowManager.focus();
-  }
+
 
   void _loadUrl(String url) {
     if (!url.startsWith('http://') && !url.startsWith('https://')) {
       url = 'https://$url';
     }
+    urlController.text = url;
     webViewController?.loadUrl(urlRequest: URLRequest(url: WebUri(url)));
   }
 

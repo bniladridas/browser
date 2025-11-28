@@ -26,7 +26,6 @@ The app automatically prepends `https://` if the URL does not start with `http:/
 - In-app web browsing with WebView
 - URL input with automatic protocol detection
 - Navigation controls (back, forward, refresh)
-- Window focus on startup
 - Cross-platform desktop support (macOS, Windows, Linux)
 
 ## Development
@@ -44,6 +43,22 @@ Run `./check.sh` to lint, test, and build the project.
 ./check.sh
 ```
 
+### Testing
+
+Run unit tests:
+
+```bash
+flutter test
+```
+
+Run integration tests (requires GUI and accessibility permissions on macOS):
+
+```bash
+flutter test integration_test/
+```
+
+Note: On macOS, grant Terminal accessibility permissions in System Settings > Privacy & Security > Accessibility for integration tests to run properly.
+
 ### Building
 
 To build for macOS:
@@ -58,7 +73,7 @@ This project uses GitHub Actions for continuous integration. The workflow:
 
 - Runs on macOS
 - Installs Flutter 3.38.3
-- Executes `flutter pub get`, `flutter analyze`, `flutter test`, and `flutter build macos`
+- Executes `flutter pub get`, `flutter analyze`, `flutter test`, `flutter test integration_test/`, and `flutter build macos`
 - Triggers on pushes and pull requests to main and master branches
 
 ## Contributing
