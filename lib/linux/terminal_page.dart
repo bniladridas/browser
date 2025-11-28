@@ -72,7 +72,10 @@ class _TerminalPageState extends State<TerminalPage> {
 
   void _handleCd(List<String> args) {
     if (args.isEmpty) {
-      currentDir = '/Users/niladri'; // Home
+      final home = Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'];
+      if (home != null) {
+        currentDir = home;
+      }
     } else {
       final newDir = args[0];
       final fullPath = newDir.startsWith('/') ? newDir : '$currentDir/$newDir';
