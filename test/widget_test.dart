@@ -10,13 +10,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:browser/main.dart';
 
 void main() {
-  testWidgets('App loads with browser tab', (WidgetTester tester) async {
+  testWidgets('App loads with browser interface', (WidgetTester tester) async {
     // Build our app and trigger a frame.
     await tester.pumpWidget(const MyApp());
 
-    // Verify that the browser tab is present
-    expect(find.text('Browser'), findsOneWidget);
-    expect(find.text('Linux'), findsOneWidget);
+    // Verify that the browser interface elements are present
     expect(find.text('Enter URL'), findsOneWidget);
+    expect(find.text('Enter a URL in the bar above and press Enter to open it in your default browser.'), findsOneWidget);
   });
 }
