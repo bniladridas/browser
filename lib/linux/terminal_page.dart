@@ -11,7 +11,7 @@ class TerminalPage extends StatefulWidget {
 
 class _TerminalPageState extends State<TerminalPage> {
   late final Terminal terminal;
-  String currentDir = '/Users/niladri/Desktop/browser'; // Default to project dir, but should be home
+  String currentDir = Directory.current.path; // Default to current dir, can be changed to home
   String inputBuffer = '';
 
   @override
