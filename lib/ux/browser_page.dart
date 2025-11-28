@@ -57,13 +57,17 @@ class _BrowserPageState extends State<BrowserPage> {
                 title: Text(bookmarks[index]),
                 onTap: () {
                   Navigator.of(context).pop();
-                  _loadUrl(bookmarks[index]);
+                  if (index < bookmarks.length) {
+                    _loadUrl(bookmarks[index]);
+                  }
                 },
                 trailing: IconButton(
                   icon: const Icon(Icons.delete),
                   onPressed: () {
                     setState(() {
-                      bookmarks.removeAt(index);
+                      if (index < bookmarks.length) {
+                        bookmarks.removeAt(index);
+                      }
                     });
                   },
                 ),
