@@ -50,14 +50,18 @@ runs:
         git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
         git config --local user.name "github-actions[bot]"
         git add VERSION pubspec.yaml
-        git commit -m "Bump version to $(cat VERSION)" || echo "No changes to commit"
+        git commit -m "Bump version to $(sed 's/+.*//' VERSION)" || echo "No changes to commit"
 
-    - name: Create tag
+    - name: Create and push tag if it does not exist on remote
       shell: bash
       run: |
-        VERSION=$(cat VERSION | sed 's/+.*//')
-        git tag "desktop/app-${VERSION}"
-        git push origin "desktop/app-${VERSION}"
+        VERSION=$(sed 's/+.*//' VERSION)
+        if git ls-remote --tags --exit-code origin "desktop/app-${VERSION}"; then
+          echo "Tag desktop/app-${VERSION} already exists on remote. Skipping tag creation."
+        else
+          git tag "desktop/app-${VERSION}"
+          git push origin "desktop/app-${VERSION}"
+        fi
 
     - name: Create release
       shell: bash
