@@ -13,6 +13,77 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
+class SettingsDialog extends StatefulWidget {
+  const SettingsDialog({super.key});
+
+  @override
+  State<SettingsDialog> createState() => _SettingsDialogState();
+}
+
+class _SettingsDialogState extends State<SettingsDialog> {
+  late TextEditingController homepageController;
+  String? currentHomepage;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCurrentHomepage();
+  }
+
+  Future<void> _loadCurrentHomepage() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      currentHomepage = prefs.getString('homepage') ?? 'https://www.google.com';
+      homepageController = TextEditingController(text: currentHomepage);
+    });
+  }
+
+  @override
+  void dispose() {
+    homepageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (currentHomepage == null) {
+      return const AlertDialog(
+        title: Text('Settings'),
+        content: CircularProgressIndicator(),
+      );
+    }
+
+    return AlertDialog(
+      title: const Text('Settings'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: homepageController,
+            decoration: const InputDecoration(labelText: 'Homepage'),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        TextButton(
+          onPressed: () async {
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.setString('homepage', homepageController.text);
+            if (mounted) {
+              Navigator.of(context).pop();
+            }
+          },
+          child: const Text('Save'),
+        ),
+      ],
+    );
+  }
+}
+
 class FocusUrlIntent extends Intent {}
 
 class RefreshIntent extends Intent {}
@@ -158,36 +229,9 @@ class _BrowserPageState extends State<BrowserPage> {
   }
 
   void _showSettings() {
-    final homepageController = TextEditingController(text: widget.initialUrl);
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Settings'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: homepageController,
-              decoration: const InputDecoration(labelText: 'Homepage'),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () async {
-              final prefs = await SharedPreferences.getInstance();
-              await prefs.setString('homepage', homepageController.text);
-              Navigator.of(context).pop();
-              // Optionally, reload or notify
-            },
-            child: const Text('Save'),
-          ),
-        ],
-      ),
+      builder: (context) => const SettingsDialog(),
     );
   }
 
