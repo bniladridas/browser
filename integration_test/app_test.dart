@@ -93,5 +93,30 @@ void main() {
       expect(textField.controller!.text, longUrl);
     }, timeout: testTimeout);
 
+    testWidgets('Navigation buttons presence', (WidgetTester tester) async {
+      await tester.pumpWidget(const MyApp());
+      await tester.pumpAndSettle();
+
+      // Check navigation buttons are present
+      expect(find.byIcon(Icons.arrow_back), findsOneWidget);
+      expect(find.byIcon(Icons.arrow_forward), findsOneWidget);
+      expect(find.byIcon(Icons.refresh), findsOneWidget);
+    }, timeout: testTimeout);
+
+    testWidgets('Special characters in URL', (WidgetTester tester) async {
+      await tester.pumpWidget(const MyApp());
+      await tester.pumpAndSettle();
+
+      // Enter URL with special characters
+      final specialUrl = 'https://example.com/path?query=value&other=test';
+      await tester.enterText(find.byType(TextField), specialUrl);
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pumpAndSettle();
+
+      // Should handle special characters
+      final textField = tester.widget<TextField>(find.byType(TextField));
+      expect(textField.controller!.text, specialUrl);
+    }, timeout: testTimeout);
+
   });
 }
