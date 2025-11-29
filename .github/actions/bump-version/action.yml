@@ -14,7 +14,7 @@ runs:
       id: bump-type
       shell: bash
       env:
-        GITHUB_TOKEN: ${{ github.token }}
+        GH_TOKEN: ${{ github.token }}
       run: |
         # Get PR labels
         LABELS=$(gh pr view "${{ inputs.pr-number }}" --json labels -q '.labels[].name')
@@ -62,4 +62,4 @@ runs:
         NOTES="## ${VERSION}: ${PR_TITLE} - ${PR_BODY} (auto bump)"
         gh release create "desktop/app-${VERSION}" --title "Release ${VERSION}" --notes "${NOTES}"
       env:
-        GITHUB_TOKEN: ${{ github.token }}
+        GH_TOKEN: ${{ github.token }}
