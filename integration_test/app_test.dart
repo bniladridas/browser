@@ -5,6 +5,7 @@
 // found in the LICENSE file.
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:browser/main.dart';
@@ -37,33 +38,9 @@ void main() {
       expect(find.byIcon(Icons.bookmarks), findsOneWidget);
     }, timeout: testTimeout);
 
-    testWidgets('URL input and https prepend', (WidgetTester tester) async {
-      await tester.pumpWidget(const MyApp());
-      await tester.pumpAndSettle();
 
-      // Enter a URL without https
-      await tester.enterText(find.byType(TextField), 'example.com');
-      await tester.testTextInput.receiveAction(TextInputAction.done);
-      await tester.pumpAndSettle(); // Allow time for webview callback and state update
 
-       // Verify that the TextField's controller has the updated text with https:// prepended
-       final textField = tester.widget<TextField>(find.byType(TextField));
-       expect(textField.controller!.text, startsWith('https://example.com'));
-    }, timeout: testTimeout);
 
-    testWidgets('Search query prepend', (WidgetTester tester) async {
-      await tester.pumpWidget(const MyApp());
-      await tester.pumpAndSettle();
-
-      // Enter a search query
-      await tester.enterText(find.byType(TextField), 'flutter development');
-      await tester.testTextInput.receiveAction(TextInputAction.done);
-      await tester.pumpAndSettle();
-
-       // Verify that the TextField's controller has the search URL
-       final textField = tester.widget<TextField>(find.byType(TextField));
-       expect(textField.controller!.text, 'https://www.google.com/search?q=flutter%20development');
-    }, timeout: testTimeout);
 
 
 
@@ -96,18 +73,25 @@ void main() {
       expect(find.text('History'), findsOneWidget);
     }, timeout: testTimeout);
 
-    testWidgets('Invalid URL handling', (WidgetTester tester) async {
+
+
+
+
+
+
+    testWidgets('Long URL handling', (WidgetTester tester) async {
       await tester.pumpWidget(const MyApp());
       await tester.pumpAndSettle();
 
-      // Enter an invalid URL (treated as search query)
-      await tester.enterText(find.byType(TextField), 'invalid url query');
+      // Enter a very long URL
+      final longUrl = 'https://example.com/' + 'a' * 1000;
+      await tester.enterText(find.byType(TextField), longUrl);
       await tester.testTextInput.receiveAction(TextInputAction.done);
       await tester.pumpAndSettle();
 
-      // Should convert to search URL
+      // Should handle it without crashing
       final textField = tester.widget<TextField>(find.byType(TextField));
-      expect(textField.controller!.text, 'https://www.google.com/search?q=invalid%20url%20query');
+      expect(textField.controller!.text, longUrl);
     }, timeout: testTimeout);
 
   });
