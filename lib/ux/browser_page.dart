@@ -57,13 +57,7 @@ class _BrowserPageState extends State<BrowserPage> {
     super.dispose();
   }
 
-  void _hideLoadingIndicator() {
-    if (mounted) {
-      setState(() {
-        isLoading = false;
-      });
-    }
-  }
+
 
   Future<void> _loadBookmarks() async {
     final prefs = await SharedPreferences.getInstance();
