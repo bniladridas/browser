@@ -262,7 +262,7 @@ class _BrowserPageState extends State<BrowserPage> {
               if (mounted) {
                 setState(() {
                   hasError = true;
-                  errorMessage = error.description;
+                  errorMessage = 'HTTP ${error.statusCode}: ${error.reasonPhrase}';
                   isLoading = false;
                 });
               }
@@ -273,7 +273,6 @@ class _BrowserPageState extends State<BrowserPage> {
               child: CircularProgressIndicator(),
             ),
         ],
-      );
       );
     } catch (e, s) {
       debugPrint('Error creating InAppWebView: $e\n$s');
