@@ -5,7 +5,6 @@
 // found in the LICENSE file.
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:browser/main.dart';
@@ -84,7 +83,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Enter a very long URL
-      final longUrl = 'https://example.com/' + 'a' * 1000;
+      final longUrl = 'https://example.com/${'a' * 1000}';
       await tester.enterText(find.byType(TextField), longUrl);
       await tester.testTextInput.receiveAction(TextInputAction.done);
       await tester.pumpAndSettle();
