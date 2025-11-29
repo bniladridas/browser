@@ -18,6 +18,7 @@ void main() {
     testWidgets('App launches and shows initial UI', (WidgetTester tester) async {
       // Build the app
       await tester.pumpWidget(const MyApp());
+      await Future.delayed(const Duration(seconds: 1));
       await tester.pumpAndSettle();
 
       // Check for URL input field with hint
@@ -41,9 +42,8 @@ void main() {
       await tester.pumpAndSettle();
 
       // Enter a URL without https
-      await tester.tap(find.byType(TextField));
       await tester.enterText(find.byType(TextField), 'example.com');
-      await tester.pressKey(LogicalKeyboardKey.enter);
+      await tester.testTextInput.receiveAction(TextInputAction.done);
       await tester.pumpAndSettle(); // Allow time for webview callback and state update
 
        // Verify that the TextField's controller has the updated text with https:// prepended
