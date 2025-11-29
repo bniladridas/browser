@@ -218,10 +218,10 @@ class _BrowserPageState extends State<BrowserPage> {
   Widget build(BuildContext context) {
     return Shortcuts(
       shortcuts: {
-        LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyL): FocusUrlIntent(),
-        LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyR): RefreshIntent(),
-        LogicalKeySet(LogicalKeyboardKey.alt, LogicalKeyboardKey.arrowLeft): GoBackIntent(),
-        LogicalKeySet(LogicalKeyboardKey.alt, LogicalKeyboardKey.arrowRight): GoForwardIntent(),
+        SingleActivator(LogicalKeyboardKey.keyL, control: defaultTargetPlatform != TargetPlatform.macOS, meta: defaultTargetPlatform == TargetPlatform.macOS): FocusUrlIntent(),
+        SingleActivator(LogicalKeyboardKey.keyR, control: defaultTargetPlatform != TargetPlatform.macOS, meta: defaultTargetPlatform == TargetPlatform.macOS): RefreshIntent(),
+        const SingleActivator(LogicalKeyboardKey.arrowLeft, alt: true): GoBackIntent(),
+        const SingleActivator(LogicalKeyboardKey.arrowRight, alt: true): GoForwardIntent(),
       },
       child: Actions(
         actions: {
