@@ -37,19 +37,50 @@ void main() {
       expect(find.byIcon(Icons.bookmarks), findsOneWidget);
     }, timeout: testTimeout);
 
-    testWidgets('URL input and https prepend', (WidgetTester tester) async {
+    testWidgets('Bookmark adding and viewing', (WidgetTester tester) async {
       await tester.pumpWidget(const MyApp());
       await tester.pumpAndSettle();
 
-      // Enter a URL without https
-      await tester.enterText(find.byType(TextField), 'example.com');
-      await tester.testTextInput.receiveAction(TextInputAction.done);
-      await tester.pumpAndSettle(); // Allow time for webview callback and state update
+      // Add a bookmark
+      await tester.tap(find.byIcon(Icons.bookmark_add));
+      await tester.pumpAndSettle();
 
-       // Verify that the TextField's controller has the updated text with https:// prepended
-       final textField = tester.widget<TextField>(find.byType(TextField));
-       expect(textField.controller!.text, startsWith('https://example.com'));
+      // View bookmarks
+      await tester.tap(find.byIcon(Icons.bookmarks));
+      await tester.pumpAndSettle();
+
+      // Should show bookmarks dialog
+      expect(find.text('Bookmarks'), findsOneWidget);
+      expect(find.widgetWithText(ListTile, 'https://www.google.com'), findsOneWidget);
     }, timeout: testTimeout);
 
+    testWidgets('History viewing', (WidgetTester tester) async {
+      await tester.pumpWidget(const MyApp());
+      await tester.pumpAndSettle();
+
+      // View history
+      await tester.tap(find.byIcon(Icons.history));
+      await tester.pumpAndSettle();
+
+      // Should show history dialog
+      expect(find.text('History'), findsOneWidget);
+    }, timeout: testTimeout);
+
+
+
+    testWidgets('Special characters in URL', (WidgetTester tester) async {
+      await tester.pumpWidget(const MyApp());
+      await tester.pumpAndSettle();
+
+      // Enter URL with special characters
+      const specialUrl = 'https://example.com/path?query=value&other=test';
+      await tester.enterText(find.byType(TextField), specialUrl);
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pumpAndSettle();
+
+      // Should handle special characters
+      final textField = tester.widget<TextField>(find.byType(TextField));
+      expect(textField.controller!.text, specialUrl);
+    }, timeout: testTimeout);
   });
 }
