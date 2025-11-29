@@ -15,17 +15,10 @@ fi
 
 BUMP_TYPE=$1
 
-if [ ! -f VERSION ]; then
-  echo "VERSION file not found"
-  exit 1
-fi
-
-CURRENT_VERSION=$(cat VERSION | sed 's/+.*//')
-if grep -q '+' VERSION; then
-  BUILD=$(sed 's/.*+//' VERSION)
-else
-  BUILD="1"
-fi
+# Get latest tag
+LATEST_TAG=$(git describe --tags --abbrev=0 --match "desktop/app-*" 2>/dev/null || echo "desktop/app-1.0.0")
+CURRENT_VERSION=$(echo "$LATEST_TAG" | sed 's/desktop\/app-//')
+BUILD=$(cat VERSION 2>/dev/null | sed 's/.*+//' || echo "1")
 
 IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
 
