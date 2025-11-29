@@ -50,7 +50,7 @@ class _BrowserPageState extends State<BrowserPage> {
       });
     }
   }
->>>>>>> 01b169e (feat: add loading indicator)
+
   Future<void> _loadBookmarks() async {
     final prefs = await SharedPreferences.getInstance();
     final bookmarksJson = prefs.getString('bookmarks');
