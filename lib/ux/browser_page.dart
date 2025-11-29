@@ -155,6 +155,17 @@ class _BrowserPageState extends State<BrowserPage> {
     await prefs.setString('bookmarks', jsonEncode(bookmarks));
   }
 
+  void _handleLoadError(String newErrorMessage) {
+    if (mounted) {
+      setState(() {
+        hasError = true;
+        errorMessage = newErrorMessage;
+        isLoading = false;
+        webViewController = null;
+      });
+    }
+  }
+
   void _addBookmark() async {
     if (!bookmarks.contains(currentUrl)) {
       setState(() {
@@ -353,24 +364,10 @@ class _BrowserPageState extends State<BrowserPage> {
               }
             },
             onReceivedError: (controller, request, error) {
-              if (mounted) {
-                setState(() {
-                  hasError = true;
-                  errorMessage = error.description;
-                  isLoading = false;
-                  webViewController = null;
-                });
-              }
+              _handleLoadError(error.description);
             },
             onReceivedHttpError: (controller, request, error) {
-              if (mounted) {
-                setState(() {
-                  hasError = true;
-                  errorMessage = 'HTTP ${error.statusCode}: ${error.reasonPhrase}';
-                  isLoading = false;
-                  webViewController = null;
-                });
-              }
+              _handleLoadError('HTTP ${error.statusCode}: ${error.reasonPhrase}');
             },
           ),
           if (isLoading)
