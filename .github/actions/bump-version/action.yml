@@ -52,12 +52,16 @@ runs:
         git add VERSION pubspec.yaml
         git commit -m "Bump version to $(cat VERSION)" || echo "No changes to commit"
 
-    - name: Create tag
+    - name: Create and push tag if it does not already exist
       shell: bash
       run: |
         VERSION=$(cat VERSION | sed 's/+.*//')
-        git tag "desktop/app-${VERSION}"
-        git push origin "desktop/app-${VERSION}"
+        if git rev-parse "desktop/app-${VERSION}" >/dev/null 2>&1; then
+          echo "Tag desktop/app-${VERSION} already exists. Skipping tag creation."
+        else
+          git tag "desktop/app-${VERSION}"
+          git push origin "desktop/app-${VERSION}"
+        fi
 
     - name: Create release
       shell: bash
