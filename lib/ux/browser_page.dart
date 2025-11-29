@@ -358,6 +358,7 @@ class _BrowserPageState extends State<BrowserPage> {
                   hasError = true;
                   errorMessage = error.description;
                   isLoading = false;
+                  webViewController = null;
                 });
               }
             },
@@ -367,6 +368,7 @@ class _BrowserPageState extends State<BrowserPage> {
                   hasError = true;
                   errorMessage = 'HTTP ${error.statusCode}: ${error.reasonPhrase}';
                   isLoading = false;
+                  webViewController = null;
                 });
               }
             },
