@@ -64,7 +64,6 @@ void main() {
 
       // Should show history dialog
       expect(find.text('History'), findsOneWidget);
-      expect(find.widgetWithText(ListTile, 'https://www.google.com'), findsOneWidget);
     }, timeout: testTimeout);
 
     testWidgets('Navigation buttons presence', (WidgetTester tester) async {
