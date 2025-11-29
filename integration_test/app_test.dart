@@ -37,12 +37,6 @@ void main() {
       expect(find.byIcon(Icons.bookmarks), findsOneWidget);
     }, timeout: testTimeout);
 
-
-
-
-
-
-
     testWidgets('Bookmark adding and viewing', (WidgetTester tester) async {
       await tester.pumpWidget(const MyApp());
       await tester.pumpAndSettle();
@@ -72,14 +66,6 @@ void main() {
       expect(find.text('History'), findsOneWidget);
     }, timeout: testTimeout);
 
-
-
-
-
-
-
-
-
     testWidgets('Navigation buttons presence', (WidgetTester tester) async {
       await tester.pumpWidget(const MyApp());
       await tester.pumpAndSettle();
@@ -104,6 +90,5 @@ void main() {
       final textField = tester.widget<TextField>(find.byType(TextField));
       expect(textField.controller!.text, specialUrl);
     }, timeout: testTimeout);
-
   });
 }
