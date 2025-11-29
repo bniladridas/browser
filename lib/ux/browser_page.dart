@@ -510,7 +510,9 @@ class _BrowserPageState extends State<BrowserPage> with TickerProviderStateMixin
       appBar: AppBar(
         bottom: TabBar(
           controller: tabController,
-          tabs: tabs.map((tab) {
+          tabs: tabs.asMap().entries.map((entry) {
+            final index = entry.key;
+            final tab = entry.value;
             return Tab(
               child: Row(
                 children: [
@@ -523,7 +525,7 @@ class _BrowserPageState extends State<BrowserPage> with TickerProviderStateMixin
                   if (tabs.length > 1)
                     IconButton(
                       icon: const Icon(Icons.close, size: 16),
-                      onPressed: () => _closeTab(tabs.indexOf(tab)),
+                      onPressed: () => _closeTab(index),
                     ),
                 ],
               ),
