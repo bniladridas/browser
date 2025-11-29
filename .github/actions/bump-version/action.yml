@@ -63,12 +63,12 @@ runs:
           git push origin "desktop/app-${VERSION}"
         fi
 
-    - name: Create release if tag was created
+    - name: Create release if not exists
       shell: bash
       run: |
         VERSION=$(sed 's/+.*//' VERSION)
-        if git ls-remote --tags --exit-code origin "desktop/app-${VERSION}"; then
-          echo "Tag desktop/app-${VERSION} already exists on remote. Skipping release creation."
+        if gh release view "desktop/app-${VERSION}" &>/dev/null; then
+          echo "Release for tag desktop/app-${VERSION} already exists. Skipping release creation."
         else
           PR_TITLE=$(gh pr view "${{ inputs.pr-number }}" --json title -q '.title')
           PR_BODY=$(gh pr view "${{ inputs.pr-number }}" --json body -q '.body' | head -20)
