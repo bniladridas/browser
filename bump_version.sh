@@ -5,8 +5,12 @@
 # Use of this source code is governed by a MIT license that can be
 # found in the LICENSE file.
 
-# Script to bump version in VERSION file
+# Script to bump version in VERSION file based on latest git tag
 # Usage: ./bump_version.sh <major|minor|patch>
+# The script reads the latest tag matching "desktop/app-*", bumps the version,
+# and derives the build number from commits since the last tag.
+
+set -e  # Exit on error
 
 if [ $# -ne 1 ]; then
   echo "Usage: $0 <major|minor|patch>"
@@ -15,10 +19,25 @@ fi
 
 BUMP_TYPE=$1
 
-# Get latest tag
-LATEST_TAG=$(git describe --tags --abbrev=0 --match "desktop/app-*" 2>/dev/null || echo "desktop/app-1.0.0")
-CURRENT_VERSION=$(echo "$LATEST_TAG" | sed 's/desktop\/app-//')
-BUILD=$(cat VERSION 2>/dev/null | sed 's/.*+//' || echo "1")
+# Configurable tag prefix
+TAG_PREFIX="desktop/app"
+
+# Get latest tag, default to 1.0.0 if none
+if ! LATEST_TAG=$(git describe --tags --abbrev=0 --match "${TAG_PREFIX}-*" 2>/dev/null); then
+  echo "No tags found, starting from 1.0.0"
+  LATEST_TAG="${TAG_PREFIX}-1.0.0"
+fi
+
+# Extract version from tag
+CURRENT_VERSION=$(echo "$LATEST_TAG" | sed 's/desktop\/app-//' | sed 's/+.*//')
+
+# Derive build number from commits since last tag
+if git describe --tags --exact-match HEAD >/dev/null 2>&1; then
+  BUILD=1  # On a tag, start build at 1
+else
+  BUILD=$(git rev-list --count HEAD ^"$LATEST_TAG" 2>/dev/null || echo "1")
+  BUILD=$((BUILD + 1))  # Increment for next build
+fi
 
 IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
 
