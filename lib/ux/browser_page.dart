@@ -13,6 +13,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
+import '../constants.dart';
+
 class SettingsDialog extends StatefulWidget {
   const SettingsDialog({super.key});
 
@@ -33,7 +35,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
   Future<void> _loadCurrentHomepage() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
-      currentHomepage = prefs.getString('homepage') ?? 'https://www.google.com';
+      currentHomepage = prefs.getString(homepageKey) ?? 'https://www.google.com';
       homepageController = TextEditingController(text: currentHomepage);
     });
   }
@@ -72,7 +74,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
         TextButton(
           onPressed: () async {
             final prefs = await SharedPreferences.getInstance();
-            await prefs.setString('homepage', homepageController.text);
+            await prefs.setString(homepageKey, homepageController.text);
             if (mounted) {
               Navigator.of(context).pop();
             }
