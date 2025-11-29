@@ -43,7 +43,7 @@ void main() {
       // Enter a URL without https
       await tester.tap(find.byType(TextField));
       await tester.enterText(find.byType(TextField), 'example.com');
-      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pressKey(LogicalKeyboardKey.enter);
       await tester.pumpAndSettle(); // Allow time for webview callback and state update
 
        // Verify that the TextField's controller has the updated text with https:// prepended
