@@ -1,4 +1,10 @@
 ---
+# SPDX-License-Identifier: MIT
+#
+# Copyright 2025 bniladridas. All rights reserved.
+# Use of this source code is governed by a MIT license that can be
+# found in the LICENSE file.
+
 name: 'Bump Version'
 description: 'Bump version based on PR labels and create release'
 
@@ -59,7 +65,8 @@ runs:
         VERSION=$(cat VERSION | sed 's/+.*//')
         PR_TITLE=$(gh pr view "${{ inputs.pr-number }}" --json title -q '.title')
         PR_BODY=$(gh pr view "${{ inputs.pr-number }}" --json body -q '.body' | head -20)
-        NOTES="## ${VERSION}: ${PR_TITLE} - ${PR_BODY} (auto bump)"
+        NOTES=$(printf "## What's New in %s\n\n%s\n\n%s\n\n(auto bump)" \
+          "${VERSION}" "${PR_TITLE}" "${PR_BODY}")
         gh release create "desktop/app-${VERSION}" --title "Release ${VERSION}" --notes "${NOTES}"
       env:
         GH_TOKEN: ${{ github.token }}

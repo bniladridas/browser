@@ -58,8 +58,8 @@ void main() {
       await tester.tap(find.text('Bookmarks'));
       await tester.pumpAndSettle();
 
-      // Should show bookmarks dialog
-      expect(find.text('Bookmarks'), findsOneWidget);
+       // Should show bookmarks dialog
+       expect(find.descendant(of: find.byType(AlertDialog), matching: find.text('Bookmarks')), findsOneWidget);
     }, timeout: testTimeout);
 
     testWidgets('History viewing', (WidgetTester tester) async {
@@ -83,7 +83,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Enter URL with special characters
-      const specialUrl = 'https://example.com/path?query=value&other=test';
+      const specialUrl = 'https://github.com/bniladridas/browser?tab=readme';
       await tester.enterText(find.byType(TextField), specialUrl);
       await tester.testTextInput.receiveAction(TextInputAction.done);
       await tester.pumpAndSettle();
