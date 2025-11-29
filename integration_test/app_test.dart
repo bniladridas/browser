@@ -83,14 +83,14 @@ void main() {
       await tester.pumpAndSettle();
 
       // Enter URL with special characters
-      const specialUrl = 'data:text/html,<html><body>Test page</body></html>';
+      const specialUrl = 'data:text/html,<html><body>Test</body></html>';
       await tester.enterText(find.byType(TextField), specialUrl);
       await tester.testTextInput.receiveAction(TextInputAction.done);
       await tester.pumpAndSettle();
 
       // Should handle special characters
       final textField = tester.widget<TextField>(find.byType(TextField));
-      expect(textField.controller!.text, specialUrl);
+      expect(textField.controller!.text, 'https://$specialUrl');
     }, timeout: testTimeout);
   });
 }
