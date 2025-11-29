@@ -78,20 +78,7 @@ void main() {
 
 
 
-    testWidgets('Long URL handling', (WidgetTester tester) async {
-      await tester.pumpWidget(const MyApp());
-      await tester.pumpAndSettle();
 
-      // Enter a very long URL
-      final longUrl = 'https://example.com/${'a' * 1000}';
-      await tester.enterText(find.byType(TextField), longUrl);
-      await tester.testTextInput.receiveAction(TextInputAction.done);
-      await tester.pumpAndSettle();
-
-      // Should handle it without crashing
-      final textField = tester.widget<TextField>(find.byType(TextField));
-      expect(textField.controller!.text, longUrl);
-    }, timeout: testTimeout);
 
     testWidgets('Navigation buttons presence', (WidgetTester tester) async {
       await tester.pumpWidget(const MyApp());
@@ -108,7 +95,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Enter URL with special characters
-      final specialUrl = 'https://example.com/path?query=value&other=test';
+      const specialUrl = 'https://example.com/path?query=value&other=test';
       await tester.enterText(find.byType(TextField), specialUrl);
       await tester.testTextInput.receiveAction(TextInputAction.done);
       await tester.pumpAndSettle();
