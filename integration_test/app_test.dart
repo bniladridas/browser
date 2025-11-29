@@ -94,6 +94,7 @@ void main() {
 
       // Should show history dialog
       expect(find.text('History'), findsOneWidget);
+      expect(find.byType(ListTile), findsAtLeast(1)); // At least one history item
     }, timeout: testTimeout);
 
   });
