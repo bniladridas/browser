@@ -43,6 +43,7 @@ class SettingsDialog extends StatefulWidget {
 class _SettingsDialogState extends State<SettingsDialog> {
   late TextEditingController homepageController;
   String? currentHomepage;
+  bool _hideAppBar = false;
 
   @override
   void initState() {
@@ -55,6 +56,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
     setState(() {
       currentHomepage = prefs.getString(homepageKey) ?? 'https://www.google.com';
       homepageController = TextEditingController(text: currentHomepage);
+      _hideAppBar = prefs.getBool(hideAppBarKey) ?? false;
     });
   }
 
@@ -78,10 +80,19 @@ class _SettingsDialogState extends State<SettingsDialog> {
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          TextField(
-            controller: homepageController,
-            decoration: const InputDecoration(labelText: 'Homepage'),
-          ),
+           TextField(
+             controller: homepageController,
+             decoration: const InputDecoration(labelText: 'Homepage'),
+           ),
+           SwitchListTile(
+             title: const Text('Hide App Bar'),
+             value: _hideAppBar,
+             onChanged: (value) {
+               setState(() {
+                 _hideAppBar = value;
+               });
+             },
+           ),
         ],
       ),
       actions: [
@@ -90,17 +101,18 @@ class _SettingsDialogState extends State<SettingsDialog> {
           child: const Text('Cancel'),
         ),
           TextButton(
-            onPressed: () async {
-              final prefs = await SharedPreferences.getInstance();
-              await prefs.setString(homepageKey, homepageController.text);
-              widget.onSettingsChanged?.call();
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Homepage updated')),
-                );
-                Navigator.of(context).pop();
-              }
-            },
+             onPressed: () async {
+               final prefs = await SharedPreferences.getInstance();
+               await prefs.setString(homepageKey, homepageController.text);
+               await prefs.setBool(hideAppBarKey, _hideAppBar);
+               widget.onSettingsChanged?.call();
+               if (mounted) {
+                 ScaffoldMessenger.of(context).showSnackBar(
+                   const SnackBar(content: Text('Settings saved')),
+                 );
+                 Navigator.of(context).pop();
+               }
+             },
             child: const Text('Save'),
           ),
       ],
@@ -116,39 +128,83 @@ class GoBackIntent extends Intent {}
 
 class GoForwardIntent extends Intent {}
 
+class TabData {
+  String currentUrl;
+  final TextEditingController urlController;
+  final FocusNode urlFocusNode;
+  InAppWebViewController? webViewController;
+  bool isLoading = false;
+  bool hasError = false;
+  String? errorMessage;
+  final List<String> history = [];
+
+  TabData(this.currentUrl)
+      : urlController = TextEditingController(text: currentUrl),
+        urlFocusNode = FocusNode();
+}
+
 class BrowserPage extends StatefulWidget {
-  const BrowserPage({super.key, required this.initialUrl, this.onSettingsChanged});
+  const BrowserPage({super.key, required this.initialUrl, this.hideAppBar = false, this.onSettingsChanged});
 
   final String initialUrl;
+  final bool hideAppBar;
   final void Function()? onSettingsChanged;
 
   @override
   State<BrowserPage> createState() => _BrowserPageState();
 }
 
-class _BrowserPageState extends State<BrowserPage> {
-  final TextEditingController urlController = TextEditingController();
-  final FocusNode urlFocusNode = FocusNode();
-  InAppWebViewController? webViewController;
-  late String currentUrl;
-   bool isLoading = false;
-   bool hasError = false;
-   String? errorMessage;
-   final List<String> bookmarks = [];
-   final List<String> history = [];
+class _BrowserPageState extends State<BrowserPage> with TickerProviderStateMixin {
+  late TabController tabController;
+  final List<TabData> tabs = [];
+  final List<String> bookmarks = [];
 
   @override
   void initState() {
     super.initState();
-    currentUrl = widget.initialUrl;
-    urlController.text = currentUrl;
+    tabs.add(TabData(widget.initialUrl));
+    tabController = TabController(length: 1, vsync: this);
+    tabController.addListener(_onTabChanged);
     _loadBookmarks();
+  }
+
+  void _onTabChanged() {
+    setState(() {});
+  }
+
+  TabData get activeTab => tabs[tabController.index];
+
+  void _addNewTab() {
+    setState(() {
+      tabs.add(TabData('https://www.google.com'));
+      tabController = TabController(length: tabs.length, vsync: this);
+      tabController.addListener(_onTabChanged);
+      tabController.animateTo(tabs.length - 1);
+    });
+  }
+
+  void _closeTab(int index) {
+    if (tabs.length > 1) {
+      setState(() {
+        tabs[index].urlController.dispose();
+        tabs[index].urlFocusNode.dispose();
+        tabs.removeAt(index);
+        tabController = TabController(length: tabs.length, vsync: this);
+        tabController.addListener(_onTabChanged);
+        if (index >= tabs.length) {
+          tabController.animateTo(tabs.length - 1);
+        }
+      });
+    }
   }
 
   @override
   void dispose() {
-    urlController.dispose();
-    urlFocusNode.dispose();
+    for (final tab in tabs) {
+      tab.urlController.dispose();
+      tab.urlFocusNode.dispose();
+    }
+    tabController.dispose();
     _saveBookmarks();
     super.dispose();
   }
@@ -169,40 +225,40 @@ class _BrowserPageState extends State<BrowserPage> {
     await prefs.setString('bookmarks', jsonEncode(bookmarks));
   }
 
-  void _handleLoadError(String newErrorMessage) {
+  void _handleLoadError(TabData tab, String newErrorMessage) {
     if (mounted) {
       setState(() {
-        hasError = true;
-        errorMessage = newErrorMessage;
-        isLoading = false;
-        webViewController = null;
+        tab.hasError = true;
+        tab.errorMessage = newErrorMessage;
+        tab.isLoading = false;
+        tab.webViewController = null;
       });
     }
   }
 
   void _addBookmark() async {
-    if (!bookmarks.contains(currentUrl)) {
+    if (!bookmarks.contains(activeTab.currentUrl)) {
       setState(() {
-        bookmarks.add(currentUrl);
+        bookmarks.add(activeTab.currentUrl);
       });
       await _saveBookmarks();
     }
   }
 
   Future<void> _goBack() async {
-    if (await webViewController?.canGoBack() ?? false) {
-      await webViewController?.goBack();
+    if (await activeTab.webViewController?.canGoBack() ?? false) {
+      await activeTab.webViewController?.goBack();
     }
   }
 
   Future<void> _goForward() async {
-    if (await webViewController?.canGoForward() ?? false) {
-      await webViewController?.goForward();
+    if (await activeTab.webViewController?.canGoForward() ?? false) {
+      await activeTab.webViewController?.goForward();
     }
   }
 
   Future<void> _refresh() async {
-    await webViewController?.reload();
+    await activeTab.webViewController?.reload();
   }
 
   void _showBookmarks() {
@@ -210,50 +266,51 @@ class _BrowserPageState extends State<BrowserPage> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Bookmarks'),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: ListView.builder(
-            shrinkWrap: true,
-            itemCount: bookmarks.length,
-            itemBuilder: (context, index) {
-              return ListTile(
-                title: Text(bookmarks[index]),
-                onTap: () {
-                  Navigator.of(context).pop();
-                  _loadUrl(bookmarks[index]);
-                },
-                trailing: IconButton(
-                  icon: const Icon(Icons.delete),
-                  onPressed: () async {
-                    final confirm = await showDialog<bool>(
-                      context: context,
-                      builder: (context) => AlertDialog(
-                        title: const Text('Delete Bookmark'),
-                        content: Text('Remove ${bookmarks[index]}?'),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.of(context).pop(false),
-                            child: const Text('Cancel'),
-                          ),
-                          TextButton(
-                            onPressed: () => Navigator.of(context).pop(true),
-                            child: const Text('Delete'),
-                          ),
-                        ],
+        content: bookmarks.isEmpty
+            ? const Text('No bookmarks')
+            : SizedBox(
+                width: double.maxFinite,
+                height: 300, // Fixed height for test
+                child: ListView.builder(
+                  itemCount: bookmarks.length,
+                  itemBuilder: (context, index) {
+                    return ListTile(
+                      title: Text(bookmarks[index]),
+                      onTap: () {
+                        Navigator.of(context).pop();
+                        _loadUrl(bookmarks[index]);
+                      },
+                      trailing: IconButton(
+                        icon: const Icon(Icons.delete),
+                        onPressed: () async {
+                          final confirm = await showDialog<bool>(
+                            context: context,
+                            builder: (context) => AlertDialog(
+                              title: const Text('Remove Bookmark?'),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.of(context).pop(false),
+                                  child: const Text('Cancel'),
+                                ),
+                                TextButton(
+                                  onPressed: () => Navigator.of(context).pop(true),
+                                  child: const Text('Remove'),
+                                ),
+                              ],
+                            ),
+                          );
+                          if (confirm == true) {
+                            setState(() {
+                              bookmarks.removeAt(index);
+                            });
+                            await _saveBookmarks();
+                          }
+                        },
                       ),
                     );
-                    if (confirm == true) {
-                      setState(() {
-                        bookmarks.removeAt(index);
-                      });
-                      await _saveBookmarks();
-                    }
                   },
                 ),
-              );
-            },
-          ),
-        ),
+              ),
         actions: [
           TextButton(
             onPressed: () async {
@@ -274,27 +331,56 @@ class _BrowserPageState extends State<BrowserPage> {
     );
   }
 
+  void _showSettings() {
+    showDialog(
+      context: context,
+      builder: (context) => SettingsDialog(onSettingsChanged: widget.onSettingsChanged),
+    );
+  }
+
   void _showHistory() {
+    final history = activeTab.history;
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('History'),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: ListView.builder(
-            itemCount: history.length,
-            itemBuilder: (context, index) {
-              return ListTile(
-                title: Text(history[history.length - 1 - index]), // Reverse order, latest first
-                onTap: () {
-                  Navigator.of(context).pop();
-                  _loadUrl(history[history.length - 1 - index]);
-                },
-              );
-            },
-          ),
-        ),
+        content: history.isEmpty
+            ? const Text('No history')
+            : SizedBox(
+                width: double.maxFinite,
+                height: 300,
+                child: ListView.builder(
+                  itemCount: history.length,
+                  itemBuilder: (context, index) {
+                    final historyIndex = history.length - 1 - index;
+                    return ListTile(
+                      title: Text(history[historyIndex]),
+                      onTap: () {
+                        Navigator.of(context).pop();
+                        _loadUrl(history[historyIndex]);
+                      },
+                      trailing: IconButton(
+                        icon: const Icon(Icons.delete),
+                        onPressed: () {
+                          setState(() {
+                            history.removeAt(historyIndex);
+                          });
+                        },
+                      ),
+                    );
+                  },
+                ),
+              ),
         actions: [
+          TextButton(
+            onPressed: () {
+              setState(() {
+                history.clear();
+              });
+              Navigator.of(context).pop();
+            },
+            child: const Text('Clear All'),
+          ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
             child: const Text('Close'),
@@ -306,24 +392,25 @@ class _BrowserPageState extends State<BrowserPage> {
 
   void _loadUrl(String url) {
     url = UrlUtils.processUrl(url);
-    urlController.text = url;
-    webViewController?.loadUrl(urlRequest: URLRequest(url: WebUri(url)));
+    activeTab.currentUrl = url;
+    activeTab.urlController.text = url;
+    activeTab.webViewController?.loadUrl(urlRequest: URLRequest(url: WebUri(url)));
   }
 
-  Widget _buildErrorView() {
+  Widget _buildErrorView(TabData tab) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.error, size: 64, color: Colors.red),
-          const SizedBox(height: 16),
-          const Text('Failed to load page.', style: TextStyle(fontSize: 18)),
-          const SizedBox(height: 16),
+          Icon(Icons.error, size: 48, color: Theme.of(context).colorScheme.error),
+          const SizedBox(height: 12),
+          Text('Page failed to load.', style: Theme.of(context).textTheme.headlineSmall),
+          const SizedBox(height: 12),
           ElevatedButton(
             onPressed: () {
               setState(() {
-                hasError = false;
-                errorMessage = null;
+                tab.hasError = false;
+                tab.errorMessage = null;
               });
             },
             child: const Text('Retry'),
@@ -333,29 +420,34 @@ class _BrowserPageState extends State<BrowserPage> {
     );
   }
 
-  Widget _buildBody() {
-    if (hasError) {
-      return _buildErrorView();
+  Widget _buildTabBody(TabData tab) {
+    if (tab.hasError) {
+      return _buildErrorView(tab);
     }
 
     try {
       return Stack(
         children: [
           InAppWebView(
-            initialUrlRequest: URLRequest(url: WebUri(currentUrl)),
+            initialUrlRequest: URLRequest(url: WebUri(tab.currentUrl)),
+            initialSettings: InAppWebViewSettings(
+              cacheEnabled: true,
+              clearCache: false,
+              useOnLoadResource: false,
+            ),
             onWebViewCreated: (controller) {
-              webViewController = controller;
+              tab.webViewController = controller;
             },
             onLoadStart: (controller, url) {
               if (url != null) {
                 setState(() {
-                  currentUrl = url.toString();
-                  urlController.text = currentUrl;
-                  isLoading = true;
-                  hasError = false;
-                  errorMessage = null;
-                  if (history.isEmpty || history.last != currentUrl) {
-                    history.add(currentUrl);
+                  tab.currentUrl = url.toString();
+                  tab.urlController.text = tab.currentUrl;
+                  tab.isLoading = true;
+                  tab.hasError = false;
+                  tab.errorMessage = null;
+                  if (tab.history.isEmpty || tab.history.last != tab.currentUrl) {
+                    tab.history.add(tab.currentUrl);
                   }
                 });
               }
@@ -363,18 +455,18 @@ class _BrowserPageState extends State<BrowserPage> {
             onLoadStop: (controller, url) {
               if (mounted) {
                 setState(() {
-                  isLoading = false;
+                  tab.isLoading = false;
                 });
               }
             },
             onReceivedError: (controller, request, error) {
-              _handleLoadError(error.description);
+              _handleLoadError(tab, error.description);
             },
             onReceivedHttpError: (controller, request, error) {
-              _handleLoadError('HTTP ${error.statusCode}: ${error.reasonPhrase}');
+              _handleLoadError(tab, 'HTTP ${error.statusCode}: ${error.reasonPhrase}');
             },
           ),
-          if (isLoading)
+          if (tab.isLoading)
             const Center(
               child: CircularProgressIndicator(),
             ),
@@ -399,9 +491,9 @@ class _BrowserPageState extends State<BrowserPage> {
       },
       child: Actions(
         actions: {
-          FocusUrlIntent: CallbackAction<FocusUrlIntent>(
-            onInvoke: (intent) => urlFocusNode.requestFocus(),
-          ),
+           FocusUrlIntent: CallbackAction<FocusUrlIntent>(
+             onInvoke: (intent) => activeTab.urlFocusNode.requestFocus(),
+           ),
           RefreshIntent: CallbackAction<RefreshIntent>(
             onInvoke: (intent) => _refresh(),
           ),
@@ -413,50 +505,117 @@ class _BrowserPageState extends State<BrowserPage> {
           ),
         },
         child: Scaffold(
-      appBar: AppBar(
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.arrow_back),
-            onPressed: _goBack,
-          ),
-          IconButton(
-            icon: const Icon(Icons.arrow_forward),
-            onPressed: _goForward,
-          ),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _refresh,
-          ),
+       appBar: widget.hideAppBar ? null : AppBar(
+         actions: [
            IconButton(
-             icon: const Icon(Icons.bookmark_add),
-             onPressed: _addBookmark,
+             icon: const Icon(Icons.arrow_back),
+             onPressed: _goBack,
            ),
            IconButton(
-             icon: const Icon(Icons.bookmarks),
-             onPressed: _showBookmarks,
+             icon: const Icon(Icons.arrow_forward),
+             onPressed: _goForward,
            ),
            IconButton(
-             icon: const Icon(Icons.history),
-             onPressed: _showHistory,
+             icon: const Icon(Icons.refresh),
+             onPressed: _refresh,
            ),
-        ],
-        title: Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: urlController,
-                focusNode: urlFocusNode,
-                decoration: const InputDecoration(
-                  hintText: 'Enter URL',
-                  border: InputBorder.none,
-                ),
-                onSubmitted: _loadUrl,
-              ),
-            ),
-          ],
-        ),
+           PopupMenuButton<String>(
+             onSelected: (value) {
+               switch (value) {
+                 case 'add_bookmark':
+                   _addBookmark();
+                   break;
+                 case 'view_bookmarks':
+                   _showBookmarks();
+                   break;
+                 case 'history':
+                   _showHistory();
+                   break;
+                 case 'settings':
+                   _showSettings();
+                   break;
+                 case 'new_tab':
+                   _addNewTab();
+                   break;
+                 case 'close_tab':
+                   _closeTab(tabController.index);
+                   break;
+               }
+             },
+             itemBuilder: (context) => [
+               const PopupMenuItem(
+                 value: 'new_tab',
+                 child: Text('New Tab'),
+               ),
+               if (tabs.length > 1)
+                 const PopupMenuItem(
+                   value: 'close_tab',
+                   child: Text('Close Tab'),
+                 ),
+               const PopupMenuItem(
+                 value: 'add_bookmark',
+                 child: Text('Add Bookmark'),
+               ),
+               const PopupMenuItem(
+                 value: 'view_bookmarks',
+                 child: Text('Bookmarks'),
+               ),
+               const PopupMenuItem(
+                 value: 'history',
+                 child: Text('History'),
+               ),
+               const PopupMenuItem(
+                 value: 'settings',
+                 child: Text('Settings'),
+               ),
+             ],
+           ),
+         ],
+         title: Row(
+           children: [
+             Expanded(
+               child: TextField(
+                 controller: activeTab.urlController,
+                 focusNode: activeTab.urlFocusNode,
+                 decoration: const InputDecoration(
+                   hintText: 'Enter URL',
+                   border: InputBorder.none,
+                 ),
+                 onSubmitted: _loadUrl,
+               ),
+             ),
+           ],
+         ),
       ),
-      body: _buildBody(),
+       body: Stack(
+         children: [
+           Column(
+             children: [
+               TabBar(
+                 controller: tabController,
+                 isScrollable: true,
+                 tabs: tabs.map((tab) => Tab(text: tab.currentUrl.split('/')[2])).toList(),
+               ),
+               Expanded(
+                 child: TabBarView(
+                   controller: tabController,
+                   children: tabs.map((tab) => _buildTabBody(tab)).toList(),
+                 ),
+               ),
+             ],
+           ),
+           if (widget.hideAppBar)
+             Positioned(
+               top: 10,
+               right: 10,
+               child: FloatingActionButton(
+                 mini: true,
+                 onPressed: _showSettings,
+                 child: const Icon(Icons.settings),
+               ),
+             ),
+         ],
+       ),
     ),
   ),
 );

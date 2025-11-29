@@ -26,6 +26,7 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   String _initialUrl = 'https://www.google.com';
+  bool _hideAppBar = false;
 
   @override
   void initState() {
@@ -37,23 +38,29 @@ class _MyAppState extends State<MyApp> {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
       _initialUrl = prefs.getString(homepageKey) ?? 'https://www.google.com';
+      _hideAppBar = prefs.getBool(hideAppBarKey) ?? false;
     });
   }
 
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Browser',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-      ),
-      darkTheme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue, brightness: Brightness.dark),
-      ),
-      themeMode: ThemeMode.system,
-      home: BrowserPage(initialUrl: _initialUrl, onSettingsChanged: _loadSettings),
-    );
+     return MaterialApp(
+       title: 'Browser',
+       debugShowCheckedModeBanner: false,
+       theme: ThemeData(
+         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+         textTheme: Typography.material2021().black.apply(fontFamily: 'Roboto'),
+         useMaterial3: true,
+       ),
+       darkTheme: ThemeData(
+         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue, brightness: Brightness.dark),
+         textTheme: Typography.material2021().white.apply(fontFamily: 'Roboto'),
+         useMaterial3: true,
+       ),
+       themeMode: ThemeMode.system,
+       home: BrowserPage(initialUrl: _initialUrl, hideAppBar: _hideAppBar, onSettingsChanged: _loadSettings),
+     );
   }
 }
 
