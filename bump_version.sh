@@ -23,6 +23,7 @@ BUMP_TYPE=$1
 TAG_PREFIX="desktop/app"
 
 # Ensure tags are fetched
+git fetch --unshallow --quiet || true
 git fetch --tags --quiet
 
 # Get latest tag, default to 1.0.0 if none
