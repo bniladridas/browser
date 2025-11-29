@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:window_manager/window_manager.dart';
+import 'constants.dart';
 import 'ux/browser_page.dart';
 
 void main() async {
@@ -35,7 +36,7 @@ class _MyAppState extends State<MyApp> {
   Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
-      _initialUrl = prefs.getString('homepage') ?? 'https://www.google.com';
+      _initialUrl = prefs.getString(homepageKey) ?? 'https://www.google.com';
     });
   }
 
