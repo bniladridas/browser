@@ -1,10 +1,8 @@
 # Browser
 
-[![CI](https://github.com/bniladridas/browser/workflows/Flutter%20CI/badge.svg)](https://github.com/bniladridas/browser/actions)
+Flutter desktop web browser with tabs, bookmarks, history.
 
-A simple Flutter desktop application that provides an in-app web browser interface.
-
-## Installation
+## Install
 
 ```bash
 git clone https://github.com/bniladridas/browser.git
@@ -13,85 +11,22 @@ flutter pub get
 flutter run
 ```
 
-## Usage
+## Use
 
-Launch the application and enter a URL in the text field at the top. Press Enter to load the URL in the in-app web view.
+Enter URLs. Navigate via buttons or shortcuts: `Cmd+L` focus, `Cmd+R` refresh, `Alt+Left/Right` back/forward.
 
-Use the navigation buttons (back, forward, refresh) in the app bar to control browsing.
+## Develop
 
-The app automatically prepends `https://` if the URL does not start with `http://` or `https://`.
+Requires Flutter >=3.0.0.
 
-## Features
+Run `./check.sh` for checks.
 
-- In-app web browsing with WebView
-- URL input with automatic protocol detection
-- Navigation controls (back, forward, refresh)
-- Cross-platform desktop support (macOS, Windows, Linux)
+Build: `flutter build macos`.
 
-## Development
+## Contribute
 
-### Prerequisites
-
-- Flutter SDK >=3.0.0 <4.0.0
-- Dart SDK >=3.0.0
-
-### Running Checks
-
-Run `./check.sh` to lint, test, and build the project.
-
-```bash
-./check.sh
-```
-
-### Testing
-
-Run unit tests:
-
-```bash
-flutter test
-```
-
-Run integration tests (requires GUI and accessibility permissions on macOS):
-
-```bash
-flutter test integration_test/
-```
-
-Or use the convenience script:
-
-```bash
-./run_e2e.sh
-```
-
-Note: On macOS, grant Terminal accessibility permissions in System Settings > Privacy & Security > Accessibility for integration tests to run properly.
-
-### Building
-
-To build for macOS:
-
-```bash
-flutter build macos
-```
-
-### CI/CD
-
-This project uses GitHub Actions for continuous integration. The workflow:
-
-- Runs on macOS
-- Installs Flutter 3.38.3
-- Executes `flutter pub get`, `flutter analyze`, `flutter test`, `flutter test integration_test/`, and `flutter build macos`
-- Triggers on pushes and pull requests to main and master branches
-
-## Contributing
-
-1. Fork the repository.
-2. Create a feature branch (`git checkout -b feature/amazing-feature`).
-3. Make your changes.
-4. Run `./check.sh` to ensure code quality.
-5. Commit your changes (`git commit -m 'Add some amazing feature'`).
-6. Push to the branch (`git push origin feature/amazing-feature`).
-7. Open a Pull Request.
+Fork, branch, edit, run `./check.sh`, commit, PR with labels for version bump.
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+MIT.

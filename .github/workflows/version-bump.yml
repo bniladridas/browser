@@ -1,0 +1,28 @@
+---
+# SPDX-License-Identifier: MIT
+#
+# Copyright 2025 bniladridas. All rights reserved.
+# Use of this source code is governed by a MIT license that can be
+# found in the LICENSE file.
+
+name: Version Bump
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main, master]
+
+jobs:
+  bump-version:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+    - uses: ./.github/actions/bump-version
+      with:
+        pr-number: ${{ github.event.pull_request.number }}

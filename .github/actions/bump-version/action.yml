@@ -1,0 +1,63 @@
+---
+name: 'Bump Version'
+description: 'Bump version based on PR labels and create release'
+
+inputs:
+  pr-number:
+    description: 'Pull request number'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Determine bump type
+      id: bump-type
+      shell: bash
+      run: |
+        # Get PR labels
+        LABELS=$(gh pr view "${{ inputs.pr-number }}" --json labels -q '.labels[].name')
+        printf "Labels: %s\n" "${LABELS}"
+
+        if printf "%s" "${LABELS}" | grep -q -x "major"; then
+          BUMP_TYPE="major"
+        elif printf "%s" "${LABELS}" | grep -q -x "minor"; then
+          BUMP_TYPE="minor"
+        elif printf "%s" "${LABELS}" | grep -q -x "patch"; then
+          BUMP_TYPE="patch"
+        else
+          # Default to patch if no label
+          BUMP_TYPE="patch"
+        fi
+
+        printf "bump-type=%s\n" "${BUMP_TYPE}" >> $GITHUB_OUTPUT
+
+    - name: Bump version
+      shell: bash
+      run: |
+        ./bump_version.sh ${{ steps.bump-type.outputs.bump-type }}
+
+    - name: Commit version changes
+      shell: bash
+      run: |
+        git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git config --local user.name "github-actions[bot]"
+        git add VERSION pubspec.yaml
+        git commit -m "Bump version to $(cat VERSION)" || echo "No changes to commit"
+
+    - name: Create tag
+      shell: bash
+      run: |
+        VERSION=$(cat VERSION | sed 's/+.*//')
+        git tag "desktop/app-${VERSION}"
+        git push origin "desktop/app-${VERSION}"
+
+    - name: Create release
+      shell: bash
+      run: |
+        VERSION=$(cat VERSION | sed 's/+.*//')
+        PR_TITLE=$(gh pr view "${{ inputs.pr-number }}" --json title -q '.title')
+        PR_BODY=$(gh pr view "${{ inputs.pr-number }}" --json body -q '.body' | head -20)
+        NOTES="## ${VERSION}: ${PR_TITLE} - ${PR_BODY} (auto bump)"
+        gh release create "desktop/app-${VERSION}" --title "Release ${VERSION}" --notes "${NOTES}"
+      env:
+        GITHUB_TOKEN: ${{ github.token }}

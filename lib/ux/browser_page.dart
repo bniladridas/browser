@@ -137,6 +137,7 @@ class TabData {
   bool hasError = false;
   String? errorMessage;
   final List<String> history = [];
+  bool isClosed = false;
 
   TabData(this.currentUrl)
       : urlController = TextEditingController(text: currentUrl),
@@ -186,6 +187,7 @@ class _BrowserPageState extends State<BrowserPage> with TickerProviderStateMixin
   void _closeTab(int index) {
     if (tabs.length > 1) {
       setState(() {
+        tabs[index].isClosed = true;
         tabs[index].urlController.dispose();
         tabs[index].urlFocusNode.dispose();
         tabs.removeAt(index);
@@ -252,19 +254,31 @@ class _BrowserPageState extends State<BrowserPage> with TickerProviderStateMixin
   }
 
   Future<void> _goBack() async {
-    if (await activeTab.webViewController?.canGoBack() ?? false) {
-      await activeTab.webViewController?.goBack();
+    try {
+      if (await activeTab.webViewController?.canGoBack() ?? false) {
+        await activeTab.webViewController?.goBack();
+      }
+    } on PlatformException {
+      // Ignore MissingPluginException on macOS
     }
   }
 
   Future<void> _goForward() async {
-    if (await activeTab.webViewController?.canGoForward() ?? false) {
-      await activeTab.webViewController?.goForward();
+    try {
+      if (await activeTab.webViewController?.canGoForward() ?? false) {
+        await activeTab.webViewController?.goForward();
+      }
+    } on PlatformException {
+      // Ignore MissingPluginException on macOS
     }
   }
 
   Future<void> _refresh() async {
-    await activeTab.webViewController?.reload();
+    try {
+      await activeTab.webViewController?.reload();
+    } on PlatformException {
+      // Ignore MissingPluginException on macOS
+    }
   }
 
   void _showBookmarks() {
@@ -400,7 +414,11 @@ class _BrowserPageState extends State<BrowserPage> with TickerProviderStateMixin
     url = UrlUtils.processUrl(url);
     activeTab.currentUrl = url;
     activeTab.urlController.text = url;
-    activeTab.webViewController?.loadUrl(urlRequest: URLRequest(url: WebUri(url)));
+    try {
+      activeTab.webViewController?.loadUrl(urlRequest: URLRequest(url: WebUri(url)));
+    } on PlatformException {
+      // Ignore MissingPluginException on macOS
+    }
   }
 
   Widget _buildErrorView(TabData tab) {
@@ -445,7 +463,7 @@ class _BrowserPageState extends State<BrowserPage> with TickerProviderStateMixin
               tab.webViewController = controller;
             },
             onLoadStart: (controller, url) {
-              if (url != null) {
+              if (url != null && !tab.isClosed) {
                 setState(() {
                   tab.currentUrl = url.toString();
                   tab.urlController.text = tab.currentUrl;
