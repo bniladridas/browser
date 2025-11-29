@@ -15,6 +15,22 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
 import '../constants.dart';
 
+class UrlUtils {
+  static String processUrl(String url) {
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      if (url.contains(' ') ||
+          (!url.contains('.') &&
+              !url.contains(':') &&
+              url.toLowerCase() != 'localhost')) {
+        url = 'https://www.google.com/search?q=${Uri.encodeComponent(url)}';
+      } else {
+        url = 'https://$url';
+      }
+    }
+    return url;
+  }
+}
+
 class SettingsDialog extends StatefulWidget {
   const SettingsDialog({super.key, this.onSettingsChanged});
 
@@ -111,8 +127,6 @@ class BrowserPage extends StatefulWidget {
 }
 
 class _BrowserPageState extends State<BrowserPage> {
-  static const String _searchUrl = 'https://www.google.com/search?q=';
-
   final TextEditingController urlController = TextEditingController();
   final FocusNode urlFocusNode = FocusNode();
   InAppWebViewController? webViewController;
@@ -291,17 +305,7 @@ class _BrowserPageState extends State<BrowserPage> {
   }
 
   void _loadUrl(String url) {
-    if (!url.startsWith('http://') && !url.startsWith('https://')) {
-      // Check if it's a search query
-      if (url.contains(' ') ||
-          (!url.contains('.') &&
-              !url.contains(':') &&
-              url.toLowerCase() != 'localhost')) {
-        url = _searchUrl + Uri.encodeComponent(url);
-      } else {
-        url = 'https://$url';
-      }
-    }
+    url = UrlUtils.processUrl(url);
     urlController.text = url;
     webViewController?.loadUrl(urlRequest: URLRequest(url: WebUri(url)));
   }
