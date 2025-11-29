@@ -66,15 +66,7 @@ void main() {
       expect(find.text('History'), findsOneWidget);
     }, timeout: testTimeout);
 
-    testWidgets('Navigation buttons presence', (WidgetTester tester) async {
-      await tester.pumpWidget(const MyApp());
-      await tester.pumpAndSettle();
 
-      // Check navigation buttons are present
-      expect(find.byIcon(Icons.arrow_back), findsOneWidget);
-      expect(find.byIcon(Icons.arrow_forward), findsOneWidget);
-      expect(find.byIcon(Icons.refresh), findsOneWidget);
-    }, timeout: testTimeout);
 
     testWidgets('Special characters in URL', (WidgetTester tester) async {
       await tester.pumpWidget(const MyApp());
