@@ -51,5 +51,66 @@ void main() {
        expect(textField.controller!.text, startsWith('https://example.com'));
     }, timeout: testTimeout);
 
+    testWidgets('Search query prepend', (WidgetTester tester) async {
+      await tester.pumpWidget(const MyApp());
+      await tester.pumpAndSettle();
+
+      // Enter a search query
+      await tester.enterText(find.byType(TextField), 'flutter development');
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pumpAndSettle();
+
+       // Verify that the TextField's controller has the search URL
+       final textField = tester.widget<TextField>(find.byType(TextField));
+       expect(textField.controller!.text, 'https://www.google.com/search?q=flutter%20development');
+    }, timeout: testTimeout);
+
+
+
+    testWidgets('Bookmark adding and viewing', (WidgetTester tester) async {
+      await tester.pumpWidget(const MyApp());
+      await tester.pumpAndSettle();
+
+      // Add a bookmark
+      await tester.tap(find.byIcon(Icons.bookmark_add));
+      await tester.pumpAndSettle();
+
+      // View bookmarks
+      await tester.tap(find.byIcon(Icons.bookmarks));
+      await tester.pumpAndSettle();
+
+      // Should show bookmarks dialog
+      expect(find.text('Bookmarks'), findsOneWidget);
+    }, timeout: testTimeout);
+
+    testWidgets('Bookmark adding and viewing', (WidgetTester tester) async {
+      await tester.pumpWidget(const MyApp());
+      await tester.pumpAndSettle();
+
+      // Add a bookmark
+      await tester.tap(find.byIcon(Icons.bookmark_add));
+      await tester.pumpAndSettle();
+
+      // View bookmarks
+      await tester.tap(find.byIcon(Icons.bookmarks));
+      await tester.pumpAndSettle();
+
+      // Should show bookmarks dialog
+      expect(find.text('Bookmarks'), findsOneWidget);
+      expect(find.byType(ListTile), findsAtLeast(1)); // At least one bookmark
+    }, timeout: testTimeout);
+
+    testWidgets('History viewing', (WidgetTester tester) async {
+      await tester.pumpWidget(const MyApp());
+      await tester.pumpAndSettle();
+
+      // View history
+      await tester.tap(find.byIcon(Icons.history));
+      await tester.pumpAndSettle();
+
+      // Should show history dialog
+      expect(find.text('History'), findsOneWidget);
+    }, timeout: testTimeout);
+
   });
 }
