@@ -4,20 +4,117 @@
 // Use of this source code is governed by a MIT license that can be
 // found in the LICENSE file.
 
+// ignore_for_file: use_build_context_synchronously
+
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
+import '../constants.dart';
+
+class SettingsDialog extends StatefulWidget {
+  const SettingsDialog({super.key, this.onSettingsChanged});
+
+  final void Function()? onSettingsChanged;
+
+  @override
+  State<SettingsDialog> createState() => _SettingsDialogState();
+}
+
+class _SettingsDialogState extends State<SettingsDialog> {
+  late TextEditingController homepageController;
+  String? currentHomepage;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCurrentHomepage();
+  }
+
+  Future<void> _loadCurrentHomepage() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      currentHomepage = prefs.getString(homepageKey) ?? 'https://www.google.com';
+      homepageController = TextEditingController(text: currentHomepage);
+    });
+  }
+
+  @override
+  void dispose() {
+    homepageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (currentHomepage == null) {
+      return const AlertDialog(
+        title: Text('Settings'),
+        content: CircularProgressIndicator(),
+      );
+    }
+
+    return AlertDialog(
+      title: const Text('Settings'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: homepageController,
+            decoration: const InputDecoration(labelText: 'Homepage'),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+          TextButton(
+            onPressed: () async {
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.setString(homepageKey, homepageController.text);
+              widget.onSettingsChanged?.call();
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Homepage updated')),
+                );
+                Navigator.of(context).pop();
+              }
+            },
+            child: const Text('Save'),
+          ),
+      ],
+    );
+  }
+}
+
+class FocusUrlIntent extends Intent {}
+
+class RefreshIntent extends Intent {}
+
+class GoBackIntent extends Intent {}
+
+class GoForwardIntent extends Intent {}
+
 class BrowserPage extends StatefulWidget {
-  const BrowserPage({super.key});
+  const BrowserPage({super.key, required this.initialUrl, this.onSettingsChanged});
+
+  final String initialUrl;
+  final void Function()? onSettingsChanged;
 
   @override
   State<BrowserPage> createState() => _BrowserPageState();
 }
 
 class _BrowserPageState extends State<BrowserPage> {
-  static const String _initialUrl = 'https://www.google.com';
+  static const String _searchUrl = 'https://www.google.com/search?q=';
 
   final TextEditingController urlController = TextEditingController();
+  final FocusNode urlFocusNode = FocusNode();
   InAppWebViewController? webViewController;
   late String currentUrl;
   final List<String> history = [];
@@ -25,13 +122,16 @@ class _BrowserPageState extends State<BrowserPage> {
   @override
   void initState() {
     super.initState();
-    currentUrl = _initialUrl;
+    currentUrl = widget.initialUrl;
     urlController.text = currentUrl;
+    _loadBookmarks();
   }
 
   @override
   void dispose() {
     urlController.dispose();
+    urlFocusNode.dispose();
+    _saveBookmarks();
     super.dispose();
   }
 
@@ -67,13 +167,47 @@ class _BrowserPageState extends State<BrowserPage> {
 
   void _loadUrl(String url) {
     if (!url.startsWith('http://') && !url.startsWith('https://')) {
-      url = 'https://$url';
+      // Check if it's a search query
+      if (url.contains(' ') ||
+          (!url.contains('.') &&
+              !url.contains(':') &&
+              url.toLowerCase() != 'localhost')) {
+        url = _searchUrl + Uri.encodeComponent(url);
+      } else {
+        url = 'https://$url';
+      }
     }
     urlController.text = url;
     webViewController?.loadUrl(urlRequest: URLRequest(url: WebUri(url)));
   }
 
+  Widget _buildErrorView() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.error, size: 64, color: Colors.red),
+          const SizedBox(height: 16),
+          const Text('Failed to load page.', style: TextStyle(fontSize: 18)),
+          const SizedBox(height: 16),
+          ElevatedButton(
+            onPressed: () {
+              setState(() {
+                hasError = false;
+              });
+            },
+            child: const Text('Retry'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildBody() {
+    if (hasError) {
+      return _buildErrorView();
+    }
+
     try {
       return InAppWebView(
         initialUrlRequest: URLRequest(url: WebUri(currentUrl)),
@@ -102,30 +236,46 @@ class _BrowserPageState extends State<BrowserPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return Shortcuts(
+      shortcuts: {
+        SingleActivator(LogicalKeyboardKey.keyL, control: defaultTargetPlatform != TargetPlatform.macOS, meta: defaultTargetPlatform == TargetPlatform.macOS): FocusUrlIntent(),
+        SingleActivator(LogicalKeyboardKey.keyR, control: defaultTargetPlatform != TargetPlatform.macOS, meta: defaultTargetPlatform == TargetPlatform.macOS): RefreshIntent(),
+        const SingleActivator(LogicalKeyboardKey.arrowLeft, alt: true): GoBackIntent(),
+        const SingleActivator(LogicalKeyboardKey.arrowRight, alt: true): GoForwardIntent(),
+      },
+      child: Actions(
+        actions: {
+          FocusUrlIntent: CallbackAction<FocusUrlIntent>(
+            onInvoke: (intent) => urlFocusNode.requestFocus(),
+          ),
+          RefreshIntent: CallbackAction<RefreshIntent>(
+            onInvoke: (intent) => _refresh(),
+          ),
+          GoBackIntent: CallbackAction<GoBackIntent>(
+            onInvoke: (intent) => _goBack(),
+          ),
+          GoForwardIntent: CallbackAction<GoForwardIntent>(
+            onInvoke: (intent) => _goForward(),
+          ),
+        },
+        child: Scaffold(
       appBar: AppBar(
         actions: [
           IconButton(
             icon: const Icon(Icons.arrow_back),
-            onPressed: () async {
-              if (await webViewController?.canGoBack() ?? false) {
-                await webViewController?.goBack();
-              }
-            },
+            onPressed: _goBack,
           ),
           IconButton(
             icon: const Icon(Icons.arrow_forward),
-            onPressed: () async {
-              if (await webViewController?.canGoForward() ?? false) {
-                await webViewController?.goForward();
-              }
-            },
+            onPressed: _goForward,
           ),
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: () async {
-              await webViewController?.reload();
-            },
+            onPressed: _refresh,
+          ),
+          IconButton(
+            icon: const Icon(Icons.bookmark_add),
+            onPressed: _addBookmark,
           ),
           IconButton(
             icon: const Icon(Icons.history),
@@ -137,6 +287,7 @@ class _BrowserPageState extends State<BrowserPage> {
             Expanded(
               child: TextField(
                 controller: urlController,
+                focusNode: urlFocusNode,
                 decoration: const InputDecoration(
                   hintText: 'Enter URL',
                   border: InputBorder.none,
@@ -148,6 +299,8 @@ class _BrowserPageState extends State<BrowserPage> {
         ),
       ),
       body: _buildBody(),
-    );
-  }
+    ),
+  ),
+);
+}
 }

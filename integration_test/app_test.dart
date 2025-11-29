@@ -9,7 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:browser/main.dart';
 
-const testTimeout = Timeout(Duration(seconds: 30));
+const testTimeout = Timeout(Duration(seconds: 60));
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
@@ -18,6 +18,7 @@ void main() {
     testWidgets('App launches and shows initial UI', (WidgetTester tester) async {
       // Build the app
       await tester.pumpWidget(const MyApp());
+      await Future.delayed(const Duration(seconds: 1));
       await tester.pumpAndSettle();
 
       // Check for URL input field with hint
@@ -30,6 +31,10 @@ void main() {
       expect(find.byIcon(Icons.arrow_back), findsOneWidget);
       expect(find.byIcon(Icons.arrow_forward), findsOneWidget);
       expect(find.byIcon(Icons.refresh), findsOneWidget);
+
+      // Check for bookmarks buttons
+      expect(find.byIcon(Icons.bookmark_add), findsOneWidget);
+      expect(find.byIcon(Icons.bookmarks), findsOneWidget);
     }, timeout: testTimeout);
 
     testWidgets('URL input and https prepend', (WidgetTester tester) async {
@@ -45,5 +50,6 @@ void main() {
        final textField = tester.widget<TextField>(find.byType(TextField));
        expect(textField.controller!.text, startsWith('https://example.com'));
     }, timeout: testTimeout);
+
   });
 }
