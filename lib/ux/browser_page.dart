@@ -416,7 +416,7 @@ class _BrowserPageState extends State<BrowserPage> with TickerProviderStateMixin
     activeTab.urlController.text = url;
     try {
       activeTab.webViewController?.loadUrl(urlRequest: URLRequest(url: WebUri(url)));
-    } catch (e) {
+    } on PlatformException {
       // Ignore MissingPluginException on macOS
     }
   }
