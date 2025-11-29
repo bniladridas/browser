@@ -336,47 +336,49 @@ class _BrowserPageState extends State<BrowserPage> with TickerProviderStateMixin
   void _showHistory() {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('History'),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: ListView.builder(
-            itemCount: history.length,
-            itemBuilder: (context, index) {
-              final url = history[history.length - 1 - index];
-              return ListTile(
-                title: Text(url),
-                onTap: () {
-                  Navigator.of(context).pop();
-                  _loadUrl(url);
-                },
-                trailing: IconButton(
-                  icon: const Icon(Icons.delete),
-                  onPressed: () {
-                    setState(() {
-                      history.removeAt(history.length - 1 - index);
-                    });
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('History'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: ListView.builder(
+              itemCount: history.length,
+              itemBuilder: (context, index) {
+                final url = history[history.length - 1 - index];
+                return ListTile(
+                  title: Text(url),
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    _loadUrl(url);
                   },
-                ),
-              );
-            },
+                  trailing: IconButton(
+                    icon: const Icon(Icons.delete),
+                    onPressed: () {
+                      setState(() {
+                        history.removeAt(history.length - 1 - index);
+                      });
+                    },
+                  ),
+                );
+              },
+            ),
           ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                setState(() {
+                  history.clear();
+                });
+                Navigator.of(context).pop();
+              },
+              child: const Text('Clear All'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Close'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              setState(() {
-                history.clear();
-              });
-              Navigator.of(context).pop();
-            },
-            child: const Text('Clear All'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Close'),
-          ),
-        ],
       ),
     );
   }
