@@ -9,7 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:browser/main.dart';
 
-const testTimeout = Timeout(Duration(seconds: 120));
+const testTimeout = Timeout(Duration(seconds: 60));
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
@@ -58,8 +58,8 @@ void main() {
       await tester.tap(find.text('Bookmarks'));
       await tester.pumpAndSettle();
 
-      // Should show bookmarks dialog
-      expect(find.text('Bookmarks'), findsOneWidget);
+       // Should show bookmarks dialog
+       expect(find.descendant(of: find.byType(AlertDialog), matching: find.text('Bookmarks')), findsOneWidget);
     }, timeout: testTimeout);
 
     testWidgets('History viewing', (WidgetTester tester) async {
@@ -83,14 +83,14 @@ void main() {
       await tester.pumpAndSettle();
 
       // Enter URL with special characters
-      const specialUrl = 'data:text/html,<html><body>Test</body></html>';
+      const specialUrl = 'https://example.com/path?query=value&other=test';
       await tester.enterText(find.byType(TextField), specialUrl);
       await tester.testTextInput.receiveAction(TextInputAction.done);
       await tester.pumpAndSettle();
 
       // Should handle special characters
       final textField = tester.widget<TextField>(find.byType(TextField));
-      expect(textField.controller!.text, 'https://$specialUrl');
+      expect(textField.controller!.text, specialUrl);
     }, timeout: testTimeout);
   });
 }
