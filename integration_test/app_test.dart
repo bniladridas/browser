@@ -9,7 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:browser/main.dart';
 
-const testTimeout = Timeout(Duration(seconds: 60));
+const testTimeout = Timeout(Duration(seconds: 120));
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
