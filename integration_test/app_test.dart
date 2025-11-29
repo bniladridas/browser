@@ -51,7 +51,7 @@ void main() {
 
       // Should show bookmarks dialog
       expect(find.text('Bookmarks'), findsOneWidget);
-      expect(find.byType(ListTile), findsAtLeast(1)); // At least one bookmark
+      expect(find.widgetWithText(ListTile, 'https://www.google.com'), findsOneWidget);
     }, timeout: testTimeout);
 
     testWidgets('History viewing', (WidgetTester tester) async {
