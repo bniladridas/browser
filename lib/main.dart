@@ -52,7 +52,7 @@ class _MyAppState extends State<MyApp> {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue, brightness: Brightness.dark),
       ),
       themeMode: ThemeMode.system,
-      home: BrowserPage(initialUrl: _initialUrl),
+      home: BrowserPage(initialUrl: _initialUrl, onSettingsChanged: _loadSettings),
     );
   }
 }

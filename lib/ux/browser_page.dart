@@ -16,7 +16,9 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import '../constants.dart';
 
 class SettingsDialog extends StatefulWidget {
-  const SettingsDialog({super.key});
+  const SettingsDialog({super.key, this.onSettingsChanged});
+
+  final void Function()? onSettingsChanged;
 
   @override
   State<SettingsDialog> createState() => _SettingsDialogState();
@@ -71,16 +73,20 @@ class _SettingsDialogState extends State<SettingsDialog> {
           onPressed: () => Navigator.of(context).pop(),
           child: const Text('Cancel'),
         ),
-        TextButton(
-          onPressed: () async {
-            final prefs = await SharedPreferences.getInstance();
-            await prefs.setString(homepageKey, homepageController.text);
-            if (mounted) {
-              Navigator.of(context).pop();
-            }
-          },
-          child: const Text('Save'),
-        ),
+          TextButton(
+            onPressed: () async {
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.setString(homepageKey, homepageController.text);
+              widget.onSettingsChanged?.call();
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Homepage updated')),
+                );
+                Navigator.of(context).pop();
+              }
+            },
+            child: const Text('Save'),
+          ),
       ],
     );
   }
@@ -95,9 +101,10 @@ class GoBackIntent extends Intent {}
 class GoForwardIntent extends Intent {}
 
 class BrowserPage extends StatefulWidget {
-  const BrowserPage({super.key, required this.initialUrl});
+  const BrowserPage({super.key, required this.initialUrl, this.onSettingsChanged});
 
   final String initialUrl;
+  final void Function()? onSettingsChanged;
 
   @override
   State<BrowserPage> createState() => _BrowserPageState();
@@ -233,7 +240,7 @@ class _BrowserPageState extends State<BrowserPage> {
   void _showSettings() {
     showDialog(
       context: context,
-      builder: (context) => const SettingsDialog(),
+      builder: (context) => SettingsDialog(onSettingsChanged: widget.onSettingsChanged),
     );
   }
 
