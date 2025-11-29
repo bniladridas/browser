@@ -17,7 +17,7 @@ void main() {
   group('Browser App Tests', () {
     testWidgets('App launches and shows initial UI', (WidgetTester tester) async {
       // Build the app
-      await tester.pumpWidget(MyApp());
+      await tester.pumpWidget(const MyApp());
       await tester.pumpAndSettle();
 
       // Check for URL input field with hint
@@ -37,7 +37,7 @@ void main() {
     }, timeout: testTimeout);
 
     testWidgets('URL input and https prepend', (WidgetTester tester) async {
-      await tester.pumpWidget(MyApp());
+      await tester.pumpWidget(const MyApp());
       await tester.pumpAndSettle();
 
       // Enter a URL without https
