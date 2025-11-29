@@ -160,6 +160,22 @@ class _BrowserPageState extends State<BrowserPage> {
     );
   }
 
+  Future<void> _goBack() async {
+    if (await webViewController?.canGoBack() ?? false) {
+      await webViewController?.goBack();
+    }
+  }
+
+  Future<void> _goForward() async {
+    if (await webViewController?.canGoForward() ?? false) {
+      await webViewController?.goForward();
+    }
+  }
+
+  Future<void> _refresh() async {
+    await webViewController?.reload();
+  }
+
   void _loadUrl(String url) {
     if (!url.startsWith('http://') && !url.startsWith('https://')) {
       // Check if it's a search query
@@ -229,21 +245,13 @@ class _BrowserPageState extends State<BrowserPage> {
             onInvoke: (intent) => urlFocusNode.requestFocus(),
           ),
           RefreshIntent: CallbackAction<RefreshIntent>(
-            onInvoke: (intent) async => await webViewController?.reload(),
+            onInvoke: (intent) => _refresh(),
           ),
           GoBackIntent: CallbackAction<GoBackIntent>(
-            onInvoke: (intent) async {
-              if (await webViewController?.canGoBack() ?? false) {
-                await webViewController?.goBack();
-              }
-            },
+            onInvoke: (intent) => _goBack(),
           ),
           GoForwardIntent: CallbackAction<GoForwardIntent>(
-            onInvoke: (intent) async {
-              if (await webViewController?.canGoForward() ?? false) {
-                await webViewController?.goForward();
-              }
-            },
+            onInvoke: (intent) => _goForward(),
           ),
         },
         child: Scaffold(
@@ -251,25 +259,15 @@ class _BrowserPageState extends State<BrowserPage> {
         actions: [
           IconButton(
             icon: const Icon(Icons.arrow_back),
-            onPressed: () async {
-              if (await webViewController?.canGoBack() ?? false) {
-                await webViewController?.goBack();
-              }
-            },
+            onPressed: _goBack,
           ),
           IconButton(
             icon: const Icon(Icons.arrow_forward),
-            onPressed: () async {
-              if (await webViewController?.canGoForward() ?? false) {
-                await webViewController?.goForward();
-              }
-            },
+            onPressed: _goForward,
           ),
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: () async {
-              await webViewController?.reload();
-            },
+            onPressed: _refresh,
           ),
           IconButton(
             icon: const Icon(Icons.bookmark_add),
