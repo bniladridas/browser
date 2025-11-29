@@ -209,7 +209,6 @@ class _BrowserPageState extends State<BrowserPage> {
                 setState(() {
                   hasError = false;
                 });
-                _loadUrl(currentUrl);
               },
               child: const Text('Retry'),
             ),
