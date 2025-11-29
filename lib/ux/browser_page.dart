@@ -177,9 +177,9 @@ class _BrowserPageState extends State<BrowserPage> with TickerProviderStateMixin
   void _addNewTab() {
     setState(() {
       tabs.add(TabData('https://www.google.com'));
-      tabController = TabController(length: tabs.length, vsync: this);
+      tabController.dispose(); // Dispose the old controller to prevent memory leaks.
+      tabController = TabController(length: tabs.length, vsync: this, initialIndex: tabs.length - 1);
       tabController.addListener(_onTabChanged);
-      tabController.animateTo(tabs.length - 1);
     });
   }
 
