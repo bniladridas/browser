@@ -81,22 +81,6 @@ void main() {
 
       // Should show bookmarks dialog
       expect(find.text('Bookmarks'), findsOneWidget);
-    }, timeout: testTimeout);
-
-    testWidgets('Bookmark adding and viewing', (WidgetTester tester) async {
-      await tester.pumpWidget(const MyApp());
-      await tester.pumpAndSettle();
-
-      // Add a bookmark
-      await tester.tap(find.byIcon(Icons.bookmark_add));
-      await tester.pumpAndSettle();
-
-      // View bookmarks
-      await tester.tap(find.byIcon(Icons.bookmarks));
-      await tester.pumpAndSettle();
-
-      // Should show bookmarks dialog
-      expect(find.text('Bookmarks'), findsOneWidget);
       expect(find.byType(ListTile), findsAtLeast(1)); // At least one bookmark
     }, timeout: testTimeout);
 
