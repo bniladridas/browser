@@ -50,6 +50,5 @@ void main() {
        expect(textField.controller!.text, startsWith('https://example.com'));
     }, timeout: testTimeout);
 
-
   });
 }
