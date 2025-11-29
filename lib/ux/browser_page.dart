@@ -15,6 +15,24 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
 import '../constants.dart';
 
+class BrowserTab {
+  String url;
+  String title;
+  InAppWebViewController? webViewController;
+  bool isLoading;
+  bool hasError;
+  String? errorMessage;
+
+  BrowserTab({
+    required this.url,
+    this.title = '',
+    this.webViewController,
+    this.isLoading = false,
+    this.hasError = false,
+    this.errorMessage,
+  });
+}
+
 class SettingsDialog extends StatefulWidget {
   const SettingsDialog({super.key, this.onSettingsChanged});
 
@@ -110,24 +128,61 @@ class BrowserPage extends StatefulWidget {
   State<BrowserPage> createState() => _BrowserPageState();
 }
 
-class _BrowserPageState extends State<BrowserPage> {
+class _BrowserPageState extends State<BrowserPage> with TickerProviderStateMixin {
   static const String _searchUrl = 'https://www.google.com/search?q=';
 
   final TextEditingController urlController = TextEditingController();
   final FocusNode urlFocusNode = FocusNode();
-  InAppWebViewController? webViewController;
-  late String currentUrl;
-   bool isLoading = false;
-   bool hasError = false;
-   String? errorMessage;
-   final List<String> bookmarks = [];
-   final List<String> history = [];
+  final List<BrowserTab> tabs = [];
+  int currentTabIndex = 0;
+  late TabController tabController;
+  final List<String> bookmarks = [];
+  final List<String> history = [];
+
+  BrowserTab get currentTab => tabs[currentTabIndex];
+
+  void _createNewTab({String url = 'https://www.google.com'}) {
+    setState(() {
+      tabs.add(BrowserTab(url: url));
+      tabController = TabController(length: tabs.length, vsync: this);
+      tabController.index = tabs.length - 1;
+      currentTabIndex = tabs.length - 1;
+      urlController.text = url;
+    });
+  }
+
+  void _closeTab(int index) {
+    if (tabs.length == 1) return; // Don't close the last tab
+    setState(() {
+      tabs.removeAt(index);
+      tabController = TabController(length: tabs.length, vsync: this);
+      if (currentTabIndex >= tabs.length) {
+        currentTabIndex = tabs.length - 1;
+        tabController.index = currentTabIndex;
+      }
+      urlController.text = currentTab.url;
+    });
+  }
+
+  void _switchToTab(int index) {
+    setState(() {
+      currentTabIndex = index;
+      tabController.index = index;
+      urlController.text = currentTab.url;
+    });
+  }
 
   @override
   void initState() {
     super.initState();
-    currentUrl = widget.initialUrl;
-    urlController.text = currentUrl;
+    tabs.add(BrowserTab(url: widget.initialUrl));
+    tabController = TabController(length: tabs.length, vsync: this);
+    tabController.addListener(() {
+      if (tabController.index != currentTabIndex) {
+        _switchToTab(tabController.index);
+      }
+    });
+    urlController.text = widget.initialUrl;
     _loadBookmarks();
   }
 
@@ -135,6 +190,7 @@ class _BrowserPageState extends State<BrowserPage> {
   void dispose() {
     urlController.dispose();
     urlFocusNode.dispose();
+    tabController.dispose();
     _saveBookmarks();
     super.dispose();
   }
@@ -158,37 +214,37 @@ class _BrowserPageState extends State<BrowserPage> {
   void _handleLoadError(String newErrorMessage) {
     if (mounted) {
       setState(() {
-        hasError = true;
-        errorMessage = newErrorMessage;
-        isLoading = false;
-        webViewController = null;
+        currentTab.hasError = true;
+        currentTab.errorMessage = newErrorMessage;
+        currentTab.isLoading = false;
+        currentTab.webViewController = null;
       });
     }
   }
 
   void _addBookmark() async {
-    if (!bookmarks.contains(currentUrl)) {
+    if (!bookmarks.contains(currentTab.url)) {
       setState(() {
-        bookmarks.add(currentUrl);
+        bookmarks.add(currentTab.url);
       });
       await _saveBookmarks();
     }
   }
 
   Future<void> _goBack() async {
-    if (await webViewController?.canGoBack() ?? false) {
-      await webViewController?.goBack();
+    if (await currentTab.webViewController?.canGoBack() ?? false) {
+      await currentTab.webViewController?.goBack();
     }
   }
 
   Future<void> _goForward() async {
-    if (await webViewController?.canGoForward() ?? false) {
-      await webViewController?.goForward();
+    if (await currentTab.webViewController?.canGoForward() ?? false) {
+      await currentTab.webViewController?.goForward();
     }
   }
 
   Future<void> _refresh() async {
-    await webViewController?.reload();
+    await currentTab.webViewController?.reload();
   }
 
   void _showBookmarks() {
@@ -270,17 +326,35 @@ class _BrowserPageState extends State<BrowserPage> {
           child: ListView.builder(
             itemCount: history.length,
             itemBuilder: (context, index) {
+              final url = history[history.length - 1 - index];
               return ListTile(
-                title: Text(history[history.length - 1 - index]), // Reverse order, latest first
+                title: Text(url),
                 onTap: () {
                   Navigator.of(context).pop();
-                  _loadUrl(history[history.length - 1 - index]);
+                  _loadUrl(url);
                 },
+                trailing: IconButton(
+                  icon: const Icon(Icons.delete),
+                  onPressed: () {
+                    setState(() {
+                      history.removeAt(history.length - 1 - index);
+                    });
+                  },
+                ),
               );
             },
           ),
         ),
         actions: [
+          TextButton(
+            onPressed: () {
+              setState(() {
+                history.clear();
+              });
+              Navigator.of(context).pop();
+            },
+            child: const Text('Clear All'),
+          ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
             child: const Text('Close'),
@@ -302,8 +376,11 @@ class _BrowserPageState extends State<BrowserPage> {
         url = 'https://$url';
       }
     }
-    urlController.text = url;
-    webViewController?.loadUrl(urlRequest: URLRequest(url: WebUri(url)));
+    setState(() {
+      currentTab.url = url;
+      urlController.text = url;
+    });
+    currentTab.webViewController?.loadUrl(urlRequest: URLRequest(url: WebUri(url)));
   }
 
   Widget _buildErrorView() {
@@ -318,8 +395,8 @@ class _BrowserPageState extends State<BrowserPage> {
           ElevatedButton(
             onPressed: () {
               setState(() {
-                hasError = false;
-                errorMessage = null;
+                currentTab.hasError = false;
+                currentTab.errorMessage = null;
               });
             },
             child: const Text('Retry'),
@@ -330,7 +407,7 @@ class _BrowserPageState extends State<BrowserPage> {
   }
 
   Widget _buildBody() {
-    if (hasError) {
+    if (currentTab.hasError) {
       return _buildErrorView();
     }
 
@@ -338,28 +415,30 @@ class _BrowserPageState extends State<BrowserPage> {
       return Stack(
         children: [
           InAppWebView(
-            initialUrlRequest: URLRequest(url: WebUri(currentUrl)),
+            initialUrlRequest: URLRequest(url: WebUri(currentTab.url)),
             onWebViewCreated: (controller) {
-              webViewController = controller;
+              currentTab.webViewController = controller;
             },
             onLoadStart: (controller, url) {
               if (url != null) {
                 setState(() {
-                  currentUrl = url.toString();
-                  urlController.text = currentUrl;
-                  isLoading = true;
-                  hasError = false;
-                  errorMessage = null;
-                  if (history.isEmpty || history.last != currentUrl) {
-                    history.add(currentUrl);
+                  currentTab.url = url.toString();
+                  urlController.text = currentTab.url;
+                  currentTab.isLoading = true;
+                  currentTab.hasError = false;
+                  currentTab.errorMessage = null;
+                  if (history.isEmpty || history.last != currentTab.url) {
+                    history.add(currentTab.url);
                   }
                 });
               }
             },
-            onLoadStop: (controller, url) {
+            onLoadStop: (controller, url) async {
               if (mounted) {
+                final title = await controller.getTitle();
                 setState(() {
-                  isLoading = false;
+                  currentTab.isLoading = false;
+                  currentTab.title = title ?? '';
                 });
               }
             },
@@ -370,7 +449,7 @@ class _BrowserPageState extends State<BrowserPage> {
               _handleLoadError('HTTP ${error.statusCode}: ${error.reasonPhrase}');
             },
           ),
-          if (isLoading)
+          if (currentTab.isLoading)
             const Center(
               child: CircularProgressIndicator(),
             ),
@@ -410,7 +489,33 @@ class _BrowserPageState extends State<BrowserPage> {
         },
         child: Scaffold(
       appBar: AppBar(
+        bottom: TabBar(
+          controller: tabController,
+          tabs: tabs.map((tab) {
+            return Tab(
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      tab.title.isNotEmpty ? tab.title : tab.url,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  if (tabs.length > 1)
+                    IconButton(
+                      icon: const Icon(Icons.close, size: 16),
+                      onPressed: () => _closeTab(tabs.indexOf(tab)),
+                    ),
+                ],
+              ),
+            );
+          }).toList(),
+        ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.add),
+            onPressed: _createNewTab,
+          ),
           IconButton(
             icon: const Icon(Icons.arrow_back),
             onPressed: _goBack,
