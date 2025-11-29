@@ -22,6 +22,9 @@ BUMP_TYPE=$1
 # Configurable tag prefix
 TAG_PREFIX="desktop/app"
 
+# Ensure tags are fetched
+git fetch --tags --quiet
+
 # Get latest tag, default to 1.0.0 if none
 if ! LATEST_TAG=$(git describe --tags --abbrev=0 --match "${TAG_PREFIX}-*" 2>/dev/null); then
   echo "No tags found, starting from 1.0.0"
