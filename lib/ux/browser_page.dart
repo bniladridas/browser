@@ -25,6 +25,7 @@ class _BrowserPageState extends State<BrowserPage> {
   final TextEditingController urlController = TextEditingController();
   InAppWebViewController? webViewController;
   late String currentUrl;
+  bool isLoading = false;
   final List<String> bookmarks = [];
 
   @override
@@ -42,6 +43,14 @@ class _BrowserPageState extends State<BrowserPage> {
     super.dispose();
   }
 
+  void _hideLoadingIndicator() {
+    if (mounted) {
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
+>>>>>>> 01b169e (feat: add loading indicator)
   Future<void> _loadBookmarks() async {
     final prefs = await SharedPreferences.getInstance();
     final bookmarksJson = prefs.getString('bookmarks');
@@ -157,19 +166,33 @@ class _BrowserPageState extends State<BrowserPage> {
 
   Widget _buildBody() {
     try {
-      return InAppWebView(
-        initialUrlRequest: URLRequest(url: WebUri(currentUrl)),
-        onWebViewCreated: (controller) {
-          webViewController = controller;
-        },
-        onLoadStart: (controller, url) {
-          if (url != null && mounted) {
-            setState(() {
-              currentUrl = url.toString();
-              urlController.text = currentUrl;
-            });
-          }
-        },
+      return Stack(
+        children: [
+          InAppWebView(
+            initialUrlRequest: URLRequest(url: WebUri(currentUrl)),
+            onWebViewCreated: (controller) {
+              webViewController = controller;
+            },
+            onLoadStart: (controller, url) {
+              if (url != null) {
+                if (mounted) {
+                  setState(() {
+                    currentUrl = url.toString();
+                    urlController.text = currentUrl;
+                    isLoading = true;
+                  });
+                }
+              }
+            },
+            onLoadStop: (_, __) => _hideLoadingIndicator(),
+            onReceivedError: (_, __, ___) => _hideLoadingIndicator(),
+            onReceivedHttpError: (_, __, ___) => _hideLoadingIndicator(),
+          ),
+          if (isLoading)
+            const Center(
+              child: CircularProgressIndicator(),
+            ),
+        ],
       );
     } catch (e, s) {
       debugPrint('Error creating InAppWebView: $e\n$s');
