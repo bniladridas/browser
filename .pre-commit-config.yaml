@@ -18,9 +18,11 @@ repos:
         name: Flutter Analyze
         entry: flutter analyze
         language: system
+        files: '(\.dart|pubspec\.yaml)$'
         pass_filenames: false
       - id: flutter-test
         name: Flutter Test
         entry: flutter test
         language: system
+        files: '(\.dart|pubspec\.yaml)$'
         pass_filenames: false
