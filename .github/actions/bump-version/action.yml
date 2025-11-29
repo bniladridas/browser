@@ -72,7 +72,8 @@ runs:
         else
           PR_TITLE=$(gh pr view "${{ inputs.pr-number }}" --json title -q '.title')
           PR_BODY=$(gh pr view "${{ inputs.pr-number }}" --json body -q '.body' | head -20)
-          NOTES=$(printf "## What's New in %s\n\n%s\n\n%s\n\n(auto bump)" "${VERSION}" "${PR_TITLE}" "${PR_BODY}")
+          NOTES=$(printf "## What's New in %s\n\n%s\n\n%s\n\n(auto bump)" \
+            "${VERSION}" "${PR_TITLE}" "${PR_BODY}")
           gh release create "desktop/app-${VERSION}" --title "Release ${VERSION}" --notes "${NOTES}"
         fi
       env:
