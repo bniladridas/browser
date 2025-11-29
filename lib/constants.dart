@@ -5,3 +5,4 @@
 // found in the LICENSE file.
 
 const String homepageKey = 'homepage';
+const String hideAppBarKey = 'hideAppBar';
