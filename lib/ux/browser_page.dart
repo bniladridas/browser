@@ -258,7 +258,7 @@ class _BrowserPageState extends State<BrowserPage> with TickerProviderStateMixin
       if (await activeTab.webViewController?.canGoBack() ?? false) {
         await activeTab.webViewController?.goBack();
       }
-    } catch (e) {
+    } on PlatformException {
       // Ignore MissingPluginException on macOS
     }
   }
