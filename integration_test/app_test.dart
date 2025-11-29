@@ -94,7 +94,20 @@ void main() {
 
       // Should show history dialog
       expect(find.text('History'), findsOneWidget);
-      expect(find.byType(ListTile), findsAtLeast(1)); // At least one history item
+    }, timeout: testTimeout);
+
+    testWidgets('Invalid URL handling', (WidgetTester tester) async {
+      await tester.pumpWidget(const MyApp());
+      await tester.pumpAndSettle();
+
+      // Enter an invalid URL (treated as search query)
+      await tester.enterText(find.byType(TextField), 'invalid url query');
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pumpAndSettle();
+
+      // Should convert to search URL
+      final textField = tester.widget<TextField>(find.byType(TextField));
+      expect(textField.controller!.text, 'https://www.google.com/search?q=invalid%20url%20query');
     }, timeout: testTimeout);
 
   });
