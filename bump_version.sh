@@ -39,6 +39,11 @@ else
   BUILD=$((BUILD + 1))  # Increment for next build
 fi
 
+# Fallback to VERSION file if needed, with robust parsing
+if [ "$BUILD" = "1" ] && [ -f VERSION ]; then
+  BUILD=$(grep '+' VERSION | sed 's|.*+||' || echo "1")
+fi
+
 IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
 
 case $BUMP_TYPE in
