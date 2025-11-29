@@ -21,7 +21,11 @@ if [ ! -f VERSION ]; then
 fi
 
 CURRENT_VERSION=$(cat VERSION | sed 's/+.*//')
-BUILD=$(cat VERSION | sed 's/.*+//' || echo "1")
+if grep -q '+' VERSION; then
+  BUILD=$(sed 's/.*+//' VERSION)
+else
+  BUILD="1"
+fi
 
 IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
 
