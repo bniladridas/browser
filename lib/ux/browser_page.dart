@@ -160,18 +160,23 @@ class _BrowserPageState extends State<BrowserPage> with TickerProviderStateMixin
   void _closeTab(int index) {
     if (tabs.length == 1) return; // Don't close the last tab
     setState(() {
-      tabs.removeAt(index);
       // Dispose the old controller to prevent memory leaks.
       tabController.dispose();
-      tabController = TabController(length: tabs.length, vsync: this, initialIndex: currentTabIndex >= tabs.length ? tabs.length - 1 : currentTabIndex);
+      tabs.removeAt(index);
+
+      if (currentTabIndex >= tabs.length) {
+        currentTabIndex = tabs.length - 1;
+      }
+
+      // Create a new controller and re-add the listener.
+      tabController = TabController(length: tabs.length, vsync: this, initialIndex: currentTabIndex);
       tabController.addListener(() {
         if (tabController.index != currentTabIndex) {
           _switchToTab(tabController.index);
         }
       });
-      if (currentTabIndex >= tabs.length) {
-        currentTabIndex = tabs.length - 1;
-      }
+
+      // Sync URL bar with the (potentially new) current tab
       urlController.text = currentTab.url;
     });
   }
