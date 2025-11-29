@@ -7,9 +7,19 @@
 // ignore_for_file: use_build_context_synchronously
 
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+
+class FocusUrlIntent extends Intent {}
+
+class RefreshIntent extends Intent {}
+
+class GoBackIntent extends Intent {}
+
+class GoForwardIntent extends Intent {}
 
 class BrowserPage extends StatefulWidget {
   const BrowserPage({super.key});
@@ -23,6 +33,7 @@ class _BrowserPageState extends State<BrowserPage> {
   static const String _searchUrl = 'https://www.google.com/search?q=';
 
   final TextEditingController urlController = TextEditingController();
+  final FocusNode urlFocusNode = FocusNode();
   InAppWebViewController? webViewController;
   late String currentUrl;
   bool isLoading = false;
@@ -39,6 +50,7 @@ class _BrowserPageState extends State<BrowserPage> {
   @override
   void dispose() {
     urlController.dispose();
+    urlFocusNode.dispose();
     _saveBookmarks();
     super.dispose();
   }
@@ -50,7 +62,7 @@ class _BrowserPageState extends State<BrowserPage> {
       });
     }
   }
->>>>>>> 01b169e (feat: add loading indicator)
+
   Future<void> _loadBookmarks() async {
     final prefs = await SharedPreferences.getInstance();
     final bookmarksJson = prefs.getString('bookmarks');
@@ -204,7 +216,37 @@ class _BrowserPageState extends State<BrowserPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return Shortcuts(
+      shortcuts: {
+        LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyL): FocusUrlIntent(),
+        LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyR): RefreshIntent(),
+        LogicalKeySet(LogicalKeyboardKey.alt, LogicalKeyboardKey.arrowLeft): GoBackIntent(),
+        LogicalKeySet(LogicalKeyboardKey.alt, LogicalKeyboardKey.arrowRight): GoForwardIntent(),
+      },
+      child: Actions(
+        actions: {
+          FocusUrlIntent: CallbackAction<FocusUrlIntent>(
+            onInvoke: (intent) => urlFocusNode.requestFocus(),
+          ),
+          RefreshIntent: CallbackAction<RefreshIntent>(
+            onInvoke: (intent) async => await webViewController?.reload(),
+          ),
+          GoBackIntent: CallbackAction<GoBackIntent>(
+            onInvoke: (intent) async {
+              if (await webViewController?.canGoBack() ?? false) {
+                await webViewController?.goBack();
+              }
+            },
+          ),
+          GoForwardIntent: CallbackAction<GoForwardIntent>(
+            onInvoke: (intent) async {
+              if (await webViewController?.canGoForward() ?? false) {
+                await webViewController?.goForward();
+              }
+            },
+          ),
+        },
+        child: Scaffold(
       appBar: AppBar(
         actions: [
           IconButton(
@@ -243,6 +285,7 @@ class _BrowserPageState extends State<BrowserPage> {
             Expanded(
               child: TextField(
                 controller: urlController,
+                focusNode: urlFocusNode,
                 decoration: const InputDecoration(
                   hintText: 'Enter URL',
                   border: InputBorder.none,
@@ -254,6 +297,7 @@ class _BrowserPageState extends State<BrowserPage> {
         ),
       ),
       body: _buildBody(),
-    );
-  }
+    ),
+  ),
+);
 }
