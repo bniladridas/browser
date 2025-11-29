@@ -18,11 +18,11 @@ runs:
         LABELS=$(gh pr view "${{ inputs.pr-number }}" --json labels -q '.labels[].name')
         printf "Labels: %s\n" "${LABELS}"
 
-        if printf "%s" "${LABELS}" | grep -q "major"; then
+        if printf "%s" "${LABELS}" | grep -q -x "major"; then
           BUMP_TYPE="major"
-        elif printf "%s" "${LABELS}" | grep -q "minor"; then
+        elif printf "%s" "${LABELS}" | grep -q -x "minor"; then
           BUMP_TYPE="minor"
-        elif printf "%s" "${LABELS}" | grep -q "patch"; then
+        elif printf "%s" "${LABELS}" | grep -q -x "patch"; then
           BUMP_TYPE="patch"
         else
           # Default to patch if no label
