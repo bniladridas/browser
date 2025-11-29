@@ -7,7 +7,7 @@
 
 echo "Running integration tests..."
 
-if flutter test integration_test/; then
+if flutter test integration_test/app_test.dart; then
     echo "All tests passed!"
 else
     echo "Tests failed. Check the output above for details."

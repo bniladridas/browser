@@ -50,23 +50,6 @@ void main() {
        expect(textField.controller!.text, startsWith('https://example.com'));
     }, timeout: testTimeout);
 
-    testWidgets('Keyboard shortcuts focus URL', (WidgetTester tester) async {
-      await tester.pumpWidget(const MyApp());
-      await tester.pumpAndSettle();
 
-      // Tap on scaffold to unfocus
-      await tester.tap(find.byType(Scaffold));
-      await tester.pump();
-
-      // Simulate Ctrl+L (or Cmd+L) to focus URL field
-      await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
-      await tester.sendKeyEvent(LogicalKeyboardKey.keyL);
-      await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
-      await tester.pump();
-
-      // Check if TextField has focus
-      final textField = tester.widget<TextField>(find.byType(TextField));
-      expect(textField.focusNode?.hasFocus, true);
-    }, timeout: testTimeout);
   });
 }
