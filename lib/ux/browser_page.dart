@@ -144,8 +144,14 @@ class _BrowserPageState extends State<BrowserPage> with TickerProviderStateMixin
   void _createNewTab({String url = 'https://www.google.com'}) {
     setState(() {
       tabs.add(BrowserTab(url: url));
-      tabController = TabController(length: tabs.length, vsync: this);
-      tabController.index = tabs.length - 1;
+      // Dispose the old controller to prevent memory leaks.
+      tabController.dispose();
+      tabController = TabController(length: tabs.length, vsync: this, initialIndex: tabs.length - 1);
+      tabController.addListener(() {
+        if (tabController.index != currentTabIndex) {
+          _switchToTab(tabController.index);
+        }
+      });
       currentTabIndex = tabs.length - 1;
       urlController.text = url;
     });
@@ -155,10 +161,16 @@ class _BrowserPageState extends State<BrowserPage> with TickerProviderStateMixin
     if (tabs.length == 1) return; // Don't close the last tab
     setState(() {
       tabs.removeAt(index);
-      tabController = TabController(length: tabs.length, vsync: this);
+      // Dispose the old controller to prevent memory leaks.
+      tabController.dispose();
+      tabController = TabController(length: tabs.length, vsync: this, initialIndex: currentTabIndex >= tabs.length ? tabs.length - 1 : currentTabIndex);
+      tabController.addListener(() {
+        if (tabController.index != currentTabIndex) {
+          _switchToTab(tabController.index);
+        }
+      });
       if (currentTabIndex >= tabs.length) {
         currentTabIndex = tabs.length - 1;
-        tabController.index = currentTabIndex;
       }
       urlController.text = currentTab.url;
     });
