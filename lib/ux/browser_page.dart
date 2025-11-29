@@ -117,7 +117,11 @@ class _BrowserPageState extends State<BrowserPage> {
   final FocusNode urlFocusNode = FocusNode();
   InAppWebViewController? webViewController;
   late String currentUrl;
-  final List<String> history = [];
+   bool isLoading = false;
+   bool hasError = false;
+   String? errorMessage;
+   final List<String> bookmarks = [];
+   final List<String> history = [];
 
   @override
   void initState() {
@@ -133,6 +137,116 @@ class _BrowserPageState extends State<BrowserPage> {
     urlFocusNode.dispose();
     _saveBookmarks();
     super.dispose();
+  }
+
+  Future<void> _loadBookmarks() async {
+    final prefs = await SharedPreferences.getInstance();
+    final bookmarksJson = prefs.getString('bookmarks');
+    if (bookmarksJson != null) {
+      setState(() {
+        bookmarks.clear();
+        bookmarks.addAll(List<String>.from(jsonDecode(bookmarksJson)));
+      });
+    }
+  }
+
+  Future<void> _saveBookmarks() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('bookmarks', jsonEncode(bookmarks));
+  }
+
+  void _addBookmark() async {
+    if (!bookmarks.contains(currentUrl)) {
+      setState(() {
+        bookmarks.add(currentUrl);
+      });
+      await _saveBookmarks();
+    }
+  }
+
+  Future<void> _goBack() async {
+    if (await webViewController?.canGoBack() ?? false) {
+      await webViewController?.goBack();
+    }
+  }
+
+  Future<void> _goForward() async {
+    if (await webViewController?.canGoForward() ?? false) {
+      await webViewController?.goForward();
+    }
+  }
+
+  Future<void> _refresh() async {
+    await webViewController?.reload();
+  }
+
+  void _showBookmarks() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Bookmarks'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: bookmarks.length,
+            itemBuilder: (context, index) {
+              return ListTile(
+                title: Text(bookmarks[index]),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _loadUrl(bookmarks[index]);
+                },
+                trailing: IconButton(
+                  icon: const Icon(Icons.delete),
+                  onPressed: () async {
+                    final confirm = await showDialog<bool>(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: const Text('Delete Bookmark'),
+                        content: Text('Remove ${bookmarks[index]}?'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(false),
+                            child: const Text('Cancel'),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(true),
+                            child: const Text('Delete'),
+                          ),
+                        ],
+                      ),
+                    );
+                    if (confirm == true) {
+                      setState(() {
+                        bookmarks.removeAt(index);
+                      });
+                      await _saveBookmarks();
+                    }
+                  },
+                ),
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              setState(() {
+                bookmarks.clear();
+              });
+              await _saveBookmarks();
+              Navigator.of(context).pop();
+            },
+            child: const Text('Clear All'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showHistory() {
@@ -194,6 +308,7 @@ class _BrowserPageState extends State<BrowserPage> {
             onPressed: () {
               setState(() {
                 hasError = false;
+                errorMessage = null;
               });
             },
             child: const Text('Retry'),
@@ -209,22 +324,58 @@ class _BrowserPageState extends State<BrowserPage> {
     }
 
     try {
-      return InAppWebView(
-        initialUrlRequest: URLRequest(url: WebUri(currentUrl)),
-        onWebViewCreated: (controller) {
-          webViewController = controller;
-        },
-        onLoadStart: (controller, url) {
-          if (url != null) {
-            setState(() {
-              currentUrl = url.toString();
-              urlController.text = currentUrl;
-              if (history.isEmpty || history.last != currentUrl) {
-                history.add(currentUrl);
+      return Stack(
+        children: [
+          InAppWebView(
+            initialUrlRequest: URLRequest(url: WebUri(currentUrl)),
+            onWebViewCreated: (controller) {
+              webViewController = controller;
+            },
+            onLoadStart: (controller, url) {
+              if (url != null) {
+                setState(() {
+                  currentUrl = url.toString();
+                  urlController.text = currentUrl;
+                  isLoading = true;
+                  hasError = false;
+                  errorMessage = null;
+                  if (history.isEmpty || history.last != currentUrl) {
+                    history.add(currentUrl);
+                  }
+                });
               }
-            });
-          }
-        },
+            },
+            onLoadStop: (controller, url) {
+              if (mounted) {
+                setState(() {
+                  isLoading = false;
+                });
+              }
+            },
+            onReceivedError: (controller, request, error) {
+              if (mounted) {
+                setState(() {
+                  hasError = true;
+                  errorMessage = error.description;
+                  isLoading = false;
+                });
+              }
+            },
+            onReceivedHttpError: (controller, request, error) {
+              if (mounted) {
+                setState(() {
+                  hasError = true;
+                  errorMessage = 'HTTP ${error.statusCode}: ${error.reasonPhrase}';
+                  isLoading = false;
+                });
+              }
+            },
+          ),
+          if (isLoading)
+            const Center(
+              child: CircularProgressIndicator(),
+            ),
+        ],
       );
     } catch (e, s) {
       debugPrint('Error creating InAppWebView: $e\n$s');
@@ -273,14 +424,18 @@ class _BrowserPageState extends State<BrowserPage> {
             icon: const Icon(Icons.refresh),
             onPressed: _refresh,
           ),
-          IconButton(
-            icon: const Icon(Icons.bookmark_add),
-            onPressed: _addBookmark,
-          ),
-          IconButton(
-            icon: const Icon(Icons.history),
-            onPressed: _showHistory,
-          ),
+           IconButton(
+             icon: const Icon(Icons.bookmark_add),
+             onPressed: _addBookmark,
+           ),
+           IconButton(
+             icon: const Icon(Icons.bookmarks),
+             onPressed: _showBookmarks,
+           ),
+           IconButton(
+             icon: const Icon(Icons.history),
+             onPressed: _showHistory,
+           ),
         ],
         title: Row(
           children: [
