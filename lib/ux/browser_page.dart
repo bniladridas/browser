@@ -189,11 +189,17 @@ class _BrowserPageState extends State<BrowserPage> with TickerProviderStateMixin
         tabs[index].urlController.dispose();
         tabs[index].urlFocusNode.dispose();
         tabs.removeAt(index);
-        tabController = TabController(length: tabs.length, vsync: this);
-        tabController.addListener(_onTabChanged);
-        if (index >= tabs.length) {
-          tabController.animateTo(tabs.length - 1);
+
+        // Determine the new index before disposing the old controller.
+        int newIndex = tabController.index;
+        if (newIndex >= tabs.length) {
+          newIndex = tabs.length - 1;
         }
+
+        // Dispose the old controller and create a new one.
+        tabController.dispose();
+        tabController = TabController(length: tabs.length, vsync: this, initialIndex: newIndex);
+        tabController.addListener(_onTabChanged);
       });
     }
   }
@@ -594,7 +600,7 @@ class _BrowserPageState extends State<BrowserPage> with TickerProviderStateMixin
                TabBar(
                  controller: tabController,
                  isScrollable: true,
-                 tabs: tabs.map((tab) => Tab(text: tab.currentUrl.split('/')[2])).toList(),
+                 tabs: tabs.map((tab) => Tab(text: Uri.tryParse(tab.currentUrl)?.host ?? tab.currentUrl)).toList(),
                ),
                Expanded(
                  child: TabBarView(
