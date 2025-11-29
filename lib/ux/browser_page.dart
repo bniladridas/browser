@@ -194,27 +194,31 @@ class _BrowserPageState extends State<BrowserPage> {
     webViewController?.loadUrl(urlRequest: URLRequest(url: WebUri(url)));
   }
 
+  Widget _buildErrorView() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.error, size: 64, color: Colors.red),
+          const SizedBox(height: 16),
+          const Text('Failed to load page.', style: TextStyle(fontSize: 18)),
+          const SizedBox(height: 16),
+          ElevatedButton(
+            onPressed: () {
+              setState(() {
+                hasError = false;
+              });
+            },
+            child: const Text('Retry'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildBody() {
     if (hasError) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.error, size: 64, color: Colors.red),
-            const SizedBox(height: 16),
-            const Text('Failed to load page.', style: TextStyle(fontSize: 18)),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () {
-                setState(() {
-                  hasError = false;
-                });
-              },
-              child: const Text('Retry'),
-            ),
-          ],
-        ),
-      );
+      return _buildErrorView();
     }
 
     try {
