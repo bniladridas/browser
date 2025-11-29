@@ -276,7 +276,7 @@ class _BrowserPageState extends State<BrowserPage> with TickerProviderStateMixin
   Future<void> _refresh() async {
     try {
       await activeTab.webViewController?.reload();
-    } catch (e) {
+    } on PlatformException {
       // Ignore MissingPluginException on macOS
     }
   }
