@@ -83,7 +83,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Enter URL with special characters
-      const specialUrl = 'https://example.com/path?query=value&other=test';
+      const specialUrl = 'https://github.com/bniladridas/browser?tab=readme';
       await tester.enterText(find.byType(TextField), specialUrl);
       await tester.testTextInput.receiveAction(TextInputAction.done);
       await tester.pumpAndSettle();
