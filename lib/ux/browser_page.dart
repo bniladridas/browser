@@ -299,3 +299,4 @@ class _BrowserPageState extends State<BrowserPage> {
   ),
 );
 }
+}
