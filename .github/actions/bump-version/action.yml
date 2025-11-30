@@ -29,7 +29,8 @@ runs:
       env:
         GH_TOKEN: ${{ inputs.token }}
       run: |
-        # Get PR title to check if it's a version bump PR
+        # Determine bump type based on PR labels (major/minor/patch) or skip if it's a version bump PR
+        # This logic relies on PR titles and labels; consider adding robustness for future changes
         PR_TITLE=$(gh pr view "${{ inputs.pr-number }}" --json title -q '.title')
         printf "PR Title: %s\n" "${PR_TITLE}"
 
@@ -97,6 +98,7 @@ runs:
           --base main --head "$BRANCH_NAME"
 
     - name: Create and push tag if it does not exist on remote
+      # This runs when merging a version bump PR (bump-type == 'skip' for the merge PR)
       if: steps.bump-type.outputs.bump-type == 'skip'
       shell: bash
       run: |
@@ -109,6 +111,7 @@ runs:
         fi
 
     - name: Create release if not exists
+      # This runs when merging a version bump PR (bump-type == 'skip' for the merge PR)
       if: steps.bump-type.outputs.bump-type == 'skip'
       shell: bash
       env:
