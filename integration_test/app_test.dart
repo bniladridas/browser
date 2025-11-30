@@ -78,19 +78,33 @@ void main() {
 
 
 
-    testWidgets('Special characters in URL', (WidgetTester tester) async {
-      await tester.pumpWidget(const MyApp());
-      await tester.pumpAndSettle();
+     testWidgets('Special characters in URL', (WidgetTester tester) async {
+       await tester.pumpWidget(const MyApp());
+       await tester.pumpAndSettle();
 
-      // Enter URL with special characters
-      const specialUrl = 'https://github.com/bniladridas/browser?tab=readme';
-      await tester.enterText(find.byType(TextField), specialUrl);
-      await tester.testTextInput.receiveAction(TextInputAction.done);
-      await tester.pumpAndSettle();
+       // Enter URL with special characters
+       const specialUrl = 'https://github.com/bniladridas/browser?tab=readme';
+       await tester.enterText(find.byType(TextField), specialUrl);
+       await tester.testTextInput.receiveAction(TextInputAction.done);
+       await tester.pumpAndSettle();
 
-      // Should handle special characters
-      final textField = tester.widget<TextField>(find.byType(TextField));
-      expect(textField.controller!.text, specialUrl);
-    }, timeout: testTimeout);
+       // Should handle special characters
+       final textField = tester.widget<TextField>(find.byType(TextField));
+       expect(textField.controller!.text, specialUrl);
+     }, timeout: testTimeout);
+
+     testWidgets('Clear cache functionality', (WidgetTester tester) async {
+       await tester.pumpWidget(const MyApp());
+       await tester.pumpAndSettle();
+
+       // Open menu and clear cache
+       await tester.tap(find.byType(PopupMenuButton<String>));
+       await tester.pumpAndSettle();
+       await tester.tap(find.text('Clear Cache'));
+       await tester.pumpAndSettle();
+
+       // Should show cache cleared snackbar
+       expect(find.text('Cache cleared'), findsOneWidget);
+     }, timeout: testTimeout);
   });
 }
