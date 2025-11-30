@@ -31,7 +31,7 @@ jobs:
       run: |
         # Get commit messages from the PR
         COMMITS=$(gh pr view ${{ github.event.number }} --json commits -q '.commits[].message')
-        
+
         # Determine label
         if echo "$COMMITS" | grep -q "BREAKING CHANGE"; then
           LABEL="major"
@@ -42,7 +42,7 @@ jobs:
         else
           LABEL="patch"  # default
         fi
-        
+
         # Add label if not already present
         if ! gh pr view ${{ github.event.number }} --json labels -q '.labels[].name' | grep -q "^${LABEL}$"; then
           gh pr edit ${{ github.event.number }} --add-label "$LABEL"
