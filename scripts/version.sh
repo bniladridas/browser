@@ -23,7 +23,7 @@ BUMP_TYPE=$1
 TAG_PREFIX=${TAG_PREFIX:-desktop/app}
 
 # Ensure tags are fetched
-git fetch origin --tags --quiet || true
+git fetch origin --tags --quiet || echo "Warning: git fetch failed. Tags may be outdated." >&2
 
 # Get latest tag, default to 1.0.0 if none
 if ! LATEST_TAG=$(git describe --tags --abbrev=0 --match "${TAG_PREFIX}-*" 2>/dev/null); then
