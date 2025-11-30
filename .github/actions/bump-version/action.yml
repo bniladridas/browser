@@ -69,6 +69,12 @@ runs:
         set -e
         VERSION=${{ steps.version.outputs.version }}
         BRANCH_NAME="version-bump-${VERSION}"
+        # Check if PR already exists
+        EXISTING_PR=$(gh pr list --head "$BRANCH_NAME" --base main --json number --jq 'length')
+        if [ "$EXISTING_PR" -gt 0 ]; then
+          echo "Version bump PR for $VERSION already exists. Skipping."
+          exit 0
+        fi
         git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
         git config --local user.name "github-actions[bot]"
         git checkout -b "$BRANCH_NAME"
