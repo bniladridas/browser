@@ -74,4 +74,4 @@ echo "$NEW_VERSION" > VERSION
 echo "Bumped version to $NEW_VERSION"
 
 # Update pubspec.yaml
-./scripts/update_version.sh
+./scripts/pubspec.sh
