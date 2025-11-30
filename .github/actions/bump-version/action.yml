@@ -22,7 +22,7 @@ runs:
       env:
         GH_TOKEN: ${{ github.token }}
       run: |
-        export GH_TOKEN=$GH_TOKEN
+        echo "$GH_TOKEN" | gh auth login --with-token
         # Get PR title to check if it's a version bump PR
         PR_TITLE=$(gh pr view "${{ inputs.pr-number }}" --json title -q '.title')
         printf "PR Title: %s\n" "${PR_TITLE}"
@@ -68,7 +68,7 @@ runs:
       shell: bash
       run: |
         set -e
-        export GH_TOKEN=$GH_TOKEN
+        echo "$GH_TOKEN" | gh auth login --with-token
         VERSION=${{ steps.version.outputs.version }}
         BRANCH_NAME="version-bump-${VERSION}"
         # Check if PR already exists
@@ -101,7 +101,7 @@ runs:
       if: steps.bump-type.outputs.bump-type == 'skip'
       shell: bash
       run: |
-        export GH_TOKEN=$GH_TOKEN
+        echo "$GH_TOKEN" | gh auth login --with-token
         VERSION=${{ steps.version.outputs.version }}
         if gh release view "desktop/app-${VERSION}" &>/dev/null; then
           echo "Release for tag desktop/app-${VERSION} already exists. Skipping release creation."
