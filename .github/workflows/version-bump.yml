@@ -29,3 +29,4 @@ jobs:
     - uses: ./.github/actions/bump-version
       with:
         pr-number: ${{ github.event.pull_request.number }}
+        token: ${{ secrets.GITHUB_TOKEN }}
