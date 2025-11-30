@@ -43,25 +43,27 @@ class _MyAppState extends State<MyApp> {
   }
 
   // This widget is the root of your application.
-  @override
-  Widget build(BuildContext context) {
-     return MaterialApp(
-       title: 'Browser',
-       debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-          textTheme: Typography.dense2021.apply(fontFamily: 'Roboto'),
-          useMaterial3: true,
-        ),
-        darkTheme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue, brightness: Brightness.dark),
-          textTheme: Typography.dense2021.apply(fontFamily: 'Roboto'),
-          useMaterial3: true,
-        ),
-       themeMode: ThemeMode.system,
-       home: BrowserPage(initialUrl: _initialUrl, hideAppBar: _hideAppBar, onSettingsChanged: _loadSettings),
-     );
-  }
+   @override
+   Widget build(BuildContext context) {
+      final textTheme = Typography.dense2021.apply(fontFamily: 'Roboto');
+
+      return MaterialApp(
+        title: 'Browser',
+        debugShowCheckedModeBanner: false,
+         theme: ThemeData(
+           colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+           textTheme: textTheme,
+           useMaterial3: true,
+         ),
+         darkTheme: ThemeData(
+           colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue, brightness: Brightness.dark),
+           textTheme: textTheme,
+           useMaterial3: true,
+         ),
+        themeMode: ThemeMode.system,
+        home: BrowserPage(initialUrl: _initialUrl, hideAppBar: _hideAppBar, onSettingsChanged: _loadSettings),
+      );
+   }
 }
 
 
