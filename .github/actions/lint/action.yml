@@ -1,0 +1,30 @@
+---
+# SPDX-License-Identifier: MIT
+#
+# Copyright 2025 bniladridas. All rights reserved.
+# Use of this source code is governed by a MIT license that can be
+# found in the LICENSE file.
+
+name: 'Lint'
+description: 'Run actionlint and yamllint on the repository'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Install actionlint
+      shell: bash
+      run: |
+        curl -fsSL -o actionlint.tar.gz \
+          "https://github.com/rhysd/actionlint/releases/download/v1.7.1/actionlint_1.7.1_linux_amd64.tar.gz"
+        tar -xzf actionlint.tar.gz
+        sudo mv actionlint /usr/local/bin/
+    - name: Install yamllint
+      shell: bash
+      run: |
+        pip install yamllint
+    - name: Run actionlint
+      shell: bash
+      run: actionlint .github/workflows/*.yml
+    - name: Run yamllint
+      shell: bash
+      run: yamllint .yamllint .github/workflows/*.yml .github/actions/**/*.yml pubspec.yaml

@@ -20,7 +20,7 @@ fi
 BUMP_TYPE=$1
 
 # Configurable tag prefix
-TAG_PREFIX="desktop/app"
+TAG_PREFIX=${TAG_PREFIX:-desktop/app}
 
 # Ensure tags are fetched
 git fetch --all --tags --quiet || true
@@ -74,4 +74,4 @@ echo "$NEW_VERSION" > VERSION
 echo "Bumped version to $NEW_VERSION"
 
 # Update pubspec.yaml
-./update_version.sh
+./scripts/pubspec.sh

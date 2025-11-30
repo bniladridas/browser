@@ -8,9 +8,9 @@ found in the LICENSE file. -->
 
 Brief description of the changes.
 
-## Changes
+## Summary
 
-- List of key changes
+- Bullet list of key changes and improvements
 
 ## Testing
 
