@@ -281,6 +281,19 @@ class _BrowserPageState extends State<BrowserPage> with TickerProviderStateMixin
     }
   }
 
+  Future<void> _clearCache() async {
+    try {
+      await InAppWebViewController.clearAllCache(includeDiskFiles: true);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Cache cleared')),
+        );
+      }
+    } on PlatformException {
+      // Ignore MissingPluginException on macOS
+    }
+  }
+
   void _showBookmarks() {
     showDialog(
       context: context,
@@ -561,9 +574,12 @@ class _BrowserPageState extends State<BrowserPage> with TickerProviderStateMixin
                  case 'new_tab':
                    _addNewTab();
                    break;
-                 case 'close_tab':
-                   _closeTab(tabController.index);
-                   break;
+                  case 'close_tab':
+                    _closeTab(tabController.index);
+                    break;
+                  case 'clear_cache':
+                    _clearCache();
+                    break;
                }
              },
              itemBuilder: (context) => [
@@ -588,10 +604,14 @@ class _BrowserPageState extends State<BrowserPage> with TickerProviderStateMixin
                  value: 'history',
                  child: Text('History'),
                ),
-               const PopupMenuItem(
-                 value: 'settings',
-                 child: Text('Settings'),
-               ),
+                const PopupMenuItem(
+                  value: 'clear_cache',
+                  child: Text('Clear Cache'),
+                ),
+                const PopupMenuItem(
+                  value: 'settings',
+                  child: Text('Settings'),
+                ),
              ],
            ),
          ],
