@@ -59,13 +59,14 @@ runs:
       if: steps.bump-type.outputs.bump-type != 'skip'
       shell: bash
       run: |
+        set -e
         VERSION=$(sed 's/+.*//' VERSION)
         BRANCH_NAME="version-bump-${VERSION}"
         git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
         git config --local user.name "github-actions[bot]"
         git checkout -b "$BRANCH_NAME"
         git add VERSION pubspec.yaml
-        git commit -m "chore: bump version to ${VERSION}" || echo "No changes to commit"
+        git commit -m "chore: bump version to ${VERSION}"
         git push origin "$BRANCH_NAME"
         gh pr create --title "chore: bump version to ${VERSION}" --body "Automated version bump to ${VERSION} after merging PR ${{ inputs.pr-number }}." --base main --head "$BRANCH_NAME"
 
