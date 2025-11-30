@@ -48,16 +48,16 @@ class _MyAppState extends State<MyApp> {
      return MaterialApp(
        title: 'Browser',
        debugShowCheckedModeBanner: false,
-       theme: ThemeData(
-         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-         textTheme: Typography.material2021().black.apply(fontFamily: 'Roboto'),
-         useMaterial3: true,
-       ),
-       darkTheme: ThemeData(
-         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue, brightness: Brightness.dark),
-         textTheme: Typography.material2021().white.apply(fontFamily: 'Roboto'),
-         useMaterial3: true,
-       ),
+        theme: ThemeData(
+          colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+          textTheme: Typography.dense2021.apply(fontFamily: 'Roboto'),
+          useMaterial3: true,
+        ),
+        darkTheme: ThemeData(
+          colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue, brightness: Brightness.dark),
+          textTheme: Typography.dense2021.apply(fontFamily: 'Roboto'),
+          useMaterial3: true,
+        ),
        themeMode: ThemeMode.system,
        home: BrowserPage(initialUrl: _initialUrl, hideAppBar: _hideAppBar, onSettingsChanged: _loadSettings),
      );
