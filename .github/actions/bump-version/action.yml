@@ -68,6 +68,7 @@ runs:
       shell: bash
       run: |
         set -e
+        export GH_TOKEN=$GH_TOKEN
 
         VERSION=${{ steps.version.outputs.version }}
         BRANCH_NAME="version-bump-${VERSION}"
@@ -101,6 +102,7 @@ runs:
       if: steps.bump-type.outputs.bump-type == 'skip'
       shell: bash
       run: |
+        export GH_TOKEN=$GH_TOKEN
 
         VERSION=${{ steps.version.outputs.version }}
         if gh release view "desktop/app-${VERSION}" &>/dev/null; then
