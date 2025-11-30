@@ -26,13 +26,16 @@ TAG_PREFIX=${TAG_PREFIX:-desktop/app}
 git fetch origin --tags --quiet || echo "Warning: git fetch failed. Tags may be outdated." >&2
 
 # Get latest tag, default to 1.0.0 if none
-if ! LATEST_TAG=$(git describe --tags --abbrev=0 --match "${TAG_PREFIX}-*" 2>/dev/null); then
+if ! LATEST_TAG=$(git describe --tags --abbrev=0 --match "${TAG_PREFIX}*" 2>/dev/null); then
   echo "No tags found, starting from 1.0.0"
   LATEST_TAG="${TAG_PREFIX}-1.0.0"
 fi
 
 # Extract version from tag
-CURRENT_VERSION=$(echo "$LATEST_TAG" | sed 's/desktop\/app-//' | sed 's/+.*//')
+CURRENT_VERSION=$(echo "$LATEST_TAG" | sed -e "s,^${TAG_PREFIX},," -e 's/^-//' -e 's/\+.*//')
+if [ -z "$CURRENT_VERSION" ]; then
+  CURRENT_VERSION="1.0.0"
+fi
 
 # Derive build number from commits since last tag
 if git describe --tags --exact-match HEAD >/dev/null 2>&1; then
