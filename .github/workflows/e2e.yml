@@ -1,3 +1,4 @@
+---
 # SPDX-License-Identifier: MIT
 #
 # Copyright 2025 bniladridas. All rights reserved.
@@ -8,9 +9,9 @@ name: E2E Tests
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [main, master]
   pull_request:
-    branches: [ main, master ]
+    branches: [main, master]
 
 jobs:
   e2e:
