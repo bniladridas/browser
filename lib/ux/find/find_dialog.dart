@@ -4,8 +4,6 @@
 // Use of this source code is governed by a MIT license that can be
 // found in the LICENSE file.
 
-// ignore_for_file: use_build_context_synchronously
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
