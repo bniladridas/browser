@@ -14,6 +14,7 @@ import 'dart:convert';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
 import '../constants.dart';
+import 'find/find_dialog.dart';
 
 class UrlUtils {
   static String processUrl(String url) {
@@ -374,9 +375,17 @@ class _BrowserPageState extends State<BrowserPage>
         ],
       ),
     );
-  }
+   }
 
-  void _showSettings() {
+   // ignore: unused_element
+   void _showFindDialog() {
+     showDialog(
+       context: context,
+       builder: (context) => FindDialog(controller: activeTab.webViewController),
+     );
+   }
+
+   void _showSettings() {
     showDialog(
       context: context,
       builder: (context) =>
