@@ -74,7 +74,7 @@ runs:
       id: version
       shell: bash
       run: |
-        VERSION=$(cut -d'+' -f1 VERSION)
+        VERSION=$(cut -d'+' -f1 VERSION | xargs)
         echo "version=${VERSION}" >> $GITHUB_OUTPUT
 
     - name: Create version bump PR
@@ -109,6 +109,7 @@ runs:
       shell: bash
       run: |
         VERSION=${{ steps.version.outputs.version }}
+        TAG_PREFIX=${{ inputs.tag-prefix }}
         if git ls-remote --tags --exit-code origin "${TAG_PREFIX}-${VERSION}"; then
         echo "Tag ${TAG_PREFIX}-${VERSION} already exists on remote. Skipping tag creation."
         else
@@ -124,6 +125,7 @@ runs:
         GH_TOKEN: ${{ inputs.token }}
       run: |
         VERSION=${{ steps.version.outputs.version }}
+        TAG_PREFIX=${{ inputs.tag-prefix }}
         if gh release view "${TAG_PREFIX}-${VERSION}" &>/dev/null; then
         echo "Release for tag ${TAG_PREFIX}-${VERSION} already exists. Skipping release creation."
         else
