@@ -26,7 +26,7 @@ runs:
         PR_TITLE=$(gh pr view "${{ inputs.pr-number }}" --json title -q '.title')
         printf "PR Title: %s\n" "${PR_TITLE}"
 
-        if printf "%s" "${PR_TITLE}" | grep -q "bump version"; then
+        if printf "%s" "${PR_TITLE}" | grep -q "^chore: bump version to"; then
           printf "Skipping bump for version bump PR\n"
           printf "bump-type=skip\n" >> $GITHUB_OUTPUT
           exit 0
