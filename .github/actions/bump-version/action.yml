@@ -55,12 +55,19 @@ runs:
       run: |
         ./bump_version.sh ${{ steps.bump-type.outputs.bump-type }}
 
+    - name: Get version
+      id: version
+      shell: bash
+      run: |
+        VERSION=$(sed 's/+.*//' VERSION)
+        echo "version=${VERSION}" >> $GITHUB_OUTPUT
+
     - name: Create version bump PR
       if: steps.bump-type.outputs.bump-type != 'skip'
       shell: bash
       run: |
         set -e
-        VERSION=$(sed 's/+.*//' VERSION)
+        VERSION=${{ steps.version.outputs.version }}
         BRANCH_NAME="version-bump-${VERSION}"
         git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
         git config --local user.name "github-actions[bot]"
@@ -74,7 +81,7 @@ runs:
       if: steps.bump-type.outputs.bump-type == 'skip'
       shell: bash
       run: |
-        VERSION=$(sed 's/+.*//' VERSION)
+        VERSION=${{ steps.version.outputs.version }}
         if git ls-remote --tags --exit-code origin "desktop/app-${VERSION}"; then
           echo "Tag desktop/app-${VERSION} already exists on remote. Skipping tag creation."
         else
@@ -86,7 +93,7 @@ runs:
       if: steps.bump-type.outputs.bump-type == 'skip'
       shell: bash
       run: |
-        VERSION=$(sed 's/+.*//' VERSION)
+        VERSION=${{ steps.version.outputs.version }}
         if gh release view "desktop/app-${VERSION}" &>/dev/null; then
           echo "Release for tag desktop/app-${VERSION} already exists. Skipping release creation."
         else
