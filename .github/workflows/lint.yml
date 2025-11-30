@@ -1,0 +1,32 @@
+# SPDX-License-Identifier: MIT
+#
+# Copyright 2025 bniladridas. All rights reserved.
+# Use of this source code is governed by a MIT license that can be
+# found in the LICENSE file.
+
+name: Lint
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install actionlint
+      run: |
+        curl -fsSL -o actionlint.tar.gz "https://github.com/rhysd/actionlint/releases/download/v1.7.1/actionlint_1.7.1_linux_amd64.tar.gz"
+        tar -xzf actionlint.tar.gz
+        sudo mv actionlint /usr/local/bin/
+    - name: Install yamllint
+      run: |
+        pip install yamllint
+    - name: Run actionlint
+      run: actionlint .github/workflows/*.yml
+    - name: Run yamllint
+      run: yamllint .github/workflows/*.yml .github/actions/**/*.yml pubspec.yaml
