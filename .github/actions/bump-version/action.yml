@@ -47,7 +47,7 @@ runs:
             # Check for conflicting bump labels
             BUMP_COUNT=$(printf "%s" "${LABELS}" | grep -c -E "^(major|minor|patch)$")
             if [ "$BUMP_COUNT" -gt 1 ]; then
-              printf "Warning: Multiple conflicting bump labels found. Using highest precedence (major > minor > patch).\n"
+              printf "Warning: Multiple bump labels found. Using precedence: major > minor > patch.\n"
             fi
 
             if printf "%s" "${LABELS}" | grep -q -x "major"; then
