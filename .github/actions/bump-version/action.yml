@@ -22,6 +22,16 @@ runs:
       env:
         GH_TOKEN: ${{ github.token }}
       run: |
+        # Get PR title to check if it's a version bump PR
+        PR_TITLE=$(gh pr view "${{ inputs.pr-number }}" --json title -q '.title')
+        printf "PR Title: %s\n" "${PR_TITLE}"
+
+        if printf "%s" "${PR_TITLE}" | grep -q "bump version"; then
+          printf "Skipping bump for version bump PR\n"
+          printf "bump-type=skip\n" >> $GITHUB_OUTPUT
+          exit 0
+        fi
+
         # Get PR labels
         LABELS=$(gh pr view "${{ inputs.pr-number }}" --json labels -q '.labels[].name')
         printf "Labels: %s\n" "${LABELS}"
@@ -40,19 +50,27 @@ runs:
         printf "bump-type=%s\n" "${BUMP_TYPE}" >> $GITHUB_OUTPUT
 
     - name: Bump version
+      if: steps.bump-type.outputs.bump-type != 'skip'
       shell: bash
       run: |
         ./bump_version.sh ${{ steps.bump-type.outputs.bump-type }}
 
-    - name: Commit version changes
+    - name: Create version bump PR
+      if: steps.bump-type.outputs.bump-type != 'skip'
       shell: bash
       run: |
+        VERSION=$(sed 's/+.*//' VERSION)
+        BRANCH_NAME="version-bump-${VERSION}"
         git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
         git config --local user.name "github-actions[bot]"
+        git checkout -b "$BRANCH_NAME"
         git add VERSION pubspec.yaml
-        git commit -m "Bump version to $(sed 's/+.*//' VERSION)" || echo "No changes to commit"
+        git commit -m "chore: bump version to ${VERSION}" || echo "No changes to commit"
+        git push origin "$BRANCH_NAME"
+        gh pr create --title "chore: bump version to ${VERSION}" --body "Automated version bump to ${VERSION} after merging PR ${{ inputs.pr-number }}." --base main --head "$BRANCH_NAME"
 
     - name: Create and push tag if it does not exist on remote
+      if: steps.bump-type.outputs.bump-type == 'skip'
       shell: bash
       run: |
         VERSION=$(sed 's/+.*//' VERSION)
@@ -64,6 +82,7 @@ runs:
         fi
 
     - name: Create release if not exists
+      if: steps.bump-type.outputs.bump-type == 'skip'
       shell: bash
       run: |
         VERSION=$(sed 's/+.*//' VERSION)
