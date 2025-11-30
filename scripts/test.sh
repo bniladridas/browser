@@ -24,7 +24,7 @@ trap cleanup EXIT
 
 # Test patch bump
 echo "1.0.0+1" > VERSION
-./bump_version.sh patch > /dev/null
+./scripts/version.sh patch > /dev/null
 RESULT=$(cat VERSION)
 EXPECTED="1.0.1+2"
 if [ "$RESULT" = "$EXPECTED" ]; then
@@ -36,7 +36,7 @@ fi
 
 # Test minor bump
 echo "1.0.0+1" > VERSION
-./bump_version.sh minor > /dev/null
+./scripts/version.sh minor > /dev/null
 RESULT=$(cat VERSION)
 EXPECTED="1.1.0+2"
 if [ "$RESULT" = "$EXPECTED" ]; then
@@ -48,7 +48,7 @@ fi
 
 # Test major bump
 echo "1.0.0+1" > VERSION
-./bump_version.sh major > /dev/null
+./scripts/version.sh major > /dev/null
 RESULT=$(cat VERSION)
 EXPECTED="2.0.0+2"
 if [ "$RESULT" = "$EXPECTED" ]; then

@@ -5,7 +5,7 @@
 # Use of this source code is governed by a MIT license that can be
 # found in the LICENSE file.
 
-name: Flutter CI
+name: E2E Tests
 
 on:
   push:
@@ -14,7 +14,7 @@ on:
     branches: [main, master]
 
 jobs:
-  test:
+  e2e:
     runs-on: macos-latest
 
     steps:
@@ -23,6 +23,4 @@ jobs:
         with:
           flutter-version: '3.38.3'
       - run: flutter pub get
-      - run: flutter analyze
-      - run: flutter test
-      - run: flutter build macos
+      - run: ./scripts/e2e.sh

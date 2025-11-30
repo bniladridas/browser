@@ -5,7 +5,7 @@
 # Use of this source code is governed by a MIT license that can be
 # found in the LICENSE file.
 
-name: Flutter CI
+name: Lint
 
 on:
   push:
@@ -14,15 +14,9 @@ on:
     branches: [main, master]
 
 jobs:
-  test:
-    runs-on: macos-latest
+  lint:
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
-      - uses: ./.github/actions/setup-flutter
-        with:
-          flutter-version: '3.38.3'
-      - run: flutter pub get
-      - run: flutter analyze
-      - run: flutter test
-      - run: flutter build macos
+      - uses: ./.github/actions/lint
