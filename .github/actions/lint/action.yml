@@ -27,4 +27,4 @@ runs:
       run: actionlint .github/workflows/*.yml
     - name: Run yamllint
       shell: bash
-      run: yamllint .github/workflows/*.yml .github/actions/**/*.yml pubspec.yaml
+      run: yamllint .yamllint .github/workflows/*.yml .github/actions/**/*.yml pubspec.yaml
