@@ -107,9 +107,10 @@ runs:
       # This runs when merging a version bump PR (bump-type == 'skip' for the merge PR)
       if: steps.bump-type.outputs.bump-type == 'skip'
       shell: bash
+      env:
+        TAG_PREFIX: ${{ inputs.tag-prefix }}
       run: |
         VERSION=${{ steps.version.outputs.version }}
-        TAG_PREFIX=${{ inputs.tag-prefix }}
         if git ls-remote --tags --exit-code origin "${TAG_PREFIX}-${VERSION}"; then
         echo "Tag ${TAG_PREFIX}-${VERSION} already exists on remote. Skipping tag creation."
         else
@@ -123,9 +124,9 @@ runs:
       shell: bash
       env:
         GH_TOKEN: ${{ inputs.token }}
+        TAG_PREFIX: ${{ inputs.tag-prefix }}
       run: |
         VERSION=${{ steps.version.outputs.version }}
-        TAG_PREFIX=${{ inputs.tag-prefix }}
         if gh release view "${TAG_PREFIX}-${VERSION}" &>/dev/null; then
         echo "Release for tag ${TAG_PREFIX}-${VERSION} already exists. Skipping release creation."
         else
