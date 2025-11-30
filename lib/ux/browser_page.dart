@@ -54,7 +54,8 @@ class _SettingsDialogState extends State<SettingsDialog> {
   Future<void> _loadCurrentHomepage() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
-      currentHomepage = prefs.getString(homepageKey) ?? 'https://www.google.com';
+      currentHomepage =
+          prefs.getString(homepageKey) ?? 'https://www.google.com';
       homepageController = TextEditingController(text: currentHomepage);
       _hideAppBar = prefs.getBool(hideAppBarKey) ?? false;
     });
@@ -80,19 +81,19 @@ class _SettingsDialogState extends State<SettingsDialog> {
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-           TextField(
-             controller: homepageController,
-             decoration: const InputDecoration(labelText: 'Homepage'),
-           ),
-           SwitchListTile(
-             title: const Text('Hide App Bar'),
-             value: _hideAppBar,
-             onChanged: (value) {
-               setState(() {
-                 _hideAppBar = value;
-               });
-             },
-           ),
+          TextField(
+            controller: homepageController,
+            decoration: const InputDecoration(labelText: 'Homepage'),
+          ),
+          SwitchListTile(
+            title: const Text('Hide App Bar'),
+            value: _hideAppBar,
+            onChanged: (value) {
+              setState(() {
+                _hideAppBar = value;
+              });
+            },
+          ),
         ],
       ),
       actions: [
@@ -100,21 +101,21 @@ class _SettingsDialogState extends State<SettingsDialog> {
           onPressed: () => Navigator.of(context).pop(),
           child: const Text('Cancel'),
         ),
-          TextButton(
-             onPressed: () async {
-               final prefs = await SharedPreferences.getInstance();
-               await prefs.setString(homepageKey, homepageController.text);
-               await prefs.setBool(hideAppBarKey, _hideAppBar);
-               widget.onSettingsChanged?.call();
-               if (mounted) {
-                 ScaffoldMessenger.of(context).showSnackBar(
-                   const SnackBar(content: Text('Settings saved')),
-                 );
-                 Navigator.of(context).pop();
-               }
-             },
-            child: const Text('Save'),
-          ),
+        TextButton(
+          onPressed: () async {
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.setString(homepageKey, homepageController.text);
+            await prefs.setBool(hideAppBarKey, _hideAppBar);
+            widget.onSettingsChanged?.call();
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Settings saved')),
+              );
+              Navigator.of(context).pop();
+            }
+          },
+          child: const Text('Save'),
+        ),
       ],
     );
   }
@@ -145,7 +146,11 @@ class TabData {
 }
 
 class BrowserPage extends StatefulWidget {
-  const BrowserPage({super.key, required this.initialUrl, this.hideAppBar = false, this.onSettingsChanged});
+  const BrowserPage(
+      {super.key,
+      required this.initialUrl,
+      this.hideAppBar = false,
+      this.onSettingsChanged});
 
   final String initialUrl;
   final bool hideAppBar;
@@ -155,7 +160,8 @@ class BrowserPage extends StatefulWidget {
   State<BrowserPage> createState() => _BrowserPageState();
 }
 
-class _BrowserPageState extends State<BrowserPage> with TickerProviderStateMixin {
+class _BrowserPageState extends State<BrowserPage>
+    with TickerProviderStateMixin {
   late TabController tabController;
   final List<TabData> tabs = [];
   final List<String> bookmarks = [];
@@ -178,8 +184,10 @@ class _BrowserPageState extends State<BrowserPage> with TickerProviderStateMixin
   void _addNewTab() {
     setState(() {
       tabs.add(TabData('https://www.google.com'));
-      tabController.dispose(); // Dispose the old controller to prevent memory leaks.
-      tabController = TabController(length: tabs.length, vsync: this, initialIndex: tabs.length - 1);
+      tabController
+          .dispose(); // Dispose the old controller to prevent memory leaks.
+      tabController = TabController(
+          length: tabs.length, vsync: this, initialIndex: tabs.length - 1);
       tabController.addListener(_onTabChanged);
     });
   }
@@ -200,7 +208,8 @@ class _BrowserPageState extends State<BrowserPage> with TickerProviderStateMixin
 
         // Dispose the old controller and create a new one.
         tabController.dispose();
-        tabController = TabController(length: tabs.length, vsync: this, initialIndex: newIndex);
+        tabController = TabController(
+            length: tabs.length, vsync: this, initialIndex: newIndex);
         tabController.addListener(_onTabChanged);
       });
     }
@@ -289,8 +298,9 @@ class _BrowserPageState extends State<BrowserPage> with TickerProviderStateMixin
           const SnackBar(content: Text('Cache cleared')),
         );
       }
-    } on PlatformException {
-      // Ignore MissingPluginException on macOS
+    } on PlatformException catch (e) {
+      // Log exceptions to aid debugging instead of swallowing them.
+      debugPrint('Failed to clear cache: $e');
     }
   }
 
@@ -322,11 +332,13 @@ class _BrowserPageState extends State<BrowserPage> with TickerProviderStateMixin
                               title: const Text('Remove Bookmark?'),
                               actions: [
                                 TextButton(
-                                  onPressed: () => Navigator.of(context).pop(false),
+                                  onPressed: () =>
+                                      Navigator.of(context).pop(false),
                                   child: const Text('Cancel'),
                                 ),
                                 TextButton(
-                                  onPressed: () => Navigator.of(context).pop(true),
+                                  onPressed: () =>
+                                      Navigator.of(context).pop(true),
                                   child: const Text('Remove'),
                                 ),
                               ],
@@ -367,7 +379,8 @@ class _BrowserPageState extends State<BrowserPage> with TickerProviderStateMixin
   void _showSettings() {
     showDialog(
       context: context,
-      builder: (context) => SettingsDialog(onSettingsChanged: widget.onSettingsChanged),
+      builder: (context) =>
+          SettingsDialog(onSettingsChanged: widget.onSettingsChanged),
     );
   }
 
@@ -428,7 +441,8 @@ class _BrowserPageState extends State<BrowserPage> with TickerProviderStateMixin
     activeTab.currentUrl = url;
     activeTab.urlController.text = url;
     try {
-      activeTab.webViewController?.loadUrl(urlRequest: URLRequest(url: WebUri(url)));
+      activeTab.webViewController
+          ?.loadUrl(urlRequest: URLRequest(url: WebUri(url)));
     } on PlatformException {
       // Ignore MissingPluginException on macOS
     }
@@ -439,9 +453,11 @@ class _BrowserPageState extends State<BrowserPage> with TickerProviderStateMixin
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.error, size: 48, color: Theme.of(context).colorScheme.error),
+          Icon(Icons.error,
+              size: 48, color: Theme.of(context).colorScheme.error),
           const SizedBox(height: 12),
-          Text('Page failed to load.', style: Theme.of(context).textTheme.headlineSmall),
+          Text('Page failed to load.',
+              style: Theme.of(context).textTheme.headlineSmall),
           const SizedBox(height: 12),
           ElevatedButton(
             onPressed: () {
@@ -483,7 +499,8 @@ class _BrowserPageState extends State<BrowserPage> with TickerProviderStateMixin
                   tab.isLoading = true;
                   tab.hasError = false;
                   tab.errorMessage = null;
-                  if (tab.history.isEmpty || tab.history.last != tab.currentUrl) {
+                  if (tab.history.isEmpty ||
+                      tab.history.last != tab.currentUrl) {
                     tab.history.add(tab.currentUrl);
                   }
                 });
@@ -500,7 +517,8 @@ class _BrowserPageState extends State<BrowserPage> with TickerProviderStateMixin
               _handleLoadError(tab, error.description);
             },
             onReceivedHttpError: (controller, request, error) {
-              _handleLoadError(tab, 'HTTP ${error.statusCode}: ${error.reasonPhrase}');
+              _handleLoadError(
+                  tab, 'HTTP ${error.statusCode}: ${error.reasonPhrase}');
             },
           ),
           if (tab.isLoading)
@@ -521,16 +539,24 @@ class _BrowserPageState extends State<BrowserPage> with TickerProviderStateMixin
   Widget build(BuildContext context) {
     return Shortcuts(
       shortcuts: {
-        SingleActivator(LogicalKeyboardKey.keyL, control: defaultTargetPlatform != TargetPlatform.macOS, meta: defaultTargetPlatform == TargetPlatform.macOS): FocusUrlIntent(),
-        SingleActivator(LogicalKeyboardKey.keyR, control: defaultTargetPlatform != TargetPlatform.macOS, meta: defaultTargetPlatform == TargetPlatform.macOS): RefreshIntent(),
-        const SingleActivator(LogicalKeyboardKey.arrowLeft, alt: true): GoBackIntent(),
-        const SingleActivator(LogicalKeyboardKey.arrowRight, alt: true): GoForwardIntent(),
+        SingleActivator(LogicalKeyboardKey.keyL,
+                control: defaultTargetPlatform != TargetPlatform.macOS,
+                meta: defaultTargetPlatform == TargetPlatform.macOS):
+            FocusUrlIntent(),
+        SingleActivator(LogicalKeyboardKey.keyR,
+                control: defaultTargetPlatform != TargetPlatform.macOS,
+                meta: defaultTargetPlatform == TargetPlatform.macOS):
+            RefreshIntent(),
+        const SingleActivator(LogicalKeyboardKey.arrowLeft, alt: true):
+            GoBackIntent(),
+        const SingleActivator(LogicalKeyboardKey.arrowRight, alt: true):
+            GoForwardIntent(),
       },
       child: Actions(
         actions: {
-           FocusUrlIntent: CallbackAction<FocusUrlIntent>(
-             onInvoke: (intent) => activeTab.urlFocusNode.requestFocus(),
-           ),
+          FocusUrlIntent: CallbackAction<FocusUrlIntent>(
+            onInvoke: (intent) => activeTab.urlFocusNode.requestFocus(),
+          ),
           RefreshIntent: CallbackAction<RefreshIntent>(
             onInvoke: (intent) => _refresh(),
           ),
@@ -542,126 +568,132 @@ class _BrowserPageState extends State<BrowserPage> with TickerProviderStateMixin
           ),
         },
         child: Scaffold(
-       appBar: widget.hideAppBar ? null : AppBar(
-         actions: [
-           IconButton(
-             icon: const Icon(Icons.arrow_back),
-             onPressed: _goBack,
-           ),
-           IconButton(
-             icon: const Icon(Icons.arrow_forward),
-             onPressed: _goForward,
-           ),
-           IconButton(
-             icon: const Icon(Icons.refresh),
-             onPressed: _refresh,
-           ),
-           PopupMenuButton<String>(
-             onSelected: (value) {
-               switch (value) {
-                 case 'add_bookmark':
-                   _addBookmark();
-                   break;
-                 case 'view_bookmarks':
-                   _showBookmarks();
-                   break;
-                 case 'history':
-                   _showHistory();
-                   break;
-                 case 'settings':
-                   _showSettings();
-                   break;
-                 case 'new_tab':
-                   _addNewTab();
-                   break;
-                  case 'close_tab':
-                    _closeTab(tabController.index);
-                    break;
-                  case 'clear_cache':
-                    _clearCache();
-                    break;
-               }
-             },
-             itemBuilder: (context) => [
-               const PopupMenuItem(
-                 value: 'new_tab',
-                 child: Text('New Tab'),
-               ),
-               if (tabs.length > 1)
-                 const PopupMenuItem(
-                   value: 'close_tab',
-                   child: Text('Close Tab'),
-                 ),
-               const PopupMenuItem(
-                 value: 'add_bookmark',
-                 child: Text('Add Bookmark'),
-               ),
-               const PopupMenuItem(
-                 value: 'view_bookmarks',
-                 child: Text('Bookmarks'),
-               ),
-               const PopupMenuItem(
-                 value: 'history',
-                 child: Text('History'),
-               ),
-                const PopupMenuItem(
-                  value: 'clear_cache',
-                  child: Text('Clear Cache'),
+          appBar: widget.hideAppBar
+              ? null
+              : AppBar(
+                  actions: [
+                    IconButton(
+                      icon: const Icon(Icons.arrow_back),
+                      onPressed: _goBack,
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.arrow_forward),
+                      onPressed: _goForward,
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.refresh),
+                      onPressed: _refresh,
+                    ),
+                    PopupMenuButton<String>(
+                      onSelected: (value) {
+                        switch (value) {
+                          case 'add_bookmark':
+                            _addBookmark();
+                            break;
+                          case 'view_bookmarks':
+                            _showBookmarks();
+                            break;
+                          case 'history':
+                            _showHistory();
+                            break;
+                          case 'settings':
+                            _showSettings();
+                            break;
+                          case 'new_tab':
+                            _addNewTab();
+                            break;
+                          case 'close_tab':
+                            _closeTab(tabController.index);
+                            break;
+                          case 'clear_cache':
+                            _clearCache();
+                            break;
+                        }
+                      },
+                      itemBuilder: (context) => [
+                        const PopupMenuItem(
+                          value: 'new_tab',
+                          child: Text('New Tab'),
+                        ),
+                        if (tabs.length > 1)
+                          const PopupMenuItem(
+                            value: 'close_tab',
+                            child: Text('Close Tab'),
+                          ),
+                        const PopupMenuItem(
+                          value: 'add_bookmark',
+                          child: Text('Add Bookmark'),
+                        ),
+                        const PopupMenuItem(
+                          value: 'view_bookmarks',
+                          child: Text('Bookmarks'),
+                        ),
+                        const PopupMenuItem(
+                          value: 'history',
+                          child: Text('History'),
+                        ),
+                        const PopupMenuItem(
+                          value: 'clear_cache',
+                          child: Text('Clear Cache'),
+                        ),
+                        const PopupMenuItem(
+                          value: 'settings',
+                          child: Text('Settings'),
+                        ),
+                      ],
+                    ),
+                  ],
+                  title: Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: activeTab.urlController,
+                          focusNode: activeTab.urlFocusNode,
+                          decoration: const InputDecoration(
+                            hintText: 'Enter URL',
+                            border: InputBorder.none,
+                          ),
+                          onSubmitted: _loadUrl,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                const PopupMenuItem(
-                  value: 'settings',
-                  child: Text('Settings'),
+          body: Stack(
+            children: [
+              Column(
+                children: [
+                  TabBar(
+                    controller: tabController,
+                    isScrollable: true,
+                    tabs: tabs
+                        .map((tab) => Tab(
+                            text: Uri.tryParse(tab.currentUrl)?.host ??
+                                tab.currentUrl))
+                        .toList(),
+                  ),
+                  Expanded(
+                    child: TabBarView(
+                      controller: tabController,
+                      children: tabs.map((tab) => _buildTabBody(tab)).toList(),
+                    ),
+                  ),
+                ],
+              ),
+              if (widget.hideAppBar)
+                Positioned(
+                  top: 10,
+                  right: 10,
+                  child: FloatingActionButton(
+                    mini: true,
+                    onPressed: _showSettings,
+                    child: const Icon(Icons.settings),
+                  ),
                 ),
-             ],
-           ),
-         ],
-         title: Row(
-           children: [
-             Expanded(
-               child: TextField(
-                 controller: activeTab.urlController,
-                 focusNode: activeTab.urlFocusNode,
-                 decoration: const InputDecoration(
-                   hintText: 'Enter URL',
-                   border: InputBorder.none,
-                 ),
-                 onSubmitted: _loadUrl,
-               ),
-             ),
-           ],
-         ),
+            ],
+          ),
+        ),
       ),
-       body: Stack(
-         children: [
-           Column(
-             children: [
-               TabBar(
-                 controller: tabController,
-                 isScrollable: true,
-                 tabs: tabs.map((tab) => Tab(text: Uri.tryParse(tab.currentUrl)?.host ?? tab.currentUrl)).toList(),
-               ),
-               Expanded(
-                 child: TabBarView(
-                   controller: tabController,
-                   children: tabs.map((tab) => _buildTabBody(tab)).toList(),
-                 ),
-               ),
-             ],
-           ),
-           if (widget.hideAppBar)
-             Positioned(
-               top: 10,
-               right: 10,
-               child: FloatingActionButton(
-                 mini: true,
-                 onPressed: _showSettings,
-                 child: const Icon(Icons.settings),
-               ),
-             ),
-         ],
-       ),
-    ),
-  ),
-);
-}
+    );
+  }
 }
