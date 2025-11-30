@@ -32,7 +32,7 @@ if ! LATEST_TAG=$(git describe --tags --abbrev=0 --match "${TAG_PREFIX}*" 2>/dev
 fi
 
 # Extract version from tag
-CURRENT_VERSION=$(echo "$LATEST_TAG" | sed 's/desktop\/app//' | sed 's/^-//' | sed 's/+.*//')
+CURRENT_VERSION=$(echo "$LATEST_TAG" | sed -e "s,^${TAG_PREFIX},," -e 's/^-//' -e 's/\+.*//')
 if [ -z "$CURRENT_VERSION" ]; then
   CURRENT_VERSION="1.0.0"
 fi
