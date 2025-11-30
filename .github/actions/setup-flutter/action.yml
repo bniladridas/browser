@@ -21,4 +21,3 @@ runs:
       uses: subosito/flutter-action@v2
       with:
         flutter-version: ${{ inputs.flutter-version }}
-
