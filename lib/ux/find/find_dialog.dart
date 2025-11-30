@@ -55,8 +55,8 @@ class _FindDialogState extends State<FindDialog> {
     try {
       // ignore: deprecated_member_use
       await widget.controller?.findNext(forward: false);
-    } on PlatformException {
-      // ignore
+    } on PlatformException catch (e) {
+      debugPrint('Find previous operation failed: $e');
     }
   }
 
