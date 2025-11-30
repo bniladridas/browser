@@ -6,7 +6,7 @@
 # found in the LICENSE file.
 
 name: 'Bump Version'
-description: 'Bump version based on PR labels and create release'
+description: 'Bump version based on PR labels and create release. Supports configurable tag prefix.'
 
 inputs:
   pr-number:
@@ -44,15 +44,21 @@ runs:
             LABELS=$(gh pr view "${{ inputs.pr-number }}" --json labels -q '.labels[].name')
             printf "Labels: %s\n" "${LABELS}"
 
+            # Check for conflicting bump labels
+            BUMP_COUNT=$(printf "%s" "${LABELS}" | grep -c -E "^(major|minor|patch)$")
+            if [ "$BUMP_COUNT" -gt 1 ]; then
+              printf "Warning: Multiple conflicting bump labels found. Using highest precedence (major > minor > patch).\n"
+            fi
+
             if printf "%s" "${LABELS}" | grep -q -x "major"; then
-            BUMP_TYPE="major"
+              BUMP_TYPE="major"
             elif printf "%s" "${LABELS}" | grep -q -x "minor"; then
-            BUMP_TYPE="minor"
+              BUMP_TYPE="minor"
             elif printf "%s" "${LABELS}" | grep -q -x "patch"; then
-            BUMP_TYPE="patch"
+              BUMP_TYPE="patch"
             else
-            # Default to patch if no label
-            BUMP_TYPE="patch"
+              # Default to patch if no label
+              BUMP_TYPE="patch"
             fi
 
             printf "bump-type=%s\n" "${BUMP_TYPE}" >> $GITHUB_OUTPUT
