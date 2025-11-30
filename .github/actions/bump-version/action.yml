@@ -29,33 +29,33 @@ runs:
       env:
         GH_TOKEN: ${{ inputs.token }}
       run: |
-        # Determine bump type based on PR labels (major/minor/patch) or skip if it's a version bump PR
-        # This logic relies on PR titles and labels; consider adding robustness for future changes
-        PR_TITLE=$(gh pr view "${{ inputs.pr-number }}" --json title -q '.title')
-        printf "PR Title: %s\n" "${PR_TITLE}"
-
-        if printf "%s" "${PR_TITLE}" | grep -q "^chore: bump version to"; then
-          printf "Skipping bump for version bump PR\n"
-          printf "bump-type=skip\n" >> $GITHUB_OUTPUT
-          exit 0
-        fi
-
-        # Get PR labels
-        LABELS=$(gh pr view "${{ inputs.pr-number }}" --json labels -q '.labels[].name')
-        printf "Labels: %s\n" "${LABELS}"
-
-        if printf "%s" "${LABELS}" | grep -q -x "major"; then
-          BUMP_TYPE="major"
-        elif printf "%s" "${LABELS}" | grep -q -x "minor"; then
-          BUMP_TYPE="minor"
-        elif printf "%s" "${LABELS}" | grep -q -x "patch"; then
-          BUMP_TYPE="patch"
-        else
-          # Default to patch if no label
-          BUMP_TYPE="patch"
-        fi
-
-        printf "bump-type=%s\n" "${BUMP_TYPE}" >> $GITHUB_OUTPUT
+            # Determine bump type based on PR labels (major/minor/patch) or skip if it's a version bump PR
+            # This logic relies on PR titles and labels; consider adding robustness for future changes
+            PR_TITLE=$(gh pr view "${{ inputs.pr-number }}" --json title -q '.title')
+            printf "PR Title: %s\n" "${PR_TITLE}"
+            
+            if printf "%s" "${PR_TITLE}" | grep -q "^chore: bump version to"; then
+            printf "Skipping bump for version bump PR\n"
+            printf "bump-type=skip\n" >> $GITHUB_OUTPUT
+            exit 0
+            fi
+            
+            # Get PR labels
+            LABELS=$(gh pr view "${{ inputs.pr-number }}" --json labels -q '.labels[].name')
+            printf "Labels: %s\n" "${LABELS}"
+            
+            if printf "%s" "${LABELS}" | grep -q -x "major"; then
+            BUMP_TYPE="major"
+            elif printf "%s" "${LABELS}" | grep -q -x "minor"; then
+            BUMP_TYPE="minor"
+            elif printf "%s" "${LABELS}" | grep -q -x "patch"; then
+            BUMP_TYPE="patch"
+            else
+            # Default to patch if no label
+            BUMP_TYPE="patch"
+            fi
+            
+            printf "bump-type=%s\n" "${BUMP_TYPE}" >> $GITHUB_OUTPUT
 
     - name: Bump version
       if: steps.bump-type.outputs.bump-type != 'skip'
@@ -77,25 +77,25 @@ runs:
       env:
         GH_TOKEN: ${{ inputs.token }}
       run: |
-        set -e
-        VERSION=${{ steps.version.outputs.version }}
-        TAG_PREFIX=${{ inputs.tag-prefix }}
-        BRANCH_NAME="version-bump-${VERSION}"
-        # Check if PR already exists
-        EXISTING_PR=$(gh pr list --head "$BRANCH_NAME" --base main --json number --jq 'length')
-        if [ "$EXISTING_PR" -gt 0 ]; then
-          echo "Version bump PR for $VERSION already exists. Skipping."
-          exit 0
-        fi
-        git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
-        git config --local user.name "github-actions[bot]"
-        git checkout -b "$BRANCH_NAME"
-        git add VERSION pubspec.yaml
-        git commit -m "chore: bump version to ${VERSION}"
-        git push origin "$BRANCH_NAME"
-        gh pr create --title "chore: bump version to ${VERSION}" \
-          --body "Automated version bump to ${VERSION} after merging PR ${{ inputs.pr-number }}." \
-          --base main --head "$BRANCH_NAME"
+            set -e
+            VERSION=${{ steps.version.outputs.version }}
+            TAG_PREFIX=${{ inputs.tag-prefix }}
+            BRANCH_NAME="version-bump-${VERSION}"
+            # Check if PR already exists
+            EXISTING_PR=$(gh pr list --head "$BRANCH_NAME" --base main --json number --jq 'length')
+            if [ "$EXISTING_PR" -gt 0 ]; then
+            echo "Version bump PR for $VERSION already exists. Skipping."
+            exit 0
+            fi
+            git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git config --local user.name "github-actions[bot]"
+            git checkout -b "$BRANCH_NAME"
+            git add VERSION pubspec.yaml
+            git commit -m "chore: bump version to ${VERSION}"
+            git push origin "$BRANCH_NAME"
+            gh pr create --title "chore: bump version to ${VERSION}" \
+            --body "Automated version bump to ${VERSION} after merging PR ${{ inputs.pr-number }}." \
+            --base main --head "$BRANCH_NAME"
 
     - name: Create and push tag if it does not exist on remote
       # This runs when merging a version bump PR (bump-type == 'skip' for the merge PR)
@@ -104,10 +104,10 @@ runs:
       run: |
         VERSION=${{ steps.version.outputs.version }}
         if git ls-remote --tags --exit-code origin "${TAG_PREFIX}-${VERSION}"; then
-          echo "Tag ${TAG_PREFIX}-${VERSION} already exists on remote. Skipping tag creation."
+        echo "Tag ${TAG_PREFIX}-${VERSION} already exists on remote. Skipping tag creation."
         else
-          git tag "${TAG_PREFIX}-${VERSION}"
-          git push origin "${TAG_PREFIX}-${VERSION}"
+        git tag "${TAG_PREFIX}-${VERSION}"
+        git push origin "${TAG_PREFIX}-${VERSION}"
         fi
 
     - name: Create release if not exists
@@ -119,11 +119,11 @@ runs:
       run: |
         VERSION=${{ steps.version.outputs.version }}
         if gh release view "${TAG_PREFIX}-${VERSION}" &>/dev/null; then
-          echo "Release for tag ${TAG_PREFIX}-${VERSION} already exists. Skipping release creation."
+        echo "Release for tag ${TAG_PREFIX}-${VERSION} already exists. Skipping release creation."
         else
-          PR_TITLE=$(gh pr view "${{ inputs.pr-number }}" --json title -q '.title')
-          PR_BODY=$(gh pr view "${{ inputs.pr-number }}" --json body -q '.body' | head -20)
-          NOTES=$(printf "## What's New in %s\n\n%s\n\n%s\n\n(auto bump)" \
+        PR_TITLE=$(gh pr view "${{ inputs.pr-number }}" --json title -q '.title')
+        PR_BODY=$(gh pr view "${{ inputs.pr-number }}" --json body -q '.body' | head -20)
+        NOTES=$(printf "## What's New in %s\n\n%s\n\n%s\n\n(auto bump)" \
             "${VERSION}" "${PR_TITLE}" "${PR_BODY}")
-          gh release create "${TAG_PREFIX}-${VERSION}" --title "Release ${VERSION}" --notes "${NOTES}"
+        gh release create "${TAG_PREFIX}-${VERSION}" --title "Release ${VERSION}" --notes "${NOTES}"
         fi

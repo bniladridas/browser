@@ -18,11 +18,11 @@ jobs:
     runs-on: macos-latest
 
     steps:
-    - uses: actions/checkout@v4
-    - uses: ./.github/actions/setup-flutter
-      with:
-        flutter-version: '3.38.3'
-    - run: flutter pub get
-    - run: flutter analyze
-    - run: flutter test
-    - run: flutter build macos
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-flutter
+        with:
+          flutter-version: '3.38.3'
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test
+      - run: flutter build macos

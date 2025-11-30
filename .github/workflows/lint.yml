@@ -9,14 +9,14 @@ name: Lint
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [main, master]
   pull_request:
-    branches: [ main, master ]
+    branches: [main, master]
 
 jobs:
   lint:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
-    - uses: ./.github/actions/lint
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/lint

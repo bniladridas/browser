@@ -18,9 +18,9 @@ jobs:
     runs-on: macos-latest
 
     steps:
-    - uses: actions/checkout@v4
-    - uses: ./.github/actions/setup-flutter
-      with:
-        flutter-version: '3.38.3'
-    - run: flutter pub get
-    - run: ./scripts/e2e.sh
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-flutter
+        with:
+          flutter-version: '3.38.3'
+      - run: flutter pub get
+      - run: ./scripts/e2e.sh

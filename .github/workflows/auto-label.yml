@@ -17,27 +17,27 @@ jobs:
     permissions:
       pull-requests: write
     steps:
-    - uses: actions/checkout@v4
-    - name: Label PR based on changes
-      run: |
-        # Get commit messages from the PR
-        COMMITS=$(gh pr view ${{ github.event.number }} --json commits -q '.commits[].message')
+      - uses: actions/checkout@v4
+      - name: Label PR based on changes
+        run: |
+          # Get commit messages from the PR
+          COMMITS=$(gh pr view ${{ github.event.number }} --json commits -q '.commits[].message')
 
-        # Determine label
-        if echo "$COMMITS" | grep -q "BREAKING CHANGE"; then
-          LABEL="major"
-        elif echo "$COMMITS" | grep -q "^feat:"; then
-          LABEL="minor"
-        elif echo "$COMMITS" | grep -q "^fix:"; then
-          LABEL="patch"
-        else
-          LABEL="patch"  # default
-        fi
+          # Determine label
+          if echo "$COMMITS" | grep -q "BREAKING CHANGE"; then
+            LABEL="major"
+          elif echo "$COMMITS" | grep -q "^feat:"; then
+            LABEL="minor"
+          elif echo "$COMMITS" | grep -q "^fix:"; then
+            LABEL="patch"
+          else
+            LABEL="patch"  # default
+          fi
 
-        # Add label if not already present
-        if ! gh pr view ${{ github.event.number }} \
-          --json labels -q '.labels[].name' | grep -q "^${LABEL}$"; then
-          gh pr edit ${{ github.event.number }} --add-label "$LABEL"
-        fi
-      env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Add label if not already present
+          if ! gh pr view ${{ github.event.number }} \
+            --json labels -q '.labels[].name' | grep -q "^${LABEL}$"; then
+            gh pr edit ${{ github.event.number }} --add-label "$LABEL"
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
