@@ -12,10 +12,10 @@ If the automated version bump workflow fails (e.g., due to branch deletion or wo
 
 3. **Commit Changes**:
    - `git add VERSION pubspec.yaml`
-   - `git commit -m "chore: bump version to X.Y.Z"`
+   - `git commit -m "chore: bump version to X.Y.Z"` (where X.Y.Z is the version part, e.g., 1.0.2, excluding the +build number)
 
 4. **Create Branch and PR**:
-   - `git checkout -b version-bump-X.Y.Z`
+   - `git checkout -b version-bump-X.Y.Z` (use X.Y.Z without +build)
    - `git push origin version-bump-X.Y.Z`
    - Create a PR on GitHub with title "chore: bump version to X.Y.Z".
 
@@ -23,7 +23,7 @@ If the automated version bump workflow fails (e.g., due to branch deletion or wo
    - Merge the PR to main.
 
 6. **Create Tag and Release**:
-   - `git tag desktop/app-X.Y.Z`
+   - `git tag desktop/app-X.Y.Z` (use X.Y.Z without +build)
    - `git push origin desktop/app-X.Y.Z`
    - On GitHub, go to Releases > Create new release with tag `desktop/app-X.Y.Z`, title "Release X.Y.Z", and notes summarizing the changes.
 
