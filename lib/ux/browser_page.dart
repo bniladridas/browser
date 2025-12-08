@@ -44,6 +44,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
   late TextEditingController homepageController;
   String? currentHomepage;
   bool _hideAppBar = false;
+  bool _useModernUserAgent = false;
 
   @override
   void initState() {
@@ -58,6 +59,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
           prefs.getString(homepageKey) ?? 'https://www.google.com';
       homepageController = TextEditingController(text: currentHomepage);
       _hideAppBar = prefs.getBool(hideAppBarKey) ?? false;
+      _useModernUserAgent = prefs.getBool(useModernUserAgentKey) ?? false;
     });
   }
 
@@ -94,6 +96,17 @@ class _SettingsDialogState extends State<SettingsDialog> {
               });
             },
           ),
+          SwitchListTile(
+            title: const Text('Use Modern User Agent'),
+            subtitle: const Text(
+                'Load modern Google interface (applies to new tabs)'),
+            value: _useModernUserAgent,
+            onChanged: (value) {
+              setState(() {
+                _useModernUserAgent = value;
+              });
+            },
+          ),
         ],
       ),
       actions: [
@@ -106,6 +119,8 @@ class _SettingsDialogState extends State<SettingsDialog> {
             final prefs = await SharedPreferences.getInstance();
             await prefs.setString(homepageKey, homepageController.text);
             await prefs.setBool(hideAppBarKey, _hideAppBar);
+            await prefs.setBool(useModernUserAgentKey, _useModernUserAgent);
+            await InAppWebViewController.clearAllCache(includeDiskFiles: true);
             widget.onSettingsChanged?.call();
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
@@ -150,10 +165,12 @@ class BrowserPage extends StatefulWidget {
       {super.key,
       required this.initialUrl,
       this.hideAppBar = false,
+      this.useModernUserAgent = false,
       this.onSettingsChanged});
 
   final String initialUrl;
   final bool hideAppBar;
+  final bool useModernUserAgent;
   final void Function()? onSettingsChanged;
 
   @override
@@ -487,6 +504,9 @@ class _BrowserPageState extends State<BrowserPage>
               cacheEnabled: true,
               clearCache: false,
               useOnLoadResource: false,
+              userAgent: widget.useModernUserAgent
+                  ? 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'
+                  : 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.0.0 Safari/537.36',
             ),
             onWebViewCreated: (controller) {
               tab.webViewController = controller;
