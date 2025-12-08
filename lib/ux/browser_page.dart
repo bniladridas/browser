@@ -500,6 +500,13 @@ class _BrowserPageState extends State<BrowserPage>
       return _buildErrorView(tab);
     }
 
+    if (defaultTargetPlatform == TargetPlatform.macOS) {
+      return Center(
+        child: Text(
+            'WebView not supported on macOS yet. Please use a mobile device or web.'),
+      );
+    }
+
     try {
       return Stack(
         children: [
