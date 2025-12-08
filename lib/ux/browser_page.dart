@@ -500,15 +500,6 @@ class _BrowserPageState extends State<BrowserPage>
       return _buildErrorView(tab);
     }
 
-    if (defaultTargetPlatform == TargetPlatform.macOS ||
-        defaultTargetPlatform == TargetPlatform.linux ||
-        defaultTargetPlatform == TargetPlatform.windows) {
-      return const Center(
-        child: Text(
-            'WebView is not supported on this platform yet. Please use a mobile device or web.'),
-      );
-    }
-
     try {
       return Stack(
         children: [

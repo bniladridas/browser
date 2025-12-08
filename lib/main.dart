@@ -13,7 +13,11 @@ import 'ux/browser_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await windowManager.ensureInitialized();
+  try {
+    await windowManager.ensureInitialized();
+  } catch (e) {
+    debugPrint('Window manager not available: $e');
+  }
   runApp(const MyApp());
 }
 
@@ -36,12 +40,16 @@ class _MyAppState extends State<MyApp> {
   }
 
   Future<void> _loadSettings() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _initialUrl = prefs.getString(homepageKey) ?? 'https://www.google.com';
-      _hideAppBar = prefs.getBool(hideAppBarKey) ?? false;
-      _useModernUserAgent = prefs.getBool(useModernUserAgentKey) ?? false;
-    });
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      setState(() {
+        _initialUrl = prefs.getString(homepageKey) ?? 'https://www.google.com';
+        _hideAppBar = prefs.getBool(hideAppBarKey) ?? false;
+        _useModernUserAgent = prefs.getBool(useModernUserAgentKey) ?? false;
+      });
+    } catch (e) {
+      debugPrint('Shared preferences not available: $e');
+    }
   }
 
   // This widget is the root of your application.
