@@ -27,6 +27,7 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> {
   String _initialUrl = 'https://www.google.com';
   bool _hideAppBar = false;
+  bool _useModernUserAgent = false;
 
   @override
   void initState() {
@@ -39,31 +40,35 @@ class _MyAppState extends State<MyApp> {
     setState(() {
       _initialUrl = prefs.getString(homepageKey) ?? 'https://www.google.com';
       _hideAppBar = prefs.getBool(hideAppBarKey) ?? false;
+      _useModernUserAgent = prefs.getBool(useModernUserAgentKey) ?? false;
     });
   }
 
   // This widget is the root of your application.
-   @override
-   Widget build(BuildContext context) {
-      final textTheme = Typography.dense2021.apply(fontFamily: 'Roboto');
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Typography.dense2021.apply(fontFamily: 'Roboto');
 
-      return MaterialApp(
-        title: 'Browser',
-        debugShowCheckedModeBanner: false,
-         theme: ThemeData(
-           colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-           textTheme: textTheme,
-           useMaterial3: true,
-         ),
-         darkTheme: ThemeData(
-           colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue, brightness: Brightness.dark),
-           textTheme: textTheme,
-           useMaterial3: true,
-         ),
-        themeMode: ThemeMode.system,
-        home: BrowserPage(initialUrl: _initialUrl, hideAppBar: _hideAppBar, onSettingsChanged: _loadSettings),
-      );
-   }
+    return MaterialApp(
+      title: 'Browser',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+        textTheme: textTheme,
+        useMaterial3: true,
+      ),
+      darkTheme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(
+            seedColor: Colors.blue, brightness: Brightness.dark),
+        textTheme: textTheme,
+        useMaterial3: true,
+      ),
+      themeMode: ThemeMode.system,
+      home: BrowserPage(
+          initialUrl: _initialUrl,
+          hideAppBar: _hideAppBar,
+          useModernUserAgent: _useModernUserAgent,
+          onSettingsChanged: _loadSettings),
+    );
+  }
 }
-
-
