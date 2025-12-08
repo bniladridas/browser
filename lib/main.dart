@@ -16,7 +16,8 @@ void main() async {
   try {
     await windowManager.ensureInitialized();
   } catch (e) {
-    debugPrint('Window manager not available: $e');
+    debugPrint(
+        'Warning: Window manager initialization failed on this platform: $e. Some desktop window features (minimize, maximize, etc.) may not be available.');
   }
   runApp(const MyApp());
 }
@@ -32,6 +33,7 @@ class _MyAppState extends State<MyApp> {
   String _initialUrl = 'https://www.google.com';
   bool _hideAppBar = false;
   bool _useModernUserAgent = false;
+  bool _prefsLoaded = true;
 
   @override
   void initState() {
@@ -48,6 +50,9 @@ class _MyAppState extends State<MyApp> {
         _useModernUserAgent = prefs.getBool(useModernUserAgentKey) ?? false;
       });
     } catch (e) {
+      setState(() {
+        _prefsLoaded = false;
+      });
       debugPrint('Shared preferences not available: $e');
     }
   }
@@ -56,6 +61,21 @@ class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     final textTheme = Typography.dense2021.apply(fontFamily: 'Roboto');
+
+    if (!_prefsLoaded) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+                content: Text(
+                    'Settings could not be loaded. Using default values.')),
+          );
+          setState(() {
+            _prefsLoaded = true;
+          });
+        }
+      });
+    }
 
     return MaterialApp(
       title: 'Browser',

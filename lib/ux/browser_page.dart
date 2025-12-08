@@ -198,20 +198,24 @@ class _BrowserPageState extends State<BrowserPage>
   }
 
   void _onTabChanged() {
-    setState(() {});
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   TabData get activeTab => tabs[tabController.index];
 
   void _addNewTab() {
-    setState(() {
-      tabs.add(TabData('https://www.google.com'));
-      tabController
-          .dispose(); // Dispose the old controller to prevent memory leaks.
-      tabController = TabController(
-          length: tabs.length, vsync: this, initialIndex: tabs.length - 1);
-      tabController.addListener(_onTabChanged);
-    });
+    if (mounted) {
+      setState(() {
+        tabs.add(TabData('https://www.google.com'));
+        tabController
+            .dispose(); // Dispose the old controller to prevent memory leaks.
+        tabController = TabController(
+            length: tabs.length, vsync: this, initialIndex: tabs.length - 1);
+        tabController.addListener(_onTabChanged);
+      });
+    }
   }
 
   void _closeTab(int index) {
@@ -518,17 +522,19 @@ class _BrowserPageState extends State<BrowserPage>
             },
             onLoadStart: (controller, url) {
               if (url != null && !tab.isClosed) {
-                setState(() {
-                  tab.currentUrl = url.toString();
-                  tab.urlController.text = tab.currentUrl;
-                  tab.isLoading = true;
-                  tab.hasError = false;
-                  tab.errorMessage = null;
-                  if (tab.history.isEmpty ||
-                      tab.history.last != tab.currentUrl) {
-                    tab.history.add(tab.currentUrl);
-                  }
-                });
+                if (mounted) {
+                  setState(() {
+                    tab.currentUrl = url.toString();
+                    tab.urlController.text = tab.currentUrl;
+                    tab.isLoading = true;
+                    tab.hasError = false;
+                    tab.errorMessage = null;
+                    if (tab.history.isEmpty ||
+                        tab.history.last != tab.currentUrl) {
+                      tab.history.add(tab.currentUrl);
+                    }
+                  });
+                }
               }
             },
             onLoadStop: (controller, url) {
