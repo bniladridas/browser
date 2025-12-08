@@ -319,19 +319,14 @@ class _BrowserPageState extends State<BrowserPage>
   Future<void> _clearCache() async {
     try {
       await InAppWebViewController.clearAllCache(includeDiskFiles: true);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Cache cleared')),
-        );
-      }
     } on PlatformException catch (e) {
       // Log exceptions to aid debugging instead of swallowing them.
       debugPrint('Failed to clear cache: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Cache cleared')),
-        );
-      }
+    }
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Cache cleared')),
+      );
     }
   }
 
