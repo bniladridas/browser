@@ -327,6 +327,11 @@ class _BrowserPageState extends State<BrowserPage>
     } on PlatformException catch (e) {
       // Log exceptions to aid debugging instead of swallowing them.
       debugPrint('Failed to clear cache: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Cache cleared')),
+        );
+      }
     }
   }
 
