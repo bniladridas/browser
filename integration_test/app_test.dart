@@ -11,6 +11,11 @@ import 'package:browser/main.dart';
 
 const testTimeout = Timeout(Duration(seconds: 60));
 
+Future<void> _launchApp(WidgetTester tester) async {
+  await tester.pumpWidget(const MyApp());
+  await tester.pumpAndSettle();
+}
+
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
@@ -38,8 +43,7 @@ void main() {
     }, timeout: testTimeout);
 
     testWidgets('Bookmark adding and viewing', (WidgetTester tester) async {
-      await tester.pumpWidget(const MyApp());
-      await tester.pumpAndSettle();
+      await _launchApp(tester);
 
       // Enter a URL and load
       const testUrl = 'https://example.com';
@@ -67,8 +71,7 @@ void main() {
     }, timeout: testTimeout);
 
     testWidgets('History viewing', (WidgetTester tester) async {
-      await tester.pumpWidget(const MyApp());
-      await tester.pumpAndSettle();
+      await _launchApp(tester);
 
       // Open menu and view history
       await tester.tap(find.byType(PopupMenuButton<String>));
@@ -81,8 +84,7 @@ void main() {
     }, timeout: testTimeout);
 
     testWidgets('Special characters in URL', (WidgetTester tester) async {
-      await tester.pumpWidget(const MyApp());
-      await tester.pumpAndSettle();
+      await _launchApp(tester);
 
       // Enter URL with special characters
       const specialUrl = 'https://github.com/bniladridas/browser?tab=readme';
@@ -96,8 +98,7 @@ void main() {
     }, timeout: testTimeout);
 
     testWidgets('Clear cache functionality', (WidgetTester tester) async {
-      await tester.pumpWidget(const MyApp());
-      await tester.pumpAndSettle();
+      await _launchApp(tester);
 
       // Open menu and clear cache
       await tester.tap(find.byType(PopupMenuButton<String>));
@@ -111,8 +112,7 @@ void main() {
 
     testWidgets('Settings dialog and user agent toggle',
         (WidgetTester tester) async {
-      await tester.pumpWidget(const MyApp());
-      await tester.pumpAndSettle();
+      await _launchApp(tester);
 
       // Open menu and go to settings
       await tester.tap(find.byType(PopupMenuButton<String>));

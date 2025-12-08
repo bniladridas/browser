@@ -15,6 +15,11 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
 import '../constants.dart';
 
+const String _modernUserAgent =
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36';
+const String _legacyUserAgent =
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.0.0 Safari/537.36';
+
 class UrlUtils {
   static String processUrl(String url) {
     if (!url.startsWith('http://') && !url.startsWith('https://')) {
@@ -505,8 +510,8 @@ class _BrowserPageState extends State<BrowserPage>
               clearCache: false,
               useOnLoadResource: false,
               userAgent: widget.useModernUserAgent
-                  ? 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'
-                  : 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.0.0 Safari/537.36',
+                  ? _modernUserAgent
+                  : _legacyUserAgent,
             ),
             onWebViewCreated: (controller) {
               tab.webViewController = controller;
