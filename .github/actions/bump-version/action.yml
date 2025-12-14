@@ -74,7 +74,7 @@ runs:
       id: version
       shell: bash
       run: |
-        VERSION=$(cut -d'+' -f1 VERSION)
+        VERSION=$(cut -d'+' -f1 VERSION | xargs)
         echo "version=${VERSION}" >> $GITHUB_OUTPUT
 
     - name: Create version bump PR
@@ -107,6 +107,8 @@ runs:
       # This runs when merging a version bump PR (bump-type == 'skip' for the merge PR)
       if: steps.bump-type.outputs.bump-type == 'skip'
       shell: bash
+      env:
+        TAG_PREFIX: ${{ inputs.tag-prefix }}
       run: |
         VERSION=${{ steps.version.outputs.version }}
         if git ls-remote --tags --exit-code origin "${TAG_PREFIX}-${VERSION}"; then
@@ -122,6 +124,7 @@ runs:
       shell: bash
       env:
         GH_TOKEN: ${{ inputs.token }}
+        TAG_PREFIX: ${{ inputs.tag-prefix }}
       run: |
         VERSION=${{ steps.version.outputs.version }}
         if gh release view "${TAG_PREFIX}-${VERSION}" &>/dev/null; then

@@ -13,7 +13,12 @@ import 'ux/browser_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await windowManager.ensureInitialized();
+  try {
+    await windowManager.ensureInitialized();
+  } catch (e) {
+    debugPrint(
+        'Warning: Window manager initialization failed on this platform: $e. Some desktop window features (minimize, maximize, etc.) may not be available.');
+  }
   runApp(const MyApp());
 }
 
@@ -27,6 +32,8 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> {
   String _initialUrl = 'https://www.google.com';
   bool _hideAppBar = false;
+  bool _useModernUserAgent = false;
+  bool _prefsLoaded = true;
 
   @override
   void initState() {
@@ -35,35 +42,61 @@ class _MyAppState extends State<MyApp> {
   }
 
   Future<void> _loadSettings() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _initialUrl = prefs.getString(homepageKey) ?? 'https://www.google.com';
-      _hideAppBar = prefs.getBool(hideAppBarKey) ?? false;
-    });
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      setState(() {
+        _initialUrl = prefs.getString(homepageKey) ?? 'https://www.google.com';
+        _hideAppBar = prefs.getBool(hideAppBarKey) ?? false;
+        _useModernUserAgent = prefs.getBool(useModernUserAgentKey) ?? false;
+      });
+    } catch (e) {
+      setState(() {
+        _prefsLoaded = false;
+      });
+      debugPrint('Shared preferences not available: $e');
+    }
   }
 
   // This widget is the root of your application.
-   @override
-   Widget build(BuildContext context) {
-      final textTheme = Typography.dense2021.apply(fontFamily: 'Roboto');
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Typography.dense2021.apply(fontFamily: 'Roboto');
 
-      return MaterialApp(
-        title: 'Browser',
-        debugShowCheckedModeBanner: false,
-         theme: ThemeData(
-           colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-           textTheme: textTheme,
-           useMaterial3: true,
-         ),
-         darkTheme: ThemeData(
-           colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue, brightness: Brightness.dark),
-           textTheme: textTheme,
-           useMaterial3: true,
-         ),
-        themeMode: ThemeMode.system,
-        home: BrowserPage(initialUrl: _initialUrl, hideAppBar: _hideAppBar, onSettingsChanged: _loadSettings),
-      );
-   }
+    if (!_prefsLoaded) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+                content: Text(
+                    'Settings could not be loaded. Using default values.')),
+          );
+          setState(() {
+            _prefsLoaded = true;
+          });
+        }
+      });
+    }
+
+    return MaterialApp(
+      title: 'Browser',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+        textTheme: textTheme,
+        useMaterial3: true,
+      ),
+      darkTheme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(
+            seedColor: Colors.blue, brightness: Brightness.dark),
+        textTheme: textTheme,
+        useMaterial3: true,
+      ),
+      themeMode: ThemeMode.system,
+      home: BrowserPage(
+          initialUrl: _initialUrl,
+          hideAppBar: _hideAppBar,
+          useModernUserAgent: _useModernUserAgent,
+          onSettingsChanged: _loadSettings),
+    );
+  }
 }
-
-
