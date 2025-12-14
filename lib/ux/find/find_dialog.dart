@@ -5,7 +5,6 @@
 // found in the LICENSE file.
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
 class FindDialog extends StatefulWidget {
@@ -34,7 +33,7 @@ class _FindDialogState extends State<FindDialog> {
         await widget.controller?.findAllAsync(find: term);
         // ignore: deprecated_member_use
         await widget.controller?.findNext(forward: true);
-      } on PlatformException catch (e) {
+      } catch (e) {
         debugPrint('Find operation failed: $e');
       }
     }
@@ -44,7 +43,7 @@ class _FindDialogState extends State<FindDialog> {
     try {
       // ignore: deprecated_member_use
       await widget.controller?.findNext(forward: true);
-    } on PlatformException catch (e) {
+    } catch (e) {
       debugPrint('Find next operation failed: $e');
     }
   }
@@ -53,7 +52,7 @@ class _FindDialogState extends State<FindDialog> {
     try {
       // ignore: deprecated_member_use
       await widget.controller?.findNext(forward: false);
-    } on PlatformException catch (e) {
+    } catch (e) {
       debugPrint('Find previous operation failed: $e');
     }
   }
