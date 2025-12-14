@@ -14,6 +14,7 @@ import 'dart:convert';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
 import '../constants.dart';
+import 'find/find_dialog.dart';
 
 const String _modernUserAgent =
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36';
@@ -400,9 +401,16 @@ class _BrowserPageState extends State<BrowserPage>
         ],
       ),
     );
-  }
+   }
 
-  void _showSettings() {
+    void _showFindDialog() {
+      showDialog(
+        context: context,
+        builder: (context) => FindDialog(controller: activeTab.webViewController),
+      );
+    }
+
+   void _showSettings() {
     showDialog(
       context: context,
       builder: (context) =>
@@ -624,12 +632,15 @@ class _BrowserPageState extends State<BrowserPage>
                           case 'view_bookmarks':
                             _showBookmarks();
                             break;
-                          case 'history':
-                            _showHistory();
-                            break;
-                          case 'settings':
-                            _showSettings();
-                            break;
+                           case 'history':
+                             _showHistory();
+                             break;
+                           case 'find':
+                             _showFindDialog();
+                             break;
+                           case 'settings':
+                             _showSettings();
+                             break;
                           case 'new_tab':
                             _addNewTab();
                             break;
@@ -659,14 +670,18 @@ class _BrowserPageState extends State<BrowserPage>
                           value: 'view_bookmarks',
                           child: Text('Bookmarks'),
                         ),
-                        const PopupMenuItem(
-                          value: 'history',
-                          child: Text('History'),
-                        ),
-                        const PopupMenuItem(
-                          value: 'clear_cache',
-                          child: Text('Clear Cache'),
-                        ),
+                         const PopupMenuItem(
+                           value: 'history',
+                           child: Text('History'),
+                         ),
+                         const PopupMenuItem(
+                           value: 'find',
+                           child: Text('Find in Page'),
+                         ),
+                         const PopupMenuItem(
+                           value: 'clear_cache',
+                           child: Text('Clear Cache'),
+                         ),
                         const PopupMenuItem(
                           value: 'settings',
                           child: Text('Settings'),
