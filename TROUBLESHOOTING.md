@@ -6,7 +6,7 @@ If `flutter run` fails with "unable to find utility 'xcodebuild'", even if comma
 
 1. Ensure full Xcode is installed from the App Store.
 2. Switch xcode-select to point to Xcode:
-   ```
+   ```bash
    sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
    ```
 3. Accept the Xcode license:
