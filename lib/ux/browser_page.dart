@@ -12,6 +12,7 @@ import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:http/http.dart' as http;
 
 import '../constants.dart';
 import 'find/find_dialog.dart';
@@ -164,6 +165,124 @@ class TabData {
   TabData(this.currentUrl)
       : urlController = TextEditingController(text: currentUrl),
         urlFocusNode = FocusNode();
+}
+
+class GitFetchDialog extends StatefulWidget {
+  const GitFetchDialog({super.key, required this.onOpenInNewTab});
+
+  final void Function(String url) onOpenInNewTab;
+
+  @override
+  State<GitFetchDialog> createState() => _GitFetchDialogState();
+}
+
+class _GitFetchDialogState extends State<GitFetchDialog> {
+  final TextEditingController repoController = TextEditingController();
+  bool isLoading = false;
+  Map<String, dynamic>? repoData;
+  String? errorMessage;
+
+  Future<void> _fetchRepo() async {
+    final repo = repoController.text.trim();
+    if (repo.isEmpty) return;
+
+    final parts = repo.split('/');
+    if (parts.length != 2) {
+      setState(() {
+        errorMessage = 'Invalid format. Use owner/repo';
+      });
+      return;
+    }
+
+    setState(() {
+      isLoading = true;
+      errorMessage = null;
+      repoData = null;
+    });
+
+    try {
+      final url = 'https://api.github.com/repos/${parts[0]}/${parts[1]}';
+      // Note: This would use webfetch tool in the assistant, but in code we use http
+      // For demo, using placeholder
+      final response = await fetchGitHubRepo(url);
+      setState(() {
+        repoData = response;
+      });
+    } catch (e) {
+      setState(() {
+        errorMessage = 'Failed to fetch repo: $e';
+      });
+    } finally {
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
+
+  Future<Map<String, dynamic>> fetchGitHubRepo(String url) async {
+    final response = await http.get(Uri.parse(url));
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to load repo: ${response.statusCode}');
+    }
+  }
+
+  @override
+  void dispose() {
+    repoController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Git Fetch'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: repoController,
+            decoration: const InputDecoration(
+              labelText: 'GitHub Repo (owner/repo)',
+              hintText: 'e.g., flutter/flutter',
+            ),
+          ),
+          const SizedBox(height: 16),
+          if (isLoading) const CircularProgressIndicator(),
+          if (errorMessage != null)
+            Text(errorMessage!, style: const TextStyle(color: Colors.red)),
+          if (repoData != null) ...[
+            Text('Name: ${repoData!['name']}'),
+            Text('Description: ${repoData!['description']}'),
+            Text('Stars: ${repoData!['stargazers_count']}'),
+            Text('Forks: ${repoData!['forks_count']}'),
+            Text('Language: ${repoData!['language']}'),
+            Text('Open Issues: ${repoData!['open_issues_count']}'),
+          ],
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        TextButton(
+          onPressed: _fetchRepo,
+          child: const Text('Fetch'),
+        ),
+        if (repoData != null)
+          TextButton(
+            onPressed: () {
+              final url = 'https://github.com/${repoController.text}';
+              widget.onOpenInNewTab(url);
+              Navigator.of(context).pop();
+            },
+            child: const Text('Open in New Tab'),
+          ),
+      ],
+    );
+  }
 }
 
 class BrowserPage extends StatefulWidget {
@@ -401,20 +520,35 @@ class _BrowserPageState extends State<BrowserPage>
         ],
       ),
     );
-   }
+  }
 
-    void _showFindDialog() {
-      showDialog(
-        context: context,
-        builder: (context) => FindDialog(controller: activeTab.webViewController),
-      );
-    }
+  void _showFindDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => FindDialog(controller: activeTab.webViewController),
+    );
+  }
 
-   void _showSettings() {
+  void _showSettings() {
     showDialog(
       context: context,
       builder: (context) =>
           SettingsDialog(onSettingsChanged: widget.onSettingsChanged),
+    );
+  }
+
+  void _showGitFetchDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => GitFetchDialog(
+        onOpenInNewTab: (url) {
+          _addNewTab();
+          activeTab.currentUrl = url;
+          activeTab.urlController.text = url;
+          activeTab.webViewController
+              ?.loadUrl(urlRequest: URLRequest(url: WebUri(url)));
+        },
+      ),
     );
   }
 
@@ -632,15 +766,15 @@ class _BrowserPageState extends State<BrowserPage>
                           case 'view_bookmarks':
                             _showBookmarks();
                             break;
-                           case 'history':
-                             _showHistory();
-                             break;
-                           case 'find':
-                             _showFindDialog();
-                             break;
-                           case 'settings':
-                             _showSettings();
-                             break;
+                          case 'history':
+                            _showHistory();
+                            break;
+                          case 'find':
+                            _showFindDialog();
+                            break;
+                          case 'settings':
+                            _showSettings();
+                            break;
                           case 'new_tab':
                             _addNewTab();
                             break;
@@ -649,6 +783,9 @@ class _BrowserPageState extends State<BrowserPage>
                             break;
                           case 'clear_cache':
                             _clearCache();
+                            break;
+                          case 'git_fetch':
+                            _showGitFetchDialog();
                             break;
                         }
                       },
@@ -670,18 +807,22 @@ class _BrowserPageState extends State<BrowserPage>
                           value: 'view_bookmarks',
                           child: Text('Bookmarks'),
                         ),
-                         const PopupMenuItem(
-                           value: 'history',
-                           child: Text('History'),
-                         ),
-                         const PopupMenuItem(
-                           value: 'find',
-                           child: Text('Find in Page'),
-                         ),
-                         const PopupMenuItem(
-                           value: 'clear_cache',
-                           child: Text('Clear Cache'),
-                         ),
+                        const PopupMenuItem(
+                          value: 'history',
+                          child: Text('History'),
+                        ),
+                        const PopupMenuItem(
+                          value: 'find',
+                          child: Text('Find in Page'),
+                        ),
+                        const PopupMenuItem(
+                          value: 'clear_cache',
+                          child: Text('Clear Cache'),
+                        ),
+                        const PopupMenuItem(
+                          value: 'git_fetch',
+                          child: Text('Git Fetch'),
+                        ),
                         const PopupMenuItem(
                           value: 'settings',
                           child: Text('Settings'),

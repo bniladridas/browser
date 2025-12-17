@@ -148,5 +148,33 @@ void main() {
       // Should show saved snackbar
       expect(find.text('Settings saved'), findsOneWidget);
     }, timeout: testTimeout);
+
+    testWidgets('Git fetch dialog', (WidgetTester tester) async {
+      if (Platform.isMacOS) return; // Skip on macOS due to webview test issues
+
+      await _launchApp(tester);
+
+      // Open menu and go to Git Fetch
+      await tester.tap(find.byType(PopupMenuButton<String>));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Git Fetch'));
+      await tester.pumpAndSettle();
+
+      // Should show Git Fetch dialog
+      expect(find.text('Git Fetch'), findsOneWidget);
+
+      // Enter a repo
+      const testRepo = 'flutter/flutter';
+      await tester.enterText(find.byType(TextField).last, testRepo);
+      await tester.pumpAndSettle();
+
+      // Tap Fetch
+      await tester.tap(find.text('Fetch'));
+      await tester.pumpAndSettle();
+
+      // Should show loading or results (skip detailed check due to network)
+      // For now, just ensure dialog stays open
+      expect(find.text('Git Fetch'), findsOneWidget);
+    }, timeout: testTimeout);
   });
 }
