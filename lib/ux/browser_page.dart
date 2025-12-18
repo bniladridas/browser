@@ -17,7 +17,7 @@ import '../constants.dart';
 import 'find/find_dialog.dart';
 
 const String _modernUserAgent =
-    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36';
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0.2 Safari/605.1.15';
 const String _legacyUserAgent =
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.0.0 Safari/537.36';
 
@@ -401,16 +401,16 @@ class _BrowserPageState extends State<BrowserPage>
         ],
       ),
     );
-   }
+  }
 
-    void _showFindDialog() {
-      showDialog(
-        context: context,
-        builder: (context) => FindDialog(controller: activeTab.webViewController),
-      );
-    }
+  void _showFindDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => FindDialog(controller: activeTab.webViewController),
+    );
+  }
 
-   void _showSettings() {
+  void _showSettings() {
     showDialog(
       context: context,
       builder: (context) =>
@@ -555,6 +555,9 @@ class _BrowserPageState extends State<BrowserPage>
             onReceivedError: (controller, request, error) {
               _handleLoadError(tab, error.description);
             },
+            shouldOverrideUrlLoading: (controller, navigationAction) async {
+              return NavigationActionPolicy.ALLOW;
+            },
             onReceivedHttpError: (controller, request, error) {
               _handleLoadError(
                   tab, 'HTTP ${error.statusCode}: ${error.reasonPhrase}');
@@ -632,15 +635,15 @@ class _BrowserPageState extends State<BrowserPage>
                           case 'view_bookmarks':
                             _showBookmarks();
                             break;
-                           case 'history':
-                             _showHistory();
-                             break;
-                           case 'find':
-                             _showFindDialog();
-                             break;
-                           case 'settings':
-                             _showSettings();
-                             break;
+                          case 'history':
+                            _showHistory();
+                            break;
+                          case 'find':
+                            _showFindDialog();
+                            break;
+                          case 'settings':
+                            _showSettings();
+                            break;
                           case 'new_tab':
                             _addNewTab();
                             break;
@@ -670,18 +673,18 @@ class _BrowserPageState extends State<BrowserPage>
                           value: 'view_bookmarks',
                           child: Text('Bookmarks'),
                         ),
-                         const PopupMenuItem(
-                           value: 'history',
-                           child: Text('History'),
-                         ),
-                         const PopupMenuItem(
-                           value: 'find',
-                           child: Text('Find in Page'),
-                         ),
-                         const PopupMenuItem(
-                           value: 'clear_cache',
-                           child: Text('Clear Cache'),
-                         ),
+                        const PopupMenuItem(
+                          value: 'history',
+                          child: Text('History'),
+                        ),
+                        const PopupMenuItem(
+                          value: 'find',
+                          child: Text('Find in Page'),
+                        ),
+                        const PopupMenuItem(
+                          value: 'clear_cache',
+                          child: Text('Clear Cache'),
+                        ),
                         const PopupMenuItem(
                           value: 'settings',
                           child: Text('Settings'),
