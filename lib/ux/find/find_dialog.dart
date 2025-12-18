@@ -8,9 +8,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
 class FindDialog extends StatefulWidget {
-  const FindDialog({super.key, required this.controller});
+  const FindDialog({super.key, required this.findInteractionController});
 
-  final InAppWebViewController? controller;
+  final FindInteractionController findInteractionController;
 
   @override
   State<FindDialog> createState() => _FindDialogState();
@@ -29,10 +29,8 @@ class _FindDialogState extends State<FindDialog> {
     final term = _searchController.text;
     if (term.isNotEmpty) {
       try {
-        // ignore: deprecated_member_use
-        await widget.controller?.findAllAsync(find: term);
-        // ignore: deprecated_member_use
-        await widget.controller?.findNext(forward: true);
+        await widget.findInteractionController.findAll(find: term);
+        await widget.findInteractionController.findNext(forward: true);
       } catch (e) {
         debugPrint('Find operation failed: $e');
       }
@@ -41,8 +39,7 @@ class _FindDialogState extends State<FindDialog> {
 
   Future<void> _findNext() async {
     try {
-      // ignore: deprecated_member_use
-      await widget.controller?.findNext(forward: true);
+      await widget.findInteractionController.findNext(forward: true);
     } catch (e) {
       debugPrint('Find next operation failed: $e');
     }
@@ -50,8 +47,7 @@ class _FindDialogState extends State<FindDialog> {
 
   Future<void> _findPrevious() async {
     try {
-      // ignore: deprecated_member_use
-      await widget.controller?.findNext(forward: false);
+      await widget.findInteractionController.findNext(forward: false);
     } catch (e) {
       debugPrint('Find previous operation failed: $e');
     }
