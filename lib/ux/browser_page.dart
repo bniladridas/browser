@@ -155,6 +155,7 @@ class TabData {
   final TextEditingController urlController;
   final FocusNode urlFocusNode;
   InAppWebViewController? webViewController;
+  late FindInteractionController findInteractionController;
   bool isLoading = false;
   bool hasError = false;
   String? errorMessage;
@@ -163,7 +164,9 @@ class TabData {
 
   TabData(this.currentUrl)
       : urlController = TextEditingController(text: currentUrl),
-        urlFocusNode = FocusNode();
+        urlFocusNode = FocusNode() {
+    findInteractionController = FindInteractionController();
+  }
 }
 
 class BrowserPage extends StatefulWidget {
@@ -406,7 +409,8 @@ class _BrowserPageState extends State<BrowserPage>
   void _showFindDialog() {
     showDialog(
       context: context,
-      builder: (context) => FindDialog(controller: activeTab.webViewController),
+      builder: (context) => FindDialog(
+          findInteractionController: activeTab.findInteractionController),
     );
   }
 
@@ -517,6 +521,7 @@ class _BrowserPageState extends State<BrowserPage>
         children: [
           InAppWebView(
             initialUrlRequest: URLRequest(url: WebUri(tab.currentUrl)),
+            findInteractionController: tab.findInteractionController,
             initialSettings: InAppWebViewSettings(
               cacheEnabled: true,
               clearCache: false,
