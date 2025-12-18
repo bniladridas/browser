@@ -61,6 +61,8 @@ void main() {
   });
 
   testWidgets('Find dialog displays correctly', (WidgetTester tester) async {
+    // TODO: Re-enable this test with proper mocking when mockito is added to dependencies
+    // FindInteractionController requires platform setup, but we should mock it to test UI
     // Skip this test since FindInteractionController requires platform setup for testing
     // The migration from deprecated APIs is complete and verified by compilation
   }, skip: true);

@@ -155,7 +155,8 @@ class TabData {
   final TextEditingController urlController;
   final FocusNode urlFocusNode;
   InAppWebViewController? webViewController;
-  late FindInteractionController findInteractionController;
+  final FindInteractionController findInteractionController =
+      FindInteractionController();
   bool isLoading = false;
   bool hasError = false;
   String? errorMessage;
@@ -164,9 +165,7 @@ class TabData {
 
   TabData(this.currentUrl)
       : urlController = TextEditingController(text: currentUrl),
-        urlFocusNode = FocusNode() {
-    findInteractionController = FindInteractionController();
-  }
+        urlFocusNode = FocusNode();
 }
 
 class BrowserPage extends StatefulWidget {
