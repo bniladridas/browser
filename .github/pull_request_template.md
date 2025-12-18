@@ -4,14 +4,18 @@ Copyright 2025 bniladridas. All rights reserved.
 Use of this source code is governed by a MIT license that can be
 found in the LICENSE file. -->
 
-## Description
+### What changed
+- …
 
-Brief description of the changes.
+### Why
+- …
 
-## Summary
+### Context
+- Related issue / discussion:
 
-- Bullet list of key changes and improvements
+### Impact
+- User-facing: yes / no
+- Breaking change: yes / no
 
-## Testing
-
-How to test the changes.
+### Notes
+- …
