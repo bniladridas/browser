@@ -555,8 +555,8 @@ class _BrowserPageState extends State<BrowserPage>
             onReceivedError: (controller, request, error) {
               _handleLoadError(tab, error.description);
             },
-            shouldOverrideUrlLoading: (controller, navigationAction) async {
-              return NavigationActionPolicy.ALLOW;
+            shouldOverrideUrlLoading: (controller, navigationAction) {
+              return Future.value(NavigationActionPolicy.ALLOW);
             },
             onReceivedHttpError: (controller, request, error) {
               _handleLoadError(
