@@ -550,38 +550,66 @@ class _BrowserPageState extends State<BrowserPage>
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Bookmarks'),
-        content: bookmarkManager.bookmarks.isEmpty
-            ? const Text('No bookmarks')
-            : SizedBox(
-                width: double.maxFinite,
-                height: 300,
-                child: ListView(
-                  children: bookmarkManager.bookmarks.entries
-                      .map((entry) => ExpansionTile(
-                            title: Text(entry.key),
-                            children: entry.value
-                                .map((url) => ListTile(
-                                      title: Text(url),
-                                      onTap: () {
-                                        Navigator.of(context).pop();
-                                        _loadUrl(url);
-                                      },
-                                      trailing: IconButton(
-                                        icon: const Icon(Icons.delete),
-                                        onPressed: () {
-                                          setState(() {
-                                            bookmarkManager.remove(
-                                                url, entry.key);
-                                          });
-                                          _saveBookmarks();
+        content: StatefulBuilder(
+          builder: (context, innerSetState) => bookmarkManager.bookmarks.isEmpty
+              ? const Text('No bookmarks')
+              : SizedBox(
+                  width: double.maxFinite,
+                  height: 300,
+                  child: ListView(
+                    children: bookmarkManager.bookmarks.entries
+                        .map((entry) => ExpansionTile(
+                              title: Text(entry.key),
+                              children: entry.value
+                                  .map((url) => ListTile(
+                                        title: Text(url),
+                                        onTap: () {
+                                          Navigator.of(context).pop();
+                                          _loadUrl(url);
                                         },
-                                      ),
-                                    ))
-                                .toList(),
-                          ))
-                      .toList(),
+                                        trailing: IconButton(
+                                          icon: const Icon(Icons.delete),
+                                          onPressed: () async {
+                                            final confirm =
+                                                await showDialog<bool>(
+                                              context: context,
+                                              builder: (context) => AlertDialog(
+                                                title: const Text(
+                                                    'Delete Bookmark?'),
+                                                content: Text(
+                                                    'Remove "$url" from ${entry.key}?'),
+                                                actions: [
+                                                  TextButton(
+                                                    onPressed: () =>
+                                                        Navigator.of(context)
+                                                            .pop(false),
+                                                    child: const Text('Cancel'),
+                                                  ),
+                                                  TextButton(
+                                                    onPressed: () =>
+                                                        Navigator.of(context)
+                                                            .pop(true),
+                                                    child: const Text('Delete'),
+                                                  ),
+                                                ],
+                                              ),
+                                            );
+                                            if (confirm == true) {
+                                              innerSetState(() {
+                                                bookmarkManager.remove(
+                                                    url, entry.key);
+                                              });
+                                              _saveBookmarks();
+                                            }
+                                          },
+                                        ),
+                                      ))
+                                  .toList(),
+                            ))
+                        .toList(),
+                  ),
                 ),
-              ),
+        ),
         actions: [
           TextButton(
             onPressed: () {
