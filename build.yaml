@@ -1,0 +1,4 @@
+targets:
+  $default:
+    builders:
+      source_gen|combining_builder: {}

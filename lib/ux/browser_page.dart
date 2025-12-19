@@ -18,7 +18,7 @@ import '../constants.dart';
 import 'find/find_dialog.dart';
 
 const String _modernUserAgent =
-    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36';
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0.2 Safari/605.1.15';
 const String _legacyUserAgent =
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.0.0 Safari/537.36';
 
@@ -156,6 +156,8 @@ class TabData {
   final TextEditingController urlController;
   final FocusNode urlFocusNode;
   InAppWebViewController? webViewController;
+  final FindInteractionController findInteractionController =
+      FindInteractionController();
   bool isLoading = false;
   bool hasError = false;
   String? errorMessage;
@@ -525,7 +527,8 @@ class _BrowserPageState extends State<BrowserPage>
   void _showFindDialog() {
     showDialog(
       context: context,
-      builder: (context) => FindDialog(controller: activeTab.webViewController),
+      builder: (context) => FindDialog(
+          findInteractionController: activeTab.findInteractionController),
     );
   }
 
@@ -651,6 +654,7 @@ class _BrowserPageState extends State<BrowserPage>
         children: [
           InAppWebView(
             initialUrlRequest: URLRequest(url: WebUri(tab.currentUrl)),
+            findInteractionController: tab.findInteractionController,
             initialSettings: InAppWebViewSettings(
               cacheEnabled: true,
               clearCache: false,
@@ -688,6 +692,9 @@ class _BrowserPageState extends State<BrowserPage>
             },
             onReceivedError: (controller, request, error) {
               _handleLoadError(tab, error.description);
+            },
+            shouldOverrideUrlLoading: (controller, navigationAction) {
+              return Future.value(NavigationActionPolicy.ALLOW);
             },
             onReceivedHttpError: (controller, request, error) {
               _handleLoadError(
