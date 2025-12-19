@@ -1,0 +1,14 @@
+[
+  {
+    "urlFilter": ".*doubleclick.net.*",
+    "actionType": "BLOCK"
+  },
+  {
+    "urlFilter": ".*googlesyndication.com.*",
+    "actionType": "BLOCK"
+  },
+  {
+    "urlFilter": ".*googleadservices.com.*",
+    "actionType": "BLOCK"
+  }
+]
