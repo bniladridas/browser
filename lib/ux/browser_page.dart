@@ -15,7 +15,6 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:http/http.dart' as http;
 
 import '../constants.dart';
-import '../features/ad_blockers.dart';
 import '../features/theme_utils.dart';
 import '../features/download_manager.dart';
 import '../features/bookmark_manager.dart';
@@ -80,7 +79,6 @@ class _SettingsDialogState extends State<SettingsDialog> {
       _useModernUserAgent = prefs.getBool(useModernUserAgentKey) ?? false;
       _enableGitFetch = prefs.getBool(enableGitFetchKey) ?? false;
       _privateBrowsing = prefs.getBool(privateBrowsingKey) ?? false;
-      _adBlocking = prefs.getBool(adBlockingKey) ?? false;
       _adBlocking = prefs.getBool(adBlockingKey) ?? false;
     });
   }
@@ -193,7 +191,6 @@ class _SettingsDialogState extends State<SettingsDialog> {
             await prefs.setBool(privateBrowsingKey, _privateBrowsing);
             await prefs.setBool(adBlockingKey, _adBlocking);
             await prefs.setString(themeModeKey, _selectedTheme.name);
-            await prefs.setBool(adBlockingKey, _adBlocking);
             await InAppWebViewController.clearAllCache(includeDiskFiles: true);
             widget.onSettingsChanged?.call();
             if (mounted) {
@@ -366,6 +363,7 @@ class BrowserPage extends StatefulWidget {
       this.enableGitFetch = false,
       this.privateBrowsing = false,
       this.adBlocking = false,
+      this.adBlockers = const <ContentBlocker>[],
       this.themeMode = AppThemeMode.system,
       this.onSettingsChanged});
 
@@ -375,6 +373,7 @@ class BrowserPage extends StatefulWidget {
   final bool enableGitFetch;
   final bool privateBrowsing;
   final bool adBlocking;
+  final List<ContentBlocker> adBlockers;
   final AppThemeMode themeMode;
   final void Function()? onSettingsChanged;
 
@@ -742,7 +741,8 @@ class _BrowserPageState extends State<BrowserPage>
               cacheEnabled: privateSettings.cacheEnabled,
               clearCache: privateSettings.clearCache,
               useOnLoadResource: false,
-              contentBlockers: widget.adBlocking ? getAdBlockers() : [],
+              contentBlockers:
+                  widget.adBlocking ? widget.adBlockers : <ContentBlocker>[],
               userAgent: widget.useModernUserAgent
                   ? _modernUserAgent
                   : _legacyUserAgent,

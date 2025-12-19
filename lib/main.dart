@@ -8,7 +8,9 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:window_manager/window_manager.dart';
+import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'constants.dart';
+import 'features/ad_blockers.dart';
 import 'features/theme_utils.dart';
 import 'ux/browser_page.dart';
 
@@ -38,6 +40,7 @@ class _MyAppState extends State<MyApp> {
   bool _privateBrowsing = false;
   bool _adBlocking = false;
   AppThemeMode _themeMode = AppThemeMode.system;
+  List<ContentBlocker> _adBlockers = [];
   bool _prefsLoaded = true;
 
   @override
@@ -49,6 +52,7 @@ class _MyAppState extends State<MyApp> {
   Future<void> _loadSettings() async {
     try {
       final prefs = await SharedPreferences.getInstance();
+      _adBlockers = await getAdBlockers();
       setState(() {
         _initialUrl = prefs.getString(homepageKey) ?? 'https://www.google.com';
         _hideAppBar = prefs.getBool(hideAppBarKey) ?? false;
@@ -108,6 +112,7 @@ class _MyAppState extends State<MyApp> {
             enableGitFetch: _enableGitFetch,
             privateBrowsing: _privateBrowsing,
             adBlocking: _adBlocking,
+            adBlockers: _adBlockers,
             themeMode: _themeMode,
             onSettingsChanged: _loadSettings),
       ),
