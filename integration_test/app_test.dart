@@ -154,7 +154,31 @@ void main() {
 
       await _launchApp(tester);
 
-      // Open menu and go to Git Fetch
+      // First, enable Git Fetch in settings
+      await tester.tap(find.byType(PopupMenuButton<String>));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Settings'));
+      await tester.pumpAndSettle();
+
+      // Enable Git Fetch toggle
+      final gitFetchSwitch = find.byWidgetPredicate(
+        (widget) =>
+            widget is SwitchListTile &&
+            (widget.title as Text).data == 'Enable Git Fetch',
+      );
+      await tester.tap(gitFetchSwitch);
+      await tester.pumpAndSettle();
+
+      // Save settings
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+
+      // Close settings
+      await tester
+          .tap(find.text('Settings saved')); // Wait for snackbar or just pump
+      await tester.pumpAndSettle();
+
+      // Now open menu and go to Git Fetch
       await tester.tap(find.byType(PopupMenuButton<String>));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Git Fetch'));
@@ -165,7 +189,8 @@ void main() {
 
       // Enter a repo
       const testRepo = 'flutter/flutter';
-      await tester.enterText(find.bySemanticsLabel('GitHub Repo (owner/repo)'), testRepo);
+      await tester.enterText(
+          find.bySemanticsLabel('GitHub Repo (owner/repo)'), testRepo);
       await tester.pumpAndSettle();
 
       // Tap Fetch
