@@ -165,7 +165,7 @@ void main() {
 
       // Enter a repo
       const testRepo = 'flutter/flutter';
-      await tester.enterText(find.byType(TextField).last, testRepo);
+      await tester.enterText(find.bySemanticsLabel('GitHub Repo (owner/repo)'), testRepo);
       await tester.pumpAndSettle();
 
       // Tap Fetch
