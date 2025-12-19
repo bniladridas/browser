@@ -201,5 +201,54 @@ void main() {
       // For now, just ensure dialog stays open
       expect(find.text('Git Fetch'), findsOneWidget);
     }, timeout: testTimeout);
+
+    testWidgets('New feature toggles in settings', (WidgetTester tester) async {
+      if (Platform.isMacOS) return; // Skip on macOS due to webview test issues
+
+      await _launchApp(tester);
+
+      // Open settings
+      await tester.tap(find.byType(PopupMenuButton<String>));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Settings'));
+      await tester.pumpAndSettle();
+
+      // Check for new toggles
+      expect(find.text('Private Browsing'), findsOneWidget);
+      expect(find.text('Ad Blocking'), findsOneWidget);
+      expect(find.text('Theme:'), findsOneWidget); // Dropdown
+
+      // Toggle private browsing
+      final privateSwitch = find.byWidgetPredicate(
+        (widget) =>
+            widget is SwitchListTile &&
+            (widget.title as Text).data == 'Private Browsing',
+      );
+      await tester.tap(privateSwitch);
+      await tester.pumpAndSettle();
+
+      // Toggle ad blocking
+      final adSwitch = find.byWidgetPredicate(
+        (widget) =>
+            widget is SwitchListTile &&
+            (widget.title as Text).data == 'Ad Blocking',
+      );
+      await tester.tap(adSwitch);
+      await tester.pumpAndSettle();
+
+      // Change theme to dark
+      final dropdown = find.byType(DropdownButton);
+      await tester.tap(dropdown);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Theme: dark'));
+      await tester.pumpAndSettle();
+
+      // Save settings
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+
+      // Should show saved snackbar
+      expect(find.text('Settings saved'), findsOneWidget);
+    }, timeout: testTimeout);
   });
 }
