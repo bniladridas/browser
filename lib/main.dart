@@ -33,6 +33,7 @@ class _MyAppState extends State<MyApp> {
   String _initialUrl = 'https://www.google.com';
   bool _hideAppBar = false;
   bool _useModernUserAgent = false;
+  bool _enableGitFetch = false;
   bool _prefsLoaded = true;
 
   @override
@@ -48,6 +49,7 @@ class _MyAppState extends State<MyApp> {
         _initialUrl = prefs.getString(homepageKey) ?? 'https://www.google.com';
         _hideAppBar = prefs.getBool(hideAppBarKey) ?? false;
         _useModernUserAgent = prefs.getBool(useModernUserAgentKey) ?? false;
+        _enableGitFetch = prefs.getBool(enableGitFetchKey) ?? false;
       });
     } catch (e) {
       setState(() {
@@ -96,6 +98,7 @@ class _MyAppState extends State<MyApp> {
           initialUrl: _initialUrl,
           hideAppBar: _hideAppBar,
           useModernUserAgent: _useModernUserAgent,
+          enableGitFetch: _enableGitFetch,
           onSettingsChanged: _loadSettings),
     );
   }

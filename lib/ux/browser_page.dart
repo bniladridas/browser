@@ -12,6 +12,7 @@ import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:http/http.dart' as http;
 
 import '../constants.dart';
 import 'find/find_dialog.dart';
@@ -51,6 +52,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
   String? currentHomepage;
   bool _hideAppBar = false;
   bool _useModernUserAgent = false;
+  bool _enableGitFetch = false;
 
   @override
   void initState() {
@@ -66,6 +68,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
       homepageController = TextEditingController(text: currentHomepage);
       _hideAppBar = prefs.getBool(hideAppBarKey) ?? false;
       _useModernUserAgent = prefs.getBool(useModernUserAgentKey) ?? false;
+      _enableGitFetch = prefs.getBool(enableGitFetchKey) ?? false;
     });
   }
 
@@ -113,6 +116,16 @@ class _SettingsDialogState extends State<SettingsDialog> {
               });
             },
           ),
+          SwitchListTile(
+            title: const Text('Enable Git Fetch'),
+            subtitle: const Text('Show GitHub repository fetch option in menu'),
+            value: _enableGitFetch,
+            onChanged: (value) {
+              setState(() {
+                _enableGitFetch = value;
+              });
+            },
+          ),
         ],
       ),
       actions: [
@@ -126,6 +139,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
             await prefs.setString(homepageKey, homepageController.text);
             await prefs.setBool(hideAppBarKey, _hideAppBar);
             await prefs.setBool(useModernUserAgentKey, _useModernUserAgent);
+            await prefs.setBool(enableGitFetchKey, _enableGitFetch);
             await InAppWebViewController.clearAllCache(includeDiskFiles: true);
             widget.onSettingsChanged?.call();
             if (mounted) {
@@ -168,17 +182,140 @@ class TabData {
         urlFocusNode = FocusNode();
 }
 
+class GitFetchDialog extends StatefulWidget {
+  const GitFetchDialog({super.key, required this.onOpenInNewTab});
+
+  final void Function(String url) onOpenInNewTab;
+
+  @override
+  State<GitFetchDialog> createState() => _GitFetchDialogState();
+}
+
+class _GitFetchDialogState extends State<GitFetchDialog> {
+  final TextEditingController repoController = TextEditingController();
+  bool isLoading = false;
+  Map<String, dynamic>? repoData;
+  String? errorMessage;
+
+  Future<void> _fetchRepo() async {
+    final repo = repoController.text.trim();
+    if (repo.isEmpty) return;
+
+    final parts = repo.split('/');
+    if (parts.length != 2) {
+      setState(() {
+        errorMessage = 'Invalid format. Use owner/repo';
+      });
+      return;
+    }
+
+    setState(() {
+      isLoading = true;
+      errorMessage = null;
+      repoData = null;
+    });
+
+    try {
+      final url = 'https://api.github.com/repos/${parts[0]}/${parts[1]}';
+      // Note: This would use webfetch tool in the assistant, but in code we use http
+      // For demo, using placeholder
+      final response = await fetchGitHubRepo(url);
+      if (mounted) {
+        setState(() {
+          repoData = response;
+          isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          errorMessage = 'Failed to fetch repo: $e';
+          isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<Map<String, dynamic>> fetchGitHubRepo(String url) async {
+    final response = await http.get(Uri.parse(url));
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to load repo: ${response.statusCode}');
+    }
+  }
+
+  @override
+  void dispose() {
+    repoController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Git Fetch'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: repoController,
+            decoration: const InputDecoration(
+              labelText: 'GitHub Repo (owner/repo)',
+              hintText: 'e.g., flutter/flutter',
+            ),
+          ),
+          const SizedBox(height: 16),
+          if (isLoading) const CircularProgressIndicator(),
+          if (errorMessage != null)
+            Text(errorMessage!, style: const TextStyle(color: Colors.red)),
+          if (repoData != null) ...[
+            Text('Name: ${repoData!['name'] ?? 'N/A'}'),
+            Text(
+                'Description: ${repoData!['description'] ?? 'No description'}'),
+            Text('Stars: ${repoData!['stargazers_count'] ?? 0}'),
+            Text('Forks: ${repoData!['forks_count'] ?? 0}'),
+            Text('Language: ${repoData!['language'] ?? 'N/A'}'),
+            Text('Open Issues: ${repoData!['open_issues_count'] ?? 0}'),
+          ],
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        TextButton(
+          onPressed: _fetchRepo,
+          child: const Text('Fetch'),
+        ),
+        if (repoData != null)
+          TextButton(
+            onPressed: () {
+              final url = 'https://github.com/${repoController.text}';
+              widget.onOpenInNewTab(url);
+              Navigator.of(context).pop();
+            },
+            child: const Text('Open in New Tab'),
+          ),
+      ],
+    );
+  }
+}
+
 class BrowserPage extends StatefulWidget {
   const BrowserPage(
       {super.key,
       required this.initialUrl,
       this.hideAppBar = false,
       this.useModernUserAgent = false,
+      this.enableGitFetch = false,
       this.onSettingsChanged});
 
   final String initialUrl;
   final bool hideAppBar;
   final bool useModernUserAgent;
+  final bool enableGitFetch;
   final void Function()? onSettingsChanged;
 
   @override
@@ -421,6 +558,21 @@ class _BrowserPageState extends State<BrowserPage>
     );
   }
 
+  void _showGitFetchDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => GitFetchDialog(
+        onOpenInNewTab: (url) {
+          _addNewTab();
+          activeTab.currentUrl = url;
+          activeTab.urlController.text = url;
+          activeTab.webViewController
+              ?.loadUrl(urlRequest: URLRequest(url: WebUri(url)));
+        },
+      ),
+    );
+  }
+
   void _showHistory() {
     final history = activeTab.history;
     showDialog(
@@ -657,6 +809,9 @@ class _BrowserPageState extends State<BrowserPage>
                           case 'clear_cache':
                             _clearCache();
                             break;
+                          case 'git_fetch':
+                            _showGitFetchDialog();
+                            break;
                         }
                       },
                       itemBuilder: (context) => [
@@ -689,6 +844,11 @@ class _BrowserPageState extends State<BrowserPage>
                           value: 'clear_cache',
                           child: Text('Clear Cache'),
                         ),
+                        if (widget.enableGitFetch)
+                          const PopupMenuItem(
+                            value: 'git_fetch',
+                            child: Text('Git Fetch'),
+                          ),
                         const PopupMenuItem(
                           value: 'settings',
                           child: Text('Settings'),

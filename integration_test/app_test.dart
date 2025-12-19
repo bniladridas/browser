@@ -148,5 +148,58 @@ void main() {
       // Should show saved snackbar
       expect(find.text('Settings saved'), findsOneWidget);
     }, timeout: testTimeout);
+
+    testWidgets('Git fetch dialog', (WidgetTester tester) async {
+      if (Platform.isMacOS) return; // Skip on macOS due to webview test issues
+
+      await _launchApp(tester);
+
+      // First, enable Git Fetch in settings
+      await tester.tap(find.byType(PopupMenuButton<String>));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Settings'));
+      await tester.pumpAndSettle();
+
+      // Enable Git Fetch toggle
+      final gitFetchSwitch = find.byWidgetPredicate(
+        (widget) =>
+            widget is SwitchListTile &&
+            (widget.title as Text).data == 'Enable Git Fetch',
+      );
+      await tester.tap(gitFetchSwitch);
+      await tester.pumpAndSettle();
+
+      // Save settings
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+
+      // Close settings
+      await tester
+          .tap(find.text('Settings saved')); // Wait for snackbar or just pump
+      await tester.pumpAndSettle();
+
+      // Now open menu and go to Git Fetch
+      await tester.tap(find.byType(PopupMenuButton<String>));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Git Fetch'));
+      await tester.pumpAndSettle();
+
+      // Should show Git Fetch dialog
+      expect(find.text('Git Fetch'), findsOneWidget);
+
+      // Enter a repo
+      const testRepo = 'flutter/flutter';
+      await tester.enterText(
+          find.bySemanticsLabel('GitHub Repo (owner/repo)'), testRepo);
+      await tester.pumpAndSettle();
+
+      // Tap Fetch
+      await tester.tap(find.text('Fetch'));
+      await tester.pumpAndSettle();
+
+      // Should show loading or results (skip detailed check due to network)
+      // For now, just ensure dialog stays open
+      expect(find.text('Git Fetch'), findsOneWidget);
+    }, timeout: testTimeout);
   });
 }
