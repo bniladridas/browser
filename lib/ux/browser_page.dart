@@ -207,17 +207,19 @@ class _GitFetchDialogState extends State<GitFetchDialog> {
       // Note: This would use webfetch tool in the assistant, but in code we use http
       // For demo, using placeholder
       final response = await fetchGitHubRepo(url);
-      setState(() {
-        repoData = response;
-      });
+      if (mounted) {
+        setState(() {
+          repoData = response;
+          isLoading = false;
+        });
+      }
     } catch (e) {
-      setState(() {
-        errorMessage = 'Failed to fetch repo: $e';
-      });
-    } finally {
-      setState(() {
-        isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          errorMessage = 'Failed to fetch repo: $e';
+          isLoading = false;
+        });
+      }
     }
   }
 
@@ -255,12 +257,13 @@ class _GitFetchDialogState extends State<GitFetchDialog> {
           if (errorMessage != null)
             Text(errorMessage!, style: const TextStyle(color: Colors.red)),
           if (repoData != null) ...[
-            Text('Name: ${repoData!['name']}'),
-            Text('Description: ${repoData!['description']}'),
-            Text('Stars: ${repoData!['stargazers_count']}'),
-            Text('Forks: ${repoData!['forks_count']}'),
-            Text('Language: ${repoData!['language']}'),
-            Text('Open Issues: ${repoData!['open_issues_count']}'),
+            Text('Name: ${repoData!['name'] ?? 'N/A'}'),
+            Text(
+                'Description: ${repoData!['description'] ?? 'No description'}'),
+            Text('Stars: ${repoData!['stargazers_count'] ?? 0}'),
+            Text('Forks: ${repoData!['forks_count'] ?? 0}'),
+            Text('Language: ${repoData!['language'] ?? 'N/A'}'),
+            Text('Open Issues: ${repoData!['open_issues_count'] ?? 0}'),
           ],
         ],
       ),

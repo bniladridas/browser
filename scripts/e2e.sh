@@ -8,18 +8,15 @@
 echo "Running integration tests..."
 
 if [[ "$OSTYPE" == "darwin"* ]]; then
+    test_target="integration_test/app_test.dart"
     echo "On macOS, running only app_test.dart due to webview issues."
-    if flutter test integration_test/app_test.dart; then
-        echo "app_test.dart passed!"
-    else
-        echo "app_test.dart failed. Check the output above for details."
-        exit 1
-    fi
 else
-    if flutter test integration_test/; then
-        echo "All tests passed!"
-    else
-        echo "Tests failed. Check the output above for details."
-        exit 1
-    fi
+    test_target="integration_test/"
+fi
+
+if flutter test $test_target; then
+    echo "$test_target passed!"
+else
+    echo "$test_target failed. Check the output above for details."
+    exit 1
 fi
