@@ -52,6 +52,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
   String? currentHomepage;
   bool _hideAppBar = false;
   bool _useModernUserAgent = false;
+  bool _enableGitFetch = false;
 
   @override
   void initState() {
@@ -67,6 +68,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
       homepageController = TextEditingController(text: currentHomepage);
       _hideAppBar = prefs.getBool(hideAppBarKey) ?? false;
       _useModernUserAgent = prefs.getBool(useModernUserAgentKey) ?? false;
+      _enableGitFetch = prefs.getBool(enableGitFetchKey) ?? false;
     });
   }
 
@@ -114,6 +116,16 @@ class _SettingsDialogState extends State<SettingsDialog> {
               });
             },
           ),
+          SwitchListTile(
+            title: const Text('Enable Git Fetch'),
+            subtitle: const Text('Show GitHub repository fetch option in menu'),
+            value: _enableGitFetch,
+            onChanged: (value) {
+              setState(() {
+                _enableGitFetch = value;
+              });
+            },
+          ),
         ],
       ),
       actions: [
@@ -127,6 +139,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
             await prefs.setString(homepageKey, homepageController.text);
             await prefs.setBool(hideAppBarKey, _hideAppBar);
             await prefs.setBool(useModernUserAgentKey, _useModernUserAgent);
+            await prefs.setBool(enableGitFetchKey, _enableGitFetch);
             await InAppWebViewController.clearAllCache(includeDiskFiles: true);
             widget.onSettingsChanged?.call();
             if (mounted) {
@@ -312,6 +325,7 @@ class _BrowserPageState extends State<BrowserPage>
   late TabController tabController;
   final List<TabData> tabs = [];
   final List<String> bookmarks = [];
+  bool _enableGitFetch = false;
 
   @override
   void initState() {
@@ -320,6 +334,7 @@ class _BrowserPageState extends State<BrowserPage>
     tabController = TabController(length: 1, vsync: this);
     tabController.addListener(_onTabChanged);
     _loadBookmarks();
+    _loadSettings();
   }
 
   void _onTabChanged() {
@@ -386,6 +401,13 @@ class _BrowserPageState extends State<BrowserPage>
         bookmarks.addAll(List<String>.from(jsonDecode(bookmarksJson)));
       });
     }
+  }
+
+  Future<void> _loadSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _enableGitFetch = prefs.getBool(enableGitFetchKey) ?? false;
+    });
   }
 
   Future<void> _saveBookmarks() async {
@@ -829,10 +851,11 @@ class _BrowserPageState extends State<BrowserPage>
                           value: 'clear_cache',
                           child: Text('Clear Cache'),
                         ),
-                        const PopupMenuItem(
-                          value: 'git_fetch',
-                          child: Text('Git Fetch'),
-                        ),
+                        if (_enableGitFetch)
+                          const PopupMenuItem(
+                            value: 'git_fetch',
+                            child: Text('Git Fetch'),
+                          ),
                         const PopupMenuItem(
                           value: 'settings',
                           child: Text('Settings'),

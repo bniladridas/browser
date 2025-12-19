@@ -7,3 +7,4 @@
 const String homepageKey = 'homepage';
 const String hideAppBarKey = 'hideAppBar';
 const String useModernUserAgentKey = 'useModernUserAgent';
+const String enableGitFetchKey = 'enableGitFetch';
