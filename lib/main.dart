@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:window_manager/window_manager.dart';
 import 'constants.dart';
+import 'features/theme_utils.dart';
 import 'ux/browser_page.dart';
 
 void main() async {
@@ -34,6 +35,9 @@ class _MyAppState extends State<MyApp> {
   bool _hideAppBar = false;
   bool _useModernUserAgent = false;
   bool _enableGitFetch = false;
+  bool _privateBrowsing = false;
+  bool _adBlocking = false;
+  AppThemeMode _themeMode = AppThemeMode.system;
   bool _prefsLoaded = true;
 
   @override
@@ -50,6 +54,12 @@ class _MyAppState extends State<MyApp> {
         _hideAppBar = prefs.getBool(hideAppBarKey) ?? false;
         _useModernUserAgent = prefs.getBool(useModernUserAgentKey) ?? false;
         _enableGitFetch = prefs.getBool(enableGitFetchKey) ?? false;
+        _privateBrowsing = prefs.getBool(privateBrowsingKey) ?? false;
+        _adBlocking = prefs.getBool(adBlockingKey) ?? false;
+        dynamic themeValue = prefs.get(themeModeKey);
+        String themeStr = themeValue is String ? themeValue : 'system';
+        _themeMode = AppThemeMode.values.firstWhere((e) => e.name == themeStr,
+            orElse: () => AppThemeMode.system);
       });
     } catch (e) {
       setState(() {
@@ -62,8 +72,6 @@ class _MyAppState extends State<MyApp> {
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
-    final textTheme = Typography.dense2021.apply(fontFamily: 'Roboto');
-
     if (!_prefsLoaded) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
@@ -79,27 +87,30 @@ class _MyAppState extends State<MyApp> {
       });
     }
 
-    return MaterialApp(
-      title: 'Browser',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-        textTheme: textTheme,
-        useMaterial3: true,
+    return ScaffoldMessenger(
+      child: MaterialApp(
+        title: 'Browser',
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData(
+          colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+          useMaterial3: true,
+        ),
+        darkTheme: ThemeData(
+          colorScheme: ColorScheme.fromSeed(
+              seedColor: Colors.blue, brightness: Brightness.dark),
+          useMaterial3: true,
+        ),
+        themeMode: toThemeMode(_themeMode),
+        home: BrowserPage(
+            initialUrl: _initialUrl,
+            hideAppBar: _hideAppBar,
+            useModernUserAgent: _useModernUserAgent,
+            enableGitFetch: _enableGitFetch,
+            privateBrowsing: _privateBrowsing,
+            adBlocking: _adBlocking,
+            themeMode: _themeMode,
+            onSettingsChanged: _loadSettings),
       ),
-      darkTheme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-            seedColor: Colors.blue, brightness: Brightness.dark),
-        textTheme: textTheme,
-        useMaterial3: true,
-      ),
-      themeMode: ThemeMode.system,
-      home: BrowserPage(
-          initialUrl: _initialUrl,
-          hideAppBar: _hideAppBar,
-          useModernUserAgent: _useModernUserAgent,
-          enableGitFetch: _enableGitFetch,
-          onSettingsChanged: _loadSettings),
     );
   }
 }

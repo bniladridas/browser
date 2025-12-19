@@ -15,6 +15,11 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:http/http.dart' as http;
 
 import '../constants.dart';
+import '../features/ad_blockers.dart';
+import '../features/theme_utils.dart';
+import '../features/download_manager.dart';
+import '../features/bookmark_manager.dart';
+import '../features/private_browsing.dart';
 import 'find/find_dialog.dart';
 
 const String _modernUserAgent =
@@ -39,9 +44,10 @@ class UrlUtils {
 }
 
 class SettingsDialog extends StatefulWidget {
-  const SettingsDialog({super.key, this.onSettingsChanged});
+  const SettingsDialog({super.key, this.onSettingsChanged, this.currentTheme});
 
   final void Function()? onSettingsChanged;
+  final AppThemeMode? currentTheme;
 
   @override
   State<SettingsDialog> createState() => _SettingsDialogState();
@@ -53,10 +59,14 @@ class _SettingsDialogState extends State<SettingsDialog> {
   bool _hideAppBar = false;
   bool _useModernUserAgent = false;
   bool _enableGitFetch = false;
+  bool _privateBrowsing = false;
+  bool _adBlocking = false;
+  AppThemeMode _selectedTheme = AppThemeMode.system;
 
   @override
   void initState() {
     super.initState();
+    _selectedTheme = widget.currentTheme ?? AppThemeMode.system;
     _loadCurrentHomepage();
   }
 
@@ -69,6 +79,9 @@ class _SettingsDialogState extends State<SettingsDialog> {
       _hideAppBar = prefs.getBool(hideAppBarKey) ?? false;
       _useModernUserAgent = prefs.getBool(useModernUserAgentKey) ?? false;
       _enableGitFetch = prefs.getBool(enableGitFetchKey) ?? false;
+      _privateBrowsing = prefs.getBool(privateBrowsingKey) ?? false;
+      _adBlocking = prefs.getBool(adBlockingKey) ?? false;
+      _adBlocking = prefs.getBool(adBlockingKey) ?? false;
     });
   }
 
@@ -126,6 +139,43 @@ class _SettingsDialogState extends State<SettingsDialog> {
               });
             },
           ),
+          SwitchListTile(
+            title: const Text('Private Browsing'),
+            subtitle: const Text('Disable cache and cookies for privacy'),
+            value: _privateBrowsing,
+            onChanged: (value) {
+              setState(() {
+                _privateBrowsing = value;
+              });
+            },
+          ),
+          SwitchListTile(
+            title: const Text('Ad Blocking'),
+            subtitle: const Text('Block common ad domains'),
+            value: _adBlocking,
+            onChanged: (value) {
+              setState(() {
+                _adBlocking = value;
+              });
+            },
+          ),
+          DropdownButton<AppThemeMode>(
+            value: _selectedTheme,
+            onChanged: (AppThemeMode? value) {
+              if (value != null) {
+                setState(() {
+                  _selectedTheme = value;
+                });
+              }
+            },
+            items: AppThemeMode.values
+                .map<DropdownMenuItem<AppThemeMode>>((AppThemeMode mode) {
+              return DropdownMenuItem<AppThemeMode>(
+                value: mode,
+                child: Text('Theme: ${mode.name}'),
+              );
+            }).toList(),
+          ),
         ],
       ),
       actions: [
@@ -140,6 +190,10 @@ class _SettingsDialogState extends State<SettingsDialog> {
             await prefs.setBool(hideAppBarKey, _hideAppBar);
             await prefs.setBool(useModernUserAgentKey, _useModernUserAgent);
             await prefs.setBool(enableGitFetchKey, _enableGitFetch);
+            await prefs.setBool(privateBrowsingKey, _privateBrowsing);
+            await prefs.setBool(adBlockingKey, _adBlocking);
+            await prefs.setString(themeModeKey, _selectedTheme.name);
+            await prefs.setBool(adBlockingKey, _adBlocking);
             await InAppWebViewController.clearAllCache(includeDiskFiles: true);
             widget.onSettingsChanged?.call();
             if (mounted) {
@@ -310,12 +364,18 @@ class BrowserPage extends StatefulWidget {
       this.hideAppBar = false,
       this.useModernUserAgent = false,
       this.enableGitFetch = false,
+      this.privateBrowsing = false,
+      this.adBlocking = false,
+      this.themeMode = AppThemeMode.system,
       this.onSettingsChanged});
 
   final String initialUrl;
   final bool hideAppBar;
   final bool useModernUserAgent;
   final bool enableGitFetch;
+  final bool privateBrowsing;
+  final bool adBlocking;
+  final AppThemeMode themeMode;
   final void Function()? onSettingsChanged;
 
   @override
@@ -326,7 +386,7 @@ class _BrowserPageState extends State<BrowserPage>
     with TickerProviderStateMixin {
   late TabController tabController;
   final List<TabData> tabs = [];
-  final List<String> bookmarks = [];
+  final bookmarkManager = BookmarkManager();
 
   @override
   void initState() {
@@ -396,16 +456,13 @@ class _BrowserPageState extends State<BrowserPage>
     final prefs = await SharedPreferences.getInstance();
     final bookmarksJson = prefs.getString('bookmarks');
     if (bookmarksJson != null) {
-      setState(() {
-        bookmarks.clear();
-        bookmarks.addAll(List<String>.from(jsonDecode(bookmarksJson)));
-      });
+      bookmarkManager.load(bookmarksJson);
     }
   }
 
   Future<void> _saveBookmarks() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('bookmarks', jsonEncode(bookmarks));
+    await prefs.setString('bookmarks', bookmarkManager.save());
   }
 
   void _handleLoadError(TabData tab, String newErrorMessage) {
@@ -420,12 +477,31 @@ class _BrowserPageState extends State<BrowserPage>
   }
 
   void _addBookmark() async {
-    if (!bookmarks.contains(activeTab.currentUrl)) {
-      setState(() {
-        bookmarks.add(activeTab.currentUrl);
-      });
-      await _saveBookmarks();
-    }
+    String category = 'General';
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Add Bookmark'),
+        content: TextField(
+          onChanged: (value) => category = value.isEmpty ? 'General' : value,
+          decoration: const InputDecoration(labelText: 'Category'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              bookmarkManager.add(activeTab.currentUrl, category);
+              _saveBookmarks();
+              Navigator.pop(context);
+            },
+            child: const Text('Add'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _goBack() async {
@@ -475,60 +551,45 @@ class _BrowserPageState extends State<BrowserPage>
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Bookmarks'),
-        content: bookmarks.isEmpty
+        content: bookmarkManager.bookmarks.isEmpty
             ? const Text('No bookmarks')
             : SizedBox(
                 width: double.maxFinite,
-                height: 300, // Fixed height for test
-                child: ListView.builder(
-                  itemCount: bookmarks.length,
-                  itemBuilder: (context, index) {
-                    return ListTile(
-                      title: Text(bookmarks[index]),
-                      onTap: () {
-                        Navigator.of(context).pop();
-                        _loadUrl(bookmarks[index]);
-                      },
-                      trailing: IconButton(
-                        icon: const Icon(Icons.delete),
-                        onPressed: () async {
-                          final confirm = await showDialog<bool>(
-                            context: context,
-                            builder: (context) => AlertDialog(
-                              title: const Text('Remove Bookmark?'),
-                              actions: [
-                                TextButton(
-                                  onPressed: () =>
-                                      Navigator.of(context).pop(false),
-                                  child: const Text('Cancel'),
-                                ),
-                                TextButton(
-                                  onPressed: () =>
-                                      Navigator.of(context).pop(true),
-                                  child: const Text('Remove'),
-                                ),
-                              ],
-                            ),
-                          );
-                          if (confirm == true) {
-                            setState(() {
-                              bookmarks.removeAt(index);
-                            });
-                            await _saveBookmarks();
-                          }
-                        },
-                      ),
-                    );
-                  },
+                height: 300,
+                child: ListView(
+                  children: bookmarkManager.bookmarks.entries
+                      .map((entry) => ExpansionTile(
+                            title: Text(entry.key),
+                            children: entry.value
+                                .map((url) => ListTile(
+                                      title: Text(url),
+                                      onTap: () {
+                                        Navigator.of(context).pop();
+                                        _loadUrl(url);
+                                      },
+                                      trailing: IconButton(
+                                        icon: const Icon(Icons.delete),
+                                        onPressed: () {
+                                          setState(() {
+                                            bookmarkManager.remove(
+                                                url, entry.key);
+                                          });
+                                          _saveBookmarks();
+                                        },
+                                      ),
+                                    ))
+                                .toList(),
+                          ))
+                      .toList(),
                 ),
               ),
         actions: [
           TextButton(
-            onPressed: () async {
+            onPressed: () {
               setState(() {
-                bookmarks.clear();
+                bookmarkManager.clear();
               });
-              await _saveBookmarks();
+              _saveBookmarks();
               Navigator.of(context).pop();
             },
             child: const Text('Clear All'),
@@ -553,8 +614,9 @@ class _BrowserPageState extends State<BrowserPage>
   void _showSettings() {
     showDialog(
       context: context,
-      builder: (context) =>
-          SettingsDialog(onSettingsChanged: widget.onSettingsChanged),
+      builder: (context) => SettingsDialog(
+          onSettingsChanged: widget.onSettingsChanged,
+          currentTheme: widget.themeMode),
     );
   }
 
@@ -667,6 +729,9 @@ class _BrowserPageState extends State<BrowserPage>
       return _buildErrorView(tab);
     }
 
+    final privateSettings =
+        PrivateBrowsingSettings.fromEnabled(widget.privateBrowsing);
+
     try {
       return Stack(
         children: [
@@ -674,9 +739,10 @@ class _BrowserPageState extends State<BrowserPage>
             initialUrlRequest: URLRequest(url: WebUri(tab.currentUrl)),
             findInteractionController: tab.findInteractionController,
             initialSettings: InAppWebViewSettings(
-              cacheEnabled: true,
-              clearCache: false,
+              cacheEnabled: privateSettings.cacheEnabled,
+              clearCache: privateSettings.clearCache,
               useOnLoadResource: false,
+              contentBlockers: widget.adBlocking ? getAdBlockers() : [],
               userAgent: widget.useModernUserAgent
                   ? _modernUserAgent
                   : _legacyUserAgent,
@@ -717,6 +783,16 @@ class _BrowserPageState extends State<BrowserPage>
             onReceivedHttpError: (controller, request, error) {
               _handleLoadError(
                   tab, 'HTTP ${error.statusCode}: ${error.reasonPhrase}');
+            },
+            onDownloadStartRequest: (controller, request) async {
+              final path = await downloadFile(request.url.toString(),
+                  request.suggestedFilename ?? 'download');
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text(path != null
+                        ? 'Downloaded to $path'
+                        : 'Download failed')));
+              }
             },
           ),
           if (tab.isLoading)
