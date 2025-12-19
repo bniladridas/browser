@@ -309,11 +309,13 @@ class BrowserPage extends StatefulWidget {
       required this.initialUrl,
       this.hideAppBar = false,
       this.useModernUserAgent = false,
+      this.enableGitFetch = false,
       this.onSettingsChanged});
 
   final String initialUrl;
   final bool hideAppBar;
   final bool useModernUserAgent;
+  final bool enableGitFetch;
   final void Function()? onSettingsChanged;
 
   @override
@@ -325,7 +327,6 @@ class _BrowserPageState extends State<BrowserPage>
   late TabController tabController;
   final List<TabData> tabs = [];
   final List<String> bookmarks = [];
-  bool _enableGitFetch = false;
 
   @override
   void initState() {
@@ -334,7 +335,6 @@ class _BrowserPageState extends State<BrowserPage>
     tabController = TabController(length: 1, vsync: this);
     tabController.addListener(_onTabChanged);
     _loadBookmarks();
-    _loadSettings();
   }
 
   void _onTabChanged() {
@@ -401,13 +401,6 @@ class _BrowserPageState extends State<BrowserPage>
         bookmarks.addAll(List<String>.from(jsonDecode(bookmarksJson)));
       });
     }
-  }
-
-  Future<void> _loadSettings() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _enableGitFetch = prefs.getBool(enableGitFetchKey) ?? false;
-    });
   }
 
   Future<void> _saveBookmarks() async {
@@ -851,7 +844,7 @@ class _BrowserPageState extends State<BrowserPage>
                           value: 'clear_cache',
                           child: Text('Clear Cache'),
                         ),
-                        if (_enableGitFetch)
+                        if (widget.enableGitFetch)
                           const PopupMenuItem(
                             value: 'git_fetch',
                             child: Text('Git Fetch'),
