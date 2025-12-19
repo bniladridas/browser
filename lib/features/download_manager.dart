@@ -21,7 +21,8 @@ Future<String?> downloadFile(String url, String filename) async {
       }
     }
   } catch (e) {
-    debugPrint('Download failed: $e');
+    // Handle error
+    print('Download failed: $e');
   }
   return null;
 }
