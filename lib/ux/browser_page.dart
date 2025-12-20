@@ -19,6 +19,7 @@ import '../features/theme_utils.dart';
 import '../features/download_manager.dart';
 import '../features/bookmark_manager.dart';
 import '../features/private_browsing.dart';
+import '../features/video_manager.dart';
 import 'find/find_dialog.dart';
 
 const String _modernUserAgent =
@@ -381,22 +382,58 @@ class BrowserPage extends StatefulWidget {
   State<BrowserPage> createState() => _BrowserPageState();
 }
 
+class KeepAliveWrapper extends StatefulWidget {
+  final Widget child;
+
+  const KeepAliveWrapper({super.key, required this.child});
+
+  @override
+  State<KeepAliveWrapper> createState() => _KeepAliveWrapperState();
+}
+
+class _KeepAliveWrapperState extends State<KeepAliveWrapper>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return widget.child;
+  }
+}
+
 class _BrowserPageState extends State<BrowserPage>
     with TickerProviderStateMixin {
   late TabController tabController;
   final List<TabData> tabs = [];
   final bookmarkManager = BookmarkManager();
+  late int previousTabIndex;
 
   @override
   void initState() {
     super.initState();
     tabs.add(TabData(widget.initialUrl));
     tabController = TabController(length: 1, vsync: this);
+    previousTabIndex = 0;
     tabController.addListener(_onTabChanged);
     _loadBookmarks();
   }
 
   void _onTabChanged() {
+    if (previousTabIndex != tabController.index) {
+      // Pause videos on previous tab
+      final prevTab = tabs[previousTabIndex];
+      if (prevTab.webViewController != null) {
+        VideoManager.pauseVideos(prevTab.webViewController!);
+      }
+      // Resume videos on current tab
+      final currTab = tabs[tabController.index];
+      if (currTab.webViewController != null) {
+        VideoManager.resumeVideos(currTab.webViewController!);
+      }
+    }
+    previousTabIndex = tabController.index;
     if (mounted) {
       setState(() {});
     }
@@ -414,6 +451,7 @@ class _BrowserPageState extends State<BrowserPage>
             length: tabs.length, vsync: this, initialIndex: tabs.length - 1);
         tabController.addListener(_onTabChanged);
       });
+      previousTabIndex = tabController.index;
     }
   }
 
@@ -437,6 +475,7 @@ class _BrowserPageState extends State<BrowserPage>
             length: tabs.length, vsync: this, initialIndex: newIndex);
         tabController.addListener(_onTabChanged);
       });
+      previousTabIndex = tabController.index;
     }
   }
 
@@ -760,74 +799,88 @@ class _BrowserPageState extends State<BrowserPage>
         PrivateBrowsingSettings.fromEnabled(widget.privateBrowsing);
 
     try {
-      return Stack(
-        children: [
-          InAppWebView(
-            initialUrlRequest: URLRequest(url: WebUri(tab.currentUrl)),
-            findInteractionController: tab.findInteractionController,
-            initialSettings: InAppWebViewSettings(
-              cacheEnabled: privateSettings.cacheEnabled,
-              clearCache: privateSettings.clearCache,
-              useOnLoadResource: false,
-              contentBlockers:
-                  widget.adBlocking ? widget.adBlockers : <ContentBlocker>[],
-              userAgent: widget.useModernUserAgent
-                  ? _modernUserAgent
-                  : _legacyUserAgent,
-            ),
-            onWebViewCreated: (controller) {
-              tab.webViewController = controller;
-            },
-            onLoadStart: (controller, url) {
-              if (url != null && !tab.isClosed) {
+      return KeepAliveWrapper(
+        child: Stack(
+          children: [
+            InAppWebView(
+              initialUrlRequest: URLRequest(url: WebUri(tab.currentUrl)),
+              findInteractionController: tab.findInteractionController,
+              initialSettings: InAppWebViewSettings(
+                cacheEnabled: privateSettings.cacheEnabled,
+                clearCache: privateSettings.clearCache,
+                useOnLoadResource: false,
+                contentBlockers:
+                    widget.adBlocking ? widget.adBlockers : <ContentBlocker>[],
+                userAgent: widget.useModernUserAgent
+                    ? _modernUserAgent
+                    : _legacyUserAgent,
+              ),
+              onWebViewCreated: (controller) {
+                tab.webViewController = controller;
+              },
+              onLoadStart: (controller, url) {
+                if (url != null && !tab.isClosed) {
+                  if (mounted) {
+                    setState(() {
+                      tab.currentUrl = url.toString();
+                      tab.urlController.text = tab.currentUrl;
+                      tab.isLoading = true;
+                      tab.hasError = false;
+                      tab.errorMessage = null;
+                      if (tab.history.isEmpty ||
+                          tab.history.last != tab.currentUrl) {
+                        tab.history.add(tab.currentUrl);
+                      }
+                    });
+                  }
+                }
+              },
+              onLoadStop: (controller, url) {
                 if (mounted) {
+                  setState(() {
+                    tab.isLoading = false;
+                  });
+                }
+              },
+              onUpdateVisitedHistory: (controller, url, androidIsReload) {
+                if (url != null && !tab.isClosed && mounted) {
                   setState(() {
                     tab.currentUrl = url.toString();
                     tab.urlController.text = tab.currentUrl;
-                    tab.isLoading = true;
-                    tab.hasError = false;
-                    tab.errorMessage = null;
                     if (tab.history.isEmpty ||
                         tab.history.last != tab.currentUrl) {
                       tab.history.add(tab.currentUrl);
                     }
                   });
                 }
-              }
-            },
-            onLoadStop: (controller, url) {
-              if (mounted) {
-                setState(() {
-                  tab.isLoading = false;
-                });
-              }
-            },
-            onReceivedError: (controller, request, error) {
-              _handleLoadError(tab, error.description);
-            },
-            shouldOverrideUrlLoading: (controller, navigationAction) {
-              return Future.value(NavigationActionPolicy.ALLOW);
-            },
-            onReceivedHttpError: (controller, request, error) {
-              _handleLoadError(
-                  tab, 'HTTP ${error.statusCode}: ${error.reasonPhrase}');
-            },
-            onDownloadStartRequest: (controller, request) async {
-              final path = await downloadFile(request.url.toString(),
-                  request.suggestedFilename ?? 'download');
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                    content: Text(path != null
-                        ? 'Downloaded to $path'
-                        : 'Download failed')));
-              }
-            },
-          ),
-          if (tab.isLoading)
-            const Center(
-              child: CircularProgressIndicator(),
+              },
+              onReceivedError: (controller, request, error) {
+                _handleLoadError(tab, error.description);
+              },
+              shouldOverrideUrlLoading: (controller, navigationAction) {
+                return Future.value(NavigationActionPolicy.ALLOW);
+              },
+              onReceivedHttpError: (controller, request, error) {
+                _handleLoadError(
+                    tab, 'HTTP ${error.statusCode}: ${error.reasonPhrase}');
+              },
+              onDownloadStartRequest: (controller, request) async {
+                final path = await downloadFile(request.url.toString(),
+                    request.suggestedFilename ?? 'download');
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                      content: Text(path != null
+                          ? 'Downloaded to $path'
+                          : 'Download failed')));
+                }
+              },
             ),
-        ],
+            if (tab.isLoading)
+              const Center(
+                child: CircularProgressIndicator(),
+              ),
+          ],
+        ),
       );
     } catch (e, s) {
       debugPrint('Error creating InAppWebView: $e\n$s');
