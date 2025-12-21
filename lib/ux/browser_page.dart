@@ -101,81 +101,84 @@ class _SettingsDialogState extends State<SettingsDialog> {
 
     return AlertDialog(
       title: const Text('Settings'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          TextField(
-            controller: homepageController,
-            decoration: const InputDecoration(labelText: 'Homepage'),
-          ),
-          SwitchListTile(
-            title: const Text('Hide App Bar'),
-            value: _hideAppBar,
-            onChanged: (value) {
-              setState(() {
-                _hideAppBar = value;
-              });
-            },
-          ),
-          SwitchListTile(
-            title: const Text('Use Modern User Agent'),
-            subtitle: const Text(
-                'Load modern Google interface (applies to new tabs)'),
-            value: _useModernUserAgent,
-            onChanged: (value) {
-              setState(() {
-                _useModernUserAgent = value;
-              });
-            },
-          ),
-          SwitchListTile(
-            title: const Text('Enable Git Fetch'),
-            subtitle: const Text('Show GitHub repository fetch option in menu'),
-            value: _enableGitFetch,
-            onChanged: (value) {
-              setState(() {
-                _enableGitFetch = value;
-              });
-            },
-          ),
-          SwitchListTile(
-            title: const Text('Private Browsing'),
-            subtitle: const Text('Disable cache and cookies for privacy'),
-            value: _privateBrowsing,
-            onChanged: (value) {
-              setState(() {
-                _privateBrowsing = value;
-              });
-            },
-          ),
-          SwitchListTile(
-            title: const Text('Ad Blocking'),
-            subtitle: const Text('Block common ad domains'),
-            value: _adBlocking,
-            onChanged: (value) {
-              setState(() {
-                _adBlocking = value;
-              });
-            },
-          ),
-          DropdownButton<AppThemeMode>(
-            value: _selectedTheme,
-            onChanged: (AppThemeMode? value) {
-              if (value != null) {
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: homepageController,
+              decoration: const InputDecoration(labelText: 'Homepage'),
+            ),
+            SwitchListTile(
+              title: const Text('Hide App Bar'),
+              value: _hideAppBar,
+              onChanged: (value) {
                 setState(() {
-                  _selectedTheme = value;
+                  _hideAppBar = value;
                 });
-              }
-            },
-            items: AppThemeMode.values
-                .map<DropdownMenuItem<AppThemeMode>>((AppThemeMode mode) {
-              return DropdownMenuItem<AppThemeMode>(
-                value: mode,
-                child: Text('Theme: ${mode.name}'),
-              );
-            }).toList(),
-          ),
-        ],
+              },
+            ),
+            SwitchListTile(
+              title: const Text('Use Modern User Agent'),
+              subtitle: const Text(
+                  'Load modern Google interface (applies to new tabs)'),
+              value: _useModernUserAgent,
+              onChanged: (value) {
+                setState(() {
+                  _useModernUserAgent = value;
+                });
+              },
+            ),
+            SwitchListTile(
+              title: const Text('Enable Git Fetch'),
+              subtitle:
+                  const Text('Show GitHub repository fetch option in menu'),
+              value: _enableGitFetch,
+              onChanged: (value) {
+                setState(() {
+                  _enableGitFetch = value;
+                });
+              },
+            ),
+            SwitchListTile(
+              title: const Text('Private Browsing'),
+              subtitle: const Text('Disable cache and cookies for privacy'),
+              value: _privateBrowsing,
+              onChanged: (value) {
+                setState(() {
+                  _privateBrowsing = value;
+                });
+              },
+            ),
+            SwitchListTile(
+              title: const Text('Ad Blocking'),
+              subtitle: const Text('Block common ad domains'),
+              value: _adBlocking,
+              onChanged: (value) {
+                setState(() {
+                  _adBlocking = value;
+                });
+              },
+            ),
+            DropdownButton<AppThemeMode>(
+              value: _selectedTheme,
+              onChanged: (AppThemeMode? value) {
+                if (value != null) {
+                  setState(() {
+                    _selectedTheme = value;
+                  });
+                }
+              },
+              items: AppThemeMode.values
+                  .map<DropdownMenuItem<AppThemeMode>>((AppThemeMode mode) {
+                return DropdownMenuItem<AppThemeMode>(
+                  value: mode,
+                  child: Text('Theme: ${mode.name}'),
+                );
+              }).toList(),
+            ),
+          ],
+        ),
       ),
       actions: [
         TextButton(
