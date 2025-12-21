@@ -65,6 +65,9 @@ dev_dependencies:
   flutter_lints: ^6.0.0
 
 dependency_overrides:
+  # Overrides to resolve warnings about outdated transitive dependencies.
+  # These can likely be removed when direct dependencies are updated.
+  # See issue #94.
   characters: ^1.4.1
   material_color_utilities: ^0.13.0
   matcher: ^0.12.18
