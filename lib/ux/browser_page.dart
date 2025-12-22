@@ -61,6 +61,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
   bool _enableGitFetch = false;
   bool _privateBrowsing = false;
   bool _adBlocking = false;
+  bool _strictMode = false;
   AppThemeMode _selectedTheme = AppThemeMode.system;
 
   @override
@@ -81,6 +82,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
       _enableGitFetch = prefs.getBool(enableGitFetchKey) ?? false;
       _privateBrowsing = prefs.getBool(privateBrowsingKey) ?? false;
       _adBlocking = prefs.getBool(adBlockingKey) ?? false;
+      _strictMode = prefs.getBool(strictModeKey) ?? false;
     });
   }
 
@@ -160,6 +162,17 @@ class _SettingsDialogState extends State<SettingsDialog> {
                 });
               },
             ),
+            SwitchListTile(
+              title: const Text('Strict Mode'),
+              subtitle:
+                  const Text('Disable JavaScript and third-party cookies'),
+              value: _strictMode,
+              onChanged: (value) {
+                setState(() {
+                  _strictMode = value;
+                });
+              },
+            ),
             DropdownButton<AppThemeMode>(
               value: _selectedTheme,
               onChanged: (AppThemeMode? value) {
@@ -194,6 +207,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
             await prefs.setBool(enableGitFetchKey, _enableGitFetch);
             await prefs.setBool(privateBrowsingKey, _privateBrowsing);
             await prefs.setBool(adBlockingKey, _adBlocking);
+            await prefs.setBool(strictModeKey, _strictMode);
             await prefs.setString(themeModeKey, _selectedTheme.name);
             await InAppWebViewController.clearAllCache(includeDiskFiles: true);
             widget.onSettingsChanged?.call();
@@ -367,6 +381,7 @@ class BrowserPage extends StatefulWidget {
       this.enableGitFetch = false,
       this.privateBrowsing = false,
       this.adBlocking = false,
+      this.strictMode = false,
       this.adBlockers = const <ContentBlocker>[],
       this.themeMode = AppThemeMode.system,
       this.onSettingsChanged});
@@ -377,6 +392,7 @@ class BrowserPage extends StatefulWidget {
   final bool enableGitFetch;
   final bool privateBrowsing;
   final bool adBlocking;
+  final bool strictMode;
   final List<ContentBlocker> adBlockers;
   final AppThemeMode themeMode;
   final void Function()? onSettingsChanged;
@@ -817,6 +833,8 @@ class _BrowserPageState extends State<BrowserPage>
                 userAgent: widget.useModernUserAgent
                     ? _modernUserAgent
                     : _legacyUserAgent,
+                javaScriptEnabled: !widget.strictMode,
+                thirdPartyCookiesEnabled: !widget.strictMode,
               ),
               onWebViewCreated: (controller) {
                 tab.webViewController = controller;

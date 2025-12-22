@@ -10,5 +10,45 @@
   {
     "urlFilter": ".*googleadservices.com.*",
     "actionType": "BLOCK"
+  },
+  {
+    "urlFilter": ".*adsystem.amazon.com.*",
+    "actionType": "BLOCK"
+  },
+  {
+    "urlFilter": ".*pixel.facebook.com.*",
+    "actionType": "BLOCK"
+  },
+  {
+    "urlFilter": ".*connect.facebook.com.*",
+    "actionType": "BLOCK"
+  },
+  {
+    "urlFilter": ".*graph.instagram.com.*",
+    "actionType": "BLOCK"
+  },
+  {
+    "urlFilter": ".*platform.instagram.com.*",
+    "actionType": "BLOCK"
+  },
+  {
+    "urlFilter": ".*ads.twitter.com.*",
+    "actionType": "BLOCK"
+  },
+  {
+    "urlFilter": ".*analytics.twitter.com.*",
+    "actionType": "BLOCK"
+  },
+  {
+    "urlFilter": ".*outbrain.com.*",
+    "actionType": "BLOCK"
+  },
+  {
+    "urlFilter": ".*taboola.com.*",
+    "actionType": "BLOCK"
+  },
+  {
+    "urlFilter": ".*yieldmo.com.*",
+    "actionType": "BLOCK"
   }
 ]
