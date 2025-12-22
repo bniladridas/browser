@@ -39,6 +39,7 @@ class _MyAppState extends State<MyApp> {
   bool _enableGitFetch = false;
   bool _privateBrowsing = false;
   bool _adBlocking = false;
+  bool _strictMode = false;
   AppThemeMode _themeMode = AppThemeMode.system;
   List<ContentBlocker> _adBlockers = [];
   bool _prefsLoaded = true;
@@ -60,6 +61,7 @@ class _MyAppState extends State<MyApp> {
         _enableGitFetch = prefs.getBool(enableGitFetchKey) ?? false;
         _privateBrowsing = prefs.getBool(privateBrowsingKey) ?? false;
         _adBlocking = prefs.getBool(adBlockingKey) ?? false;
+        _strictMode = prefs.getBool(strictModeKey) ?? false;
         dynamic themeValue = prefs.get(themeModeKey);
         String themeStr = themeValue is String ? themeValue : 'system';
         _themeMode = AppThemeMode.values.firstWhere((e) => e.name == themeStr,
@@ -112,6 +114,7 @@ class _MyAppState extends State<MyApp> {
             enableGitFetch: _enableGitFetch,
             privateBrowsing: _privateBrowsing,
             adBlocking: _adBlocking,
+            strictMode: _strictMode,
             adBlockers: _adBlockers,
             themeMode: _themeMode,
             onSettingsChanged: _loadSettings),

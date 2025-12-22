@@ -10,4 +10,5 @@ const String useModernUserAgentKey = 'useModernUserAgent';
 const String enableGitFetchKey = 'enableGitFetch';
 const String privateBrowsingKey = 'privateBrowsing';
 const String adBlockingKey = 'adBlocking';
+const String strictModeKey = 'strictMode';
 const String themeModeKey = 'themeMode';
