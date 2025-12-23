@@ -10,7 +10,8 @@ import 'package:path_provider/path_provider.dart';
 
 Future<String?> downloadFile(String url, String filename) async {
   try {
-    final response = await http.get(Uri.parse(url));
+    final response =
+        await http.get(Uri.parse(url)).timeout(const Duration(seconds: 30));
     if (response.statusCode == 200) {
       final dir = await getDownloadsDirectory();
       if (dir != null) {
