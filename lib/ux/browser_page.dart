@@ -50,9 +50,14 @@ class UrlUtils {
 }
 
 class SettingsDialog extends StatefulWidget {
-  const SettingsDialog({super.key, this.onSettingsChanged, this.currentTheme});
+  const SettingsDialog(
+      {super.key,
+      this.onSettingsChanged,
+      this.onClearCaches,
+      this.currentTheme});
 
   final void Function()? onSettingsChanged;
+  final void Function()? onClearCaches;
   final AppThemeMode? currentTheme;
 
   @override
@@ -223,6 +228,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
             await prefs.setString(themeModeKey, _selectedTheme.name);
 
             widget.onSettingsChanged?.call();
+            widget.onClearCaches?.call();
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Settings saved')),
@@ -681,11 +687,20 @@ class _BrowserPageState extends State<BrowserPage>
     );
   }
 
+  Future<void> _clearAllCaches() async {
+    final cookieManager = WebViewCookieManager();
+    await cookieManager.clearCookies();
+    for (final tab in tabs) {
+      await tab.webViewController?.clearCache();
+    }
+  }
+
   void _showSettings() {
     showDialog(
       context: context,
       builder: (context) => SettingsDialog(
           onSettingsChanged: widget.onSettingsChanged,
+          onClearCaches: _clearAllCaches,
           currentTheme: widget.themeMode),
     );
   }
@@ -804,6 +819,10 @@ class _BrowserPageState extends State<BrowserPage>
           : JavaScriptMode.unrestricted);
       tab.webViewController!.setUserAgent(
           widget.useModernUserAgent ? _modernUserAgent : _legacyUserAgent);
+      // Note: webview_flutter does not support built-in private browsing.
+      // Cache is not stored for private tabs (LOAD_NO_CACHE equivalent not available).
+      // Cookies are shared globally; private browsing does not clear them.
+      // This is a limitation compared to flutter_inappwebview.
       tab.webViewController!.setNavigationDelegate(NavigationDelegate(
         onPageStarted: (url) {
           if (!tab.isClosed) {
