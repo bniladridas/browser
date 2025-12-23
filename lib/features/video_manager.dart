@@ -4,14 +4,15 @@
 // Use of this source code is governed by a MIT license that can be
 // found in the LICENSE file.
 
-import 'package:flutter/foundation.dart';
-import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:webview_flutter/webview_flutter.dart';
+
+import '../logging/logger.dart';
 
 class VideoManager {
-  static Future<void> pauseVideos(InAppWebViewController controller) async {
-    debugPrint('Pausing videos');
+  static Future<void> pauseVideos(WebViewController controller) async {
+    logger.i('Pausing videos');
     try {
-      await controller.evaluateJavascript(source: """
+      await controller.runJavaScript("""
         // Save current time and pause HTML5 videos
         document.querySelectorAll('video').forEach(v => {
           v.dataset.savedTime = v.currentTime;
@@ -26,15 +27,15 @@ class VideoManager {
         });
       """);
     } catch (e) {
-      debugPrint('Error pausing videos: $e');
+      logger.e('Error pausing videos: $e');
       // Ignore errors, e.g., MissingPluginException on macOS
     }
   }
 
-  static Future<void> resumeVideos(InAppWebViewController controller) async {
-    debugPrint('Resuming videos');
+  static Future<void> resumeVideos(WebViewController controller) async {
+    logger.i('Resuming videos');
     try {
-      await controller.evaluateJavascript(source: """
+      await controller.runJavaScript("""
         setTimeout(() => {
           // Resume HTML5 videos from saved time
           document.querySelectorAll('video').forEach(v => {
@@ -54,7 +55,7 @@ class VideoManager {
         }, 500);
       """);
     } catch (e) {
-      debugPrint('Error resuming videos: $e');
+      logger.e('Error resuming videos: $e');
       // Ignore errors, e.g., MissingPluginException on macOS
     }
   }
