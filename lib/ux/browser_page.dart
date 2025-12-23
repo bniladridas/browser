@@ -11,16 +11,15 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
-import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 import 'package:http/http.dart' as http;
 
 import '../constants.dart';
 import '../features/theme_utils.dart';
-import '../features/download_manager.dart';
 import '../features/bookmark_manager.dart';
-import '../features/private_browsing.dart';
+
 import '../features/video_manager.dart';
-import 'find/find_dialog.dart';
+import '../logging/logger.dart';
 
 const String _modernUserAgent =
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0.2 Safari/605.1.15';
@@ -51,9 +50,14 @@ class UrlUtils {
 }
 
 class SettingsDialog extends StatefulWidget {
-  const SettingsDialog({super.key, this.onSettingsChanged, this.currentTheme});
+  const SettingsDialog(
+      {super.key,
+      this.onSettingsChanged,
+      this.onClearCaches,
+      this.currentTheme});
 
   final void Function()? onSettingsChanged;
+  final void Function()? onClearCaches;
   final AppThemeMode? currentTheme;
 
   @override
@@ -207,22 +211,24 @@ class _SettingsDialogState extends State<SettingsDialog> {
         ),
         TextButton(
           onPressed: () async {
+            final homepage = homepageController.text.trim();
+            if (Uri.tryParse(homepage)?.hasScheme != true) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Invalid homepage URL')),
+              );
+              return;
+            }
             final prefs = await SharedPreferences.getInstance();
-            await prefs.setString(homepageKey, homepageController.text);
+            await prefs.setString(homepageKey, homepage);
             await prefs.setBool(hideAppBarKey, _hideAppBar);
             await prefs.setBool(useModernUserAgentKey, _useModernUserAgent);
             await prefs.setBool(enableGitFetchKey, _enableGitFetch);
             await prefs.setBool(privateBrowsingKey, _privateBrowsing);
-            await prefs.setBool(adBlockingKey, _adBlocking);
             await prefs.setBool(strictModeKey, _strictMode);
             await prefs.setString(themeModeKey, _selectedTheme.name);
-            try {
-              await InAppWebViewController.clearAllCache(
-                  includeDiskFiles: true);
-            } catch (e) {
-              debugPrint('Failed to clear cache: $e');
-            }
+
             widget.onSettingsChanged?.call();
+            widget.onClearCaches?.call();
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Settings saved')),
@@ -249,9 +255,7 @@ class TabData {
   String currentUrl;
   final TextEditingController urlController;
   final FocusNode urlFocusNode;
-  InAppWebViewController? webViewController;
-  final FindInteractionController findInteractionController =
-      FindInteractionController();
+  WebViewController? webViewController;
   bool isLoading = false;
   bool hasError = false;
   String? errorMessage;
@@ -393,9 +397,7 @@ class BrowserPage extends StatefulWidget {
       this.useModernUserAgent = false,
       this.enableGitFetch = false,
       this.privateBrowsing = false,
-      this.adBlocking = false,
       this.strictMode = false,
-      this.adBlockers = const <ContentBlocker>[],
       this.themeMode = AppThemeMode.system,
       this.onSettingsChanged});
 
@@ -404,9 +406,7 @@ class BrowserPage extends StatefulWidget {
   final bool useModernUserAgent;
   final bool enableGitFetch;
   final bool privateBrowsing;
-  final bool adBlocking;
   final bool strictMode;
-  final List<ContentBlocker> adBlockers;
   final AppThemeMode themeMode;
   final void Function()? onSettingsChanged;
 
@@ -494,6 +494,11 @@ class _BrowserPageState extends State<BrowserPage>
         tabs[index].urlController.dispose();
         tabs[index].urlFocusNode.dispose();
         tabs.removeAt(index);
+
+        // Clear cache and cookies for private browsing
+        if (widget.privateBrowsing) {
+          _clearAllCaches();
+        }
 
         // Determine the new index before disposing the old controller.
         int newIndex = tabController.index;
@@ -602,20 +607,6 @@ class _BrowserPageState extends State<BrowserPage>
     }
   }
 
-  Future<void> _clearCache() async {
-    try {
-      await InAppWebViewController.clearAllCache(includeDiskFiles: true);
-    } on PlatformException catch (e) {
-      // Log exceptions to aid debugging instead of swallowing them.
-      debugPrint('Failed to clear cache: $e');
-    }
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Cache cleared')),
-      );
-    }
-  }
-
   void _showBookmarks() {
     showDialog(
       context: context,
@@ -701,12 +692,12 @@ class _BrowserPageState extends State<BrowserPage>
     );
   }
 
-  void _showFindDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => FindDialog(
-          findInteractionController: activeTab.findInteractionController),
-    );
+  Future<void> _clearAllCaches() async {
+    final cookieManager = WebViewCookieManager();
+    await cookieManager.clearCookies();
+    for (final tab in tabs) {
+      await tab.webViewController?.clearCache();
+    }
   }
 
   void _showSettings() {
@@ -714,6 +705,7 @@ class _BrowserPageState extends State<BrowserPage>
       context: context,
       builder: (context) => SettingsDialog(
           onSettingsChanged: widget.onSettingsChanged,
+          onClearCaches: _clearAllCaches,
           currentTheme: widget.themeMode),
     );
   }
@@ -726,8 +718,7 @@ class _BrowserPageState extends State<BrowserPage>
           _addNewTab();
           activeTab.currentUrl = url;
           activeTab.urlController.text = url;
-          activeTab.webViewController
-              ?.loadUrl(urlRequest: URLRequest(url: WebUri(url)));
+          activeTab.webViewController?.loadRequest(Uri.parse(url));
         },
       ),
     );
@@ -790,8 +781,7 @@ class _BrowserPageState extends State<BrowserPage>
     activeTab.currentUrl = url;
     activeTab.urlController.text = url;
     try {
-      activeTab.webViewController
-          ?.loadUrl(urlRequest: URLRequest(url: WebUri(url)));
+      activeTab.webViewController?.loadRequest(Uri.parse(url));
     } on PlatformException {
       // Ignore MissingPluginException on macOS
     }
@@ -827,88 +817,93 @@ class _BrowserPageState extends State<BrowserPage>
       return _buildErrorView(tab);
     }
 
-    final privateSettings =
-        PrivateBrowsingSettings.fromEnabled(widget.privateBrowsing);
+    if (tab.webViewController == null) {
+      tab.webViewController = WebViewController();
+      tab.webViewController!.setJavaScriptMode(widget.strictMode
+          ? JavaScriptMode.disabled
+          : JavaScriptMode.unrestricted);
+      tab.webViewController!.setUserAgent(
+          widget.useModernUserAgent ? _modernUserAgent : _legacyUserAgent);
+      // Note: webview_flutter does not support built-in private browsing.
+      // Cache is not stored for private tabs (LOAD_NO_CACHE equivalent not available).
+      // Cookies are shared globally; private browsing does not clear them.
+      // This is a limitation compared to flutter_inappwebview.
+      // Partial workaround for SPA history: listen for popstate events via JS.
+      tab.webViewController!.addJavaScriptChannel('HistoryChannel',
+          onMessageReceived: (JavaScriptMessage message) {
+        final url = message.message;
+        if (!tab.history.contains(url)) {
+          tab.history.add(url);
+          if (tab.history.length > 50) {
+            tab.history.removeAt(0);
+          }
+        }
+      });
+      tab.webViewController!.setNavigationDelegate(NavigationDelegate(
+        onPageStarted: (url) {
+          if (!tab.isClosed) {
+            if (mounted) {
+              setState(() {
+                tab.currentUrl = url;
+                tab.urlController.text = tab.currentUrl;
+                tab.isLoading = true;
+                tab.hasError = false;
+                tab.errorMessage = null;
+                if (tab.history.isEmpty || tab.history.last != tab.currentUrl) {
+                  tab.history.add(tab.currentUrl);
+                  if (tab.history.length > 50) {
+                    tab.history.removeAt(0);
+                  }
+                }
+              });
+            }
+          }
+        },
+        onPageFinished: (url) {
+          if (mounted) {
+            setState(() {
+              tab.isLoading = false;
+            });
+          }
+          // Add listeners for SPA navigations: popstate, pushState, replaceState
+          tab.webViewController!.runJavaScript('''
+            if (!window.historyListenerAdded) {
+              window.addEventListener('popstate', function(event) {
+                HistoryChannel.postMessage(window.location.href);
+              });
+              // Override pushState and replaceState to capture programmatic changes
+              window.originalPushState = window.history.pushState;
+              window.history.pushState = function(state, title, url) {
+                window.originalPushState.call(this, state, title, url);
+                HistoryChannel.postMessage(window.location.href);
+              };
+              window.originalReplaceState = window.history.replaceState;
+              window.history.replaceState = function(state, title, url) {
+                window.originalReplaceState.call(this, state, title, url);
+                HistoryChannel.postMessage(window.location.href);
+              };
+              window.historyListenerAdded = true;
+            }
+          ''');
+        },
+        onNavigationRequest: (request) {
+          return NavigationDecision.navigate;
+        },
+        onWebResourceError: (error) {
+          _handleLoadError(tab, error.description);
+        },
+        onHttpError: (error) {
+          _handleLoadError(tab, 'HTTP ${error.response?.statusCode}');
+        },
+      ));
+      tab.webViewController!.loadRequest(Uri.parse(tab.currentUrl));
+    }
 
     try {
       return KeepAliveWrapper(
         child: Stack(
           children: [
-            InAppWebView(
-              initialUrlRequest: URLRequest(url: WebUri(tab.currentUrl)),
-              findInteractionController: tab.findInteractionController,
-              initialSettings: InAppWebViewSettings(
-                cacheEnabled: privateSettings.cacheEnabled,
-                clearCache: privateSettings.clearCache,
-                useOnLoadResource: false,
-                contentBlockers:
-                    widget.adBlocking ? widget.adBlockers : <ContentBlocker>[],
-                userAgent: widget.useModernUserAgent
-                    ? _modernUserAgent
-                    : _legacyUserAgent,
-                javaScriptEnabled: !widget.strictMode,
-                thirdPartyCookiesEnabled: !widget.strictMode,
-              ),
-              onWebViewCreated: (controller) {
-                tab.webViewController = controller;
-              },
-              onLoadStart: (controller, url) {
-                if (url != null && !tab.isClosed) {
-                  if (mounted) {
-                    setState(() {
-                      tab.currentUrl = url.toString();
-                      tab.urlController.text = tab.currentUrl;
-                      tab.isLoading = true;
-                      tab.hasError = false;
-                      tab.errorMessage = null;
-                      if (tab.history.isEmpty ||
-                          tab.history.last != tab.currentUrl) {
-                        tab.history.add(tab.currentUrl);
-                      }
-                    });
-                  }
-                }
-              },
-              onLoadStop: (controller, url) {
-                if (mounted) {
-                  setState(() {
-                    tab.isLoading = false;
-                  });
-                }
-              },
-              onUpdateVisitedHistory: (controller, url, androidIsReload) {
-                if (url != null && !tab.isClosed && mounted) {
-                  setState(() {
-                    tab.currentUrl = url.toString();
-                    tab.urlController.text = tab.currentUrl;
-                    if (tab.history.isEmpty ||
-                        tab.history.last != tab.currentUrl) {
-                      tab.history.add(tab.currentUrl);
-                    }
-                  });
-                }
-              },
-              onReceivedError: (controller, request, error) {
-                _handleLoadError(tab, error.description);
-              },
-              shouldOverrideUrlLoading: (controller, navigationAction) {
-                return Future.value(NavigationActionPolicy.ALLOW);
-              },
-              onReceivedHttpError: (controller, request, error) {
-                _handleLoadError(
-                    tab, 'HTTP ${error.statusCode}: ${error.reasonPhrase}');
-              },
-              onDownloadStartRequest: (controller, request) async {
-                final path = await downloadFile(request.url.toString(),
-                    request.suggestedFilename ?? 'download');
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content: Text(path != null
-                          ? 'Downloaded to $path'
-                          : 'Download failed')));
-                }
-              },
-            ),
+            WebViewWidget(controller: tab.webViewController!),
             if (tab.isLoading)
               const Center(
                 child: CircularProgressIndicator(),
@@ -917,7 +912,7 @@ class _BrowserPageState extends State<BrowserPage>
         ),
       );
     } catch (e, s) {
-      debugPrint('Error creating InAppWebView: $e\n$s');
+      logger.e('Error creating WebView: $e\n$s');
       return const Center(
         child: Text('Failed to load browser.'),
       );
@@ -985,9 +980,7 @@ class _BrowserPageState extends State<BrowserPage>
                           case 'history':
                             _showHistory();
                             break;
-                          case 'find':
-                            _showFindDialog();
-                            break;
+
                           case 'settings':
                             _showSettings();
                             break;
@@ -997,9 +990,7 @@ class _BrowserPageState extends State<BrowserPage>
                           case 'close_tab':
                             _closeTab(tabController.index);
                             break;
-                          case 'clear_cache':
-                            _clearCache();
-                            break;
+
                           case 'git_fetch':
                             _showGitFetchDialog();
                             break;
@@ -1026,14 +1017,6 @@ class _BrowserPageState extends State<BrowserPage>
                         const PopupMenuItem(
                           value: 'history',
                           child: Text('History'),
-                        ),
-                        const PopupMenuItem(
-                          value: 'find',
-                          child: Text('Find in Page'),
-                        ),
-                        const PopupMenuItem(
-                          value: 'clear_cache',
-                          child: Text('Clear Cache'),
                         ),
                         if (widget.enableGitFetch)
                           const PopupMenuItem(
