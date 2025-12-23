@@ -823,6 +823,17 @@ class _BrowserPageState extends State<BrowserPage>
       // Cache is not stored for private tabs (LOAD_NO_CACHE equivalent not available).
       // Cookies are shared globally; private browsing does not clear them.
       // This is a limitation compared to flutter_inappwebview.
+      // Partial workaround for SPA history: listen for popstate events via JS.
+      tab.webViewController!.addJavaScriptChannel('HistoryChannel',
+          onMessageReceived: (JavaScriptMessage message) {
+        final url = message.message;
+        if (!tab.history.contains(url)) {
+          tab.history.add(url);
+          if (tab.history.length > 50) {
+            tab.history.removeAt(0);
+          }
+        }
+      });
       tab.webViewController!.setNavigationDelegate(NavigationDelegate(
         onPageStarted: (url) {
           if (!tab.isClosed) {
@@ -849,6 +860,15 @@ class _BrowserPageState extends State<BrowserPage>
               tab.isLoading = false;
             });
           }
+          // Add popstate listener for SPA back/forward
+          tab.webViewController!.runJavaScript('''
+            if (!window.historyListenerAdded) {
+              window.addEventListener('popstate', function(event) {
+                HistoryChannel.postMessage(window.location.href);
+              });
+              window.historyListenerAdded = true;
+            }
+          ''');
         },
         onNavigationRequest: (request) {
           return NavigationDecision.navigate;
