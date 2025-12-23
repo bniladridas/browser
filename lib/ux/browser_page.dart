@@ -495,6 +495,11 @@ class _BrowserPageState extends State<BrowserPage>
         tabs[index].urlFocusNode.dispose();
         tabs.removeAt(index);
 
+        // Clear cache and cookies for private browsing
+        if (widget.privateBrowsing) {
+          _clearAllCaches();
+        }
+
         // Determine the new index before disposing the old controller.
         int newIndex = tabController.index;
         if (newIndex >= tabs.length) {
