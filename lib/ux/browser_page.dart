@@ -865,12 +865,23 @@ class _BrowserPageState extends State<BrowserPage>
               tab.isLoading = false;
             });
           }
-          // Add popstate listener for SPA back/forward
+          // Add listeners for SPA navigations: popstate, pushState, replaceState
           tab.webViewController!.runJavaScript('''
             if (!window.historyListenerAdded) {
               window.addEventListener('popstate', function(event) {
                 HistoryChannel.postMessage(window.location.href);
               });
+              // Override pushState and replaceState to capture programmatic changes
+              window.originalPushState = window.history.pushState;
+              window.history.pushState = function(state, title, url) {
+                window.originalPushState.call(this, state, title, url);
+                HistoryChannel.postMessage(window.location.href);
+              };
+              window.originalReplaceState = window.history.replaceState;
+              window.history.replaceState = function(state, title, url) {
+                window.originalReplaceState.call(this, state, title, url);
+                HistoryChannel.postMessage(window.location.href);
+              };
               window.historyListenerAdded = true;
             }
           ''');
