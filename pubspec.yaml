@@ -43,10 +43,12 @@ dependencies:
   cupertino_icons: ^1.0.6
   url_launcher: ^6.3.2
   window_manager: ^0.5.1
-  flutter_inappwebview: ^6.1.5
+
   http: ^1.5.0
   shared_preferences: ^2.5.4
   path_provider: ^2.1.5
+  webview_flutter: ^4.8.0
+  logger: ^2.4.0
 
 
 dev_dependencies:

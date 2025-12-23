@@ -8,9 +8,8 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:window_manager/window_manager.dart';
-import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'constants.dart';
-import 'features/ad_blockers.dart';
+import 'logging/logger.dart';
 import 'features/theme_utils.dart';
 import 'ux/browser_page.dart';
 
@@ -19,7 +18,7 @@ void main() async {
   try {
     await windowManager.ensureInitialized();
   } catch (e) {
-    debugPrint(
+    logger.w(
         'Warning: Window manager initialization failed on this platform: $e. Some desktop window features (minimize, maximize, etc.) may not be available.');
   }
   runApp(const MyApp());
@@ -38,10 +37,8 @@ class _MyAppState extends State<MyApp> {
   bool _useModernUserAgent = false;
   bool _enableGitFetch = false;
   bool _privateBrowsing = false;
-  bool _adBlocking = false;
   bool _strictMode = false;
   AppThemeMode _themeMode = AppThemeMode.system;
-  List<ContentBlocker> _adBlockers = [];
   bool _prefsLoaded = true;
 
   @override
@@ -53,14 +50,12 @@ class _MyAppState extends State<MyApp> {
   Future<void> _loadSettings() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      _adBlockers = await getAdBlockers();
       setState(() {
         _initialUrl = prefs.getString(homepageKey) ?? 'https://www.google.com';
         _hideAppBar = prefs.getBool(hideAppBarKey) ?? false;
         _useModernUserAgent = prefs.getBool(useModernUserAgentKey) ?? false;
         _enableGitFetch = prefs.getBool(enableGitFetchKey) ?? false;
         _privateBrowsing = prefs.getBool(privateBrowsingKey) ?? false;
-        _adBlocking = prefs.getBool(adBlockingKey) ?? false;
         _strictMode = prefs.getBool(strictModeKey) ?? false;
         dynamic themeValue = prefs.get(themeModeKey);
         String themeStr = themeValue is String ? themeValue : 'system';
@@ -71,7 +66,7 @@ class _MyAppState extends State<MyApp> {
       setState(() {
         _prefsLoaded = false;
       });
-      debugPrint('Shared preferences not available: $e');
+      logger.e('Shared preferences not available: $e');
     }
   }
 
@@ -113,9 +108,7 @@ class _MyAppState extends State<MyApp> {
             useModernUserAgent: _useModernUserAgent,
             enableGitFetch: _enableGitFetch,
             privateBrowsing: _privateBrowsing,
-            adBlocking: _adBlocking,
             strictMode: _strictMode,
-            adBlockers: _adBlockers,
             themeMode: _themeMode,
             onSettingsChanged: _loadSettings),
       ),
