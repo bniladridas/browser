@@ -4,6 +4,7 @@
 // Use of this source code is governed by a MIT license that can be
 // found in the LICENSE file.
 
+import 'package:flutter/foundation.dart';
 import 'package:logger/logger.dart';
 
 /// Centralized logger for the browser app.
@@ -17,5 +18,5 @@ final Logger logger = Logger(
     printEmojis: false,
     dateTimeFormat: DateTimeFormat.onlyTimeAndSinceStart,
   ),
-  level: Level.debug, // Set to Level.info for production
+  level: kReleaseMode ? Level.info : Level.debug,
 );
