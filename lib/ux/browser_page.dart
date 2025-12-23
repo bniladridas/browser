@@ -41,6 +41,13 @@ class UrlUtils {
     }
     return url;
   }
+
+  static String truncate(String text, int maxLength) {
+    if (text.length <= maxLength) return text;
+    const ellipsis = '...';
+    if (maxLength <= ellipsis.length) return text.substring(0, maxLength);
+    return '${text.substring(0, maxLength - ellipsis.length)}$ellipsis';
+  }
 }
 
 class SettingsDialog extends StatefulWidget {
@@ -209,7 +216,12 @@ class _SettingsDialogState extends State<SettingsDialog> {
             await prefs.setBool(adBlockingKey, _adBlocking);
             await prefs.setBool(strictModeKey, _strictMode);
             await prefs.setString(themeModeKey, _selectedTheme.name);
-            await InAppWebViewController.clearAllCache(includeDiskFiles: true);
+            try {
+              await InAppWebViewController.clearAllCache(
+                  includeDiskFiles: true);
+            } catch (e) {
+              debugPrint('Failed to clear cache: $e');
+            }
             widget.onSettingsChanged?.call();
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
@@ -306,7 +318,8 @@ class _GitFetchDialogState extends State<GitFetchDialog> {
   }
 
   Future<Map<String, dynamic>> fetchGitHubRepo(String url) async {
-    final response = await http.get(Uri.parse(url));
+    final response =
+        await http.get(Uri.parse(url)).timeout(const Duration(seconds: 10));
     if (response.statusCode == 200) {
       return jsonDecode(response.body);
     } else {
@@ -1059,8 +1072,10 @@ class _BrowserPageState extends State<BrowserPage>
                     isScrollable: true,
                     tabs: tabs
                         .map((tab) => Tab(
-                            text: Uri.tryParse(tab.currentUrl)?.host ??
-                                tab.currentUrl))
+                            text: UrlUtils.truncate(
+                                Uri.tryParse(tab.currentUrl)?.host ??
+                                    tab.currentUrl,
+                                20)))
                         .toList(),
                   ),
                   Expanded(

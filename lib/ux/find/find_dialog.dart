@@ -86,7 +86,15 @@ class _FindDialogState extends State<FindDialog> {
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () async {
+            final navigator = Navigator.of(context);
+            try {
+              await widget.findInteractionController.clearMatches();
+            } catch (e) {
+              debugPrint('Clear matches failed: $e');
+            }
+            navigator.pop();
+          },
           child: const Text('Close'),
         ),
       ],
