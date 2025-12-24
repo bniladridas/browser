@@ -224,6 +224,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
             await prefs.setBool(useModernUserAgentKey, _useModernUserAgent);
             await prefs.setBool(enableGitFetchKey, _enableGitFetch);
             await prefs.setBool(privateBrowsingKey, _privateBrowsing);
+            await prefs.setBool(adBlockingKey, _adBlocking);
             await prefs.setBool(strictModeKey, _strictMode);
             await prefs.setString(themeModeKey, _selectedTheme.name);
 
@@ -397,6 +398,7 @@ class BrowserPage extends StatefulWidget {
       this.useModernUserAgent = false,
       this.enableGitFetch = false,
       this.privateBrowsing = false,
+      this.adBlocking = false,
       this.strictMode = false,
       this.themeMode = AppThemeMode.system,
       this.onSettingsChanged});
@@ -406,6 +408,7 @@ class BrowserPage extends StatefulWidget {
   final bool useModernUserAgent;
   final bool enableGitFetch;
   final bool privateBrowsing;
+  final bool adBlocking;
   final bool strictMode;
   final AppThemeMode themeMode;
   final void Function()? onSettingsChanged;
@@ -441,6 +444,7 @@ class _BrowserPageState extends State<BrowserPage>
   final List<TabData> tabs = [];
   final bookmarkManager = BookmarkManager();
   late int previousTabIndex;
+  List<Map<String, dynamic>> adBlockers = [];
 
   @override
   void initState() {
@@ -450,6 +454,18 @@ class _BrowserPageState extends State<BrowserPage>
     previousTabIndex = 0;
     tabController.addListener(_onTabChanged);
     _loadBookmarks();
+    if (widget.adBlocking) {
+      loadAdBlockers();
+    }
+  }
+
+  Future<void> loadAdBlockers() async {
+    try {
+      final jsonString = await rootBundle.loadString('assets/ad_blockers.json');
+      adBlockers = List<Map<String, dynamic>>.from(jsonDecode(jsonString));
+    } catch (e) {
+      logger.w('Failed to load ad blockers: $e');
+    }
   }
 
   void _onTabChanged() {
@@ -887,6 +903,11 @@ class _BrowserPageState extends State<BrowserPage>
           ''');
         },
         onNavigationRequest: (request) {
+          if (widget.adBlocking &&
+              adBlockers.any((blocker) => RegExp(blocker['urlFilter'])
+                  .hasMatch(request.url.toString()))) {
+            return NavigationDecision.prevent;
+          }
           return NavigationDecision.navigate;
         },
         onWebResourceError: (error) {
