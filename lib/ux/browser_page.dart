@@ -444,7 +444,7 @@ class _BrowserPageState extends State<BrowserPage>
   final List<TabData> tabs = [];
   final bookmarkManager = BookmarkManager();
   late int previousTabIndex;
-  List<Map<String, dynamic>> adBlockers = [];
+  List<RegExp> adBlockerPatterns = [];
 
   @override
   void initState() {
@@ -462,9 +462,11 @@ class _BrowserPageState extends State<BrowserPage>
   Future<void> loadAdBlockers() async {
     try {
       final jsonString = await rootBundle.loadString('assets/ad_blockers.json');
-      adBlockers = List<Map<String, dynamic>>.from(jsonDecode(jsonString));
+      final List<dynamic> rules = jsonDecode(jsonString);
+      adBlockerPatterns =
+          rules.map((rule) => RegExp(rule['urlFilter'])).toList();
     } catch (e) {
-      logger.w('Failed to load ad blockers: $e');
+      logger.w('Failed to load or compile ad blockers: $e');
     }
   }
 
@@ -904,8 +906,8 @@ class _BrowserPageState extends State<BrowserPage>
         },
         onNavigationRequest: (request) {
           if (widget.adBlocking &&
-              adBlockers.any((blocker) => RegExp(blocker['urlFilter'])
-                  .hasMatch(request.url.toString()))) {
+              adBlockerPatterns
+                  .any((pattern) => pattern.hasMatch(request.url.toString()))) {
             return NavigationDecision.prevent;
           }
           return NavigationDecision.navigate;
