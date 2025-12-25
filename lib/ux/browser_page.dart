@@ -856,6 +856,13 @@ class _BrowserPageState extends State<BrowserPage>
             tab.history.removeAt(0);
           }
         }
+        // Update the URL bar for SPA navigation
+        if (mounted && tab.currentUrl != url) {
+          setState(() {
+            tab.currentUrl = url;
+            tab.urlController.text = url;
+          });
+        }
       });
       tab.webViewController!.setNavigationDelegate(NavigationDelegate(
         onPageStarted: (url) {
