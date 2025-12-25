@@ -857,7 +857,7 @@ class _BrowserPageState extends State<BrowserPage>
           }
         }
         // Update the URL bar for SPA navigation
-        if (mounted && tab.currentUrl != url) {
+        if (!tab.isClosed && mounted && tab.currentUrl != url) {
           setState(() {
             tab.currentUrl = url;
             tab.urlController.text = url;
