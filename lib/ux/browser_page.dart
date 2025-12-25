@@ -224,6 +224,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
             await prefs.setBool(useModernUserAgentKey, _useModernUserAgent);
             await prefs.setBool(enableGitFetchKey, _enableGitFetch);
             await prefs.setBool(privateBrowsingKey, _privateBrowsing);
+            await prefs.setBool(adBlockingKey, _adBlocking);
             await prefs.setBool(strictModeKey, _strictMode);
             await prefs.setString(themeModeKey, _selectedTheme.name);
 
@@ -397,6 +398,7 @@ class BrowserPage extends StatefulWidget {
       this.useModernUserAgent = false,
       this.enableGitFetch = false,
       this.privateBrowsing = false,
+      this.adBlocking = false,
       this.strictMode = false,
       this.themeMode = AppThemeMode.system,
       this.onSettingsChanged});
@@ -406,6 +408,7 @@ class BrowserPage extends StatefulWidget {
   final bool useModernUserAgent;
   final bool enableGitFetch;
   final bool privateBrowsing;
+  final bool adBlocking;
   final bool strictMode;
   final AppThemeMode themeMode;
   final void Function()? onSettingsChanged;
@@ -441,6 +444,7 @@ class _BrowserPageState extends State<BrowserPage>
   final List<TabData> tabs = [];
   final bookmarkManager = BookmarkManager();
   late int previousTabIndex;
+  List<RegExp> adBlockerPatterns = [];
 
   @override
   void initState() {
@@ -450,6 +454,20 @@ class _BrowserPageState extends State<BrowserPage>
     previousTabIndex = 0;
     tabController.addListener(_onTabChanged);
     _loadBookmarks();
+    if (widget.adBlocking) {
+      loadAdBlockers();
+    }
+  }
+
+  Future<void> loadAdBlockers() async {
+    try {
+      final jsonString = await rootBundle.loadString('assets/ad_blockers.json');
+      final List<dynamic> rules = jsonDecode(jsonString);
+      adBlockerPatterns =
+          rules.map((rule) => RegExp(rule['urlFilter'])).toList();
+    } catch (e) {
+      logger.w('Failed to load or compile ad blockers: $e');
+    }
   }
 
   void _onTabChanged() {
@@ -838,6 +856,13 @@ class _BrowserPageState extends State<BrowserPage>
             tab.history.removeAt(0);
           }
         }
+        // Update the URL bar for SPA navigation
+        if (!tab.isClosed && mounted && tab.currentUrl != url) {
+          setState(() {
+            tab.currentUrl = url;
+            tab.urlController.text = url;
+          });
+        }
       });
       tab.webViewController!.setNavigationDelegate(NavigationDelegate(
         onPageStarted: (url) {
@@ -887,6 +912,11 @@ class _BrowserPageState extends State<BrowserPage>
           ''');
         },
         onNavigationRequest: (request) {
+          if (widget.adBlocking &&
+              adBlockerPatterns
+                  .any((pattern) => pattern.hasMatch(request.url.toString()))) {
+            return NavigationDecision.prevent;
+          }
           return NavigationDecision.navigate;
         },
         onWebResourceError: (error) {
