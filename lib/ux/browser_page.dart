@@ -809,15 +809,18 @@ class _BrowserPageState extends State<BrowserPage>
 
   void _loadUrl(String url) {
     url = UrlUtils.processUrl(url);
-    activeTab.currentUrl = url;
-    activeTab.urlController.text = url;
-    try {
-      activeTab.webViewController?.loadRequest(Uri.parse(url));
-    } on FormatException {
+    final uri = Uri.tryParse(url);
+    if (uri == null) {
       logger.w('Invalid URL: $url');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Invalid URL')),
       );
+      return; // Don't update tab state for invalid URL
+    }
+    activeTab.currentUrl = url;
+    activeTab.urlController.text = url;
+    try {
+      activeTab.webViewController?.loadRequest(uri);
     } on PlatformException {
       // Ignore MissingPluginException on macOS
     }
