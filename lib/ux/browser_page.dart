@@ -951,7 +951,7 @@ class _BrowserPageState extends State<BrowserPage>
         tab.webViewController!.loadRequest(Uri.parse(tab.currentUrl));
       } on FormatException {
         logger.w('Invalid URL: ${tab.currentUrl}');
-        // Optionally show error, but since it's initial load, perhaps log only
+        _handleLoadError(tab, 'Invalid URL format');
       } on PlatformException {
         // Ignore MissingPluginException on macOS
       }
