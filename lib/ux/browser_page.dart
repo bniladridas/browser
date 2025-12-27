@@ -733,10 +733,23 @@ class _BrowserPageState extends State<BrowserPage>
       context: context,
       builder: (context) => GitFetchDialog(
         onOpenInNewTab: (url) {
+          final uri = Uri.tryParse(url);
+          if (uri == null) {
+            logger.w('Invalid URL: $url');
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Invalid URL')),
+            );
+            return; // Don't create a new tab for an invalid URL
+          }
+
           _addNewTab();
           activeTab.currentUrl = url;
           activeTab.urlController.text = url;
-          activeTab.webViewController?.loadRequest(Uri.parse(url));
+          try {
+            activeTab.webViewController?.loadRequest(uri);
+          } on PlatformException {
+            // Ignore MissingPluginException on macOS
+          }
         },
       ),
     );
@@ -800,6 +813,11 @@ class _BrowserPageState extends State<BrowserPage>
     activeTab.urlController.text = url;
     try {
       activeTab.webViewController?.loadRequest(Uri.parse(url));
+    } on FormatException {
+      logger.w('Invalid URL: $url');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Invalid URL')),
+      );
     } on PlatformException {
       // Ignore MissingPluginException on macOS
     }
@@ -926,7 +944,14 @@ class _BrowserPageState extends State<BrowserPage>
           _handleLoadError(tab, 'HTTP ${error.response?.statusCode}');
         },
       ));
-      tab.webViewController!.loadRequest(Uri.parse(tab.currentUrl));
+      try {
+        tab.webViewController!.loadRequest(Uri.parse(tab.currentUrl));
+      } on FormatException {
+        logger.w('Invalid URL: ${tab.currentUrl}');
+        // Optionally show error, but since it's initial load, perhaps log only
+      } on PlatformException {
+        // Ignore MissingPluginException on macOS
+      }
     }
 
     try {
