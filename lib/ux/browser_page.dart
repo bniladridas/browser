@@ -71,6 +71,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
   bool _useModernUserAgent = false;
   bool _enableGitFetch = false;
   bool _privateBrowsing = false;
+  bool _originalPrivateBrowsing = false;
   bool _adBlocking = false;
   bool _strictMode = false;
   AppThemeMode _selectedTheme = AppThemeMode.system;
@@ -92,6 +93,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
       _useModernUserAgent = prefs.getBool(useModernUserAgentKey) ?? false;
       _enableGitFetch = prefs.getBool(enableGitFetchKey) ?? false;
       _privateBrowsing = prefs.getBool(privateBrowsingKey) ?? false;
+      _originalPrivateBrowsing = _privateBrowsing;
       _adBlocking = prefs.getBool(adBlockingKey) ?? false;
       _strictMode = prefs.getBool(strictModeKey) ?? false;
     });
@@ -155,7 +157,8 @@ class _SettingsDialogState extends State<SettingsDialog> {
             ),
             SwitchListTile(
               title: const Text('Private Browsing'),
-              subtitle: const Text('Disable cache and cookies for privacy'),
+              subtitle: const Text(
+                  'Clear cache and cookies on toggle (shared globally)'),
               value: _privateBrowsing,
               onChanged: (value) {
                 setState(() {
@@ -229,7 +232,9 @@ class _SettingsDialogState extends State<SettingsDialog> {
             await prefs.setString(themeModeKey, _selectedTheme.name);
 
             widget.onSettingsChanged?.call();
-            widget.onClearCaches?.call();
+            if (_privateBrowsing != _originalPrivateBrowsing) {
+              widget.onClearCaches?.call();
+            }
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Settings saved')),
@@ -554,6 +559,7 @@ class _BrowserPageState extends State<BrowserPage>
   }
 
   Future<void> _saveBookmarks() async {
+    if (widget.privateBrowsing) return;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('bookmarks', bookmarkManager.save());
   }
@@ -570,6 +576,13 @@ class _BrowserPageState extends State<BrowserPage>
   }
 
   void _addBookmark() async {
+    if (widget.privateBrowsing) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Bookmarks are not saved in private browsing mode')),
+      );
+      return;
+    }
     String category = 'General';
     await showDialog(
       context: context,
@@ -715,6 +728,11 @@ class _BrowserPageState extends State<BrowserPage>
     await cookieManager.clearCookies();
     for (final tab in tabs) {
       await tab.webViewController?.clearCache();
+      await tab.webViewController
+          ?.runJavaScript('localStorage.clear(); sessionStorage.clear();');
+    }
+    if (widget.privateBrowsing) {
+      bookmarkManager.clear();
     }
   }
 
@@ -756,6 +774,22 @@ class _BrowserPageState extends State<BrowserPage>
   }
 
   void _showHistory() {
+    if (widget.privateBrowsing) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('History'),
+          content: const Text('History is not saved in private browsing mode'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Close'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
     final history = activeTab.history;
     showDialog(
       context: context,
@@ -871,7 +905,7 @@ class _BrowserPageState extends State<BrowserPage>
       tab.webViewController!.addJavaScriptChannel('HistoryChannel',
           onMessageReceived: (JavaScriptMessage message) {
         final url = message.message;
-        if (!tab.history.contains(url)) {
+        if (!widget.privateBrowsing && !tab.history.contains(url)) {
           tab.history.add(url);
           if (tab.history.length > 50) {
             tab.history.removeAt(0);
@@ -895,7 +929,9 @@ class _BrowserPageState extends State<BrowserPage>
                 tab.isLoading = true;
                 tab.hasError = false;
                 tab.errorMessage = null;
-                if (tab.history.isEmpty || tab.history.last != tab.currentUrl) {
+                if (!widget.privateBrowsing &&
+                    (tab.history.isEmpty ||
+                        tab.history.last != tab.currentUrl)) {
                   tab.history.add(tab.currentUrl);
                   if (tab.history.length > 50) {
                     tab.history.removeAt(0);
