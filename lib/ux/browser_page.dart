@@ -88,8 +88,17 @@ class _SettingsDialogState extends State<SettingsDialog> {
 
   Future<void> _loadCurrentHomepage() async {
     final prefs = await SharedPreferences.getInstance();
-    final homepage =
-        await _secureStorage.read(key: homepageKey) ?? 'https://www.google.com';
+    final homepage = await (() async {
+      String? homepage = await _secureStorage.read(key: homepageKey);
+      if (homepage == null) {
+        homepage = prefs.getString(homepageKey);
+        if (homepage != null) {
+          await _secureStorage.write(key: homepageKey, value: homepage);
+          await prefs.remove(homepageKey);
+        }
+      }
+      return homepage ?? 'https://www.google.com';
+    })();
     setState(() {
       currentHomepage = homepage;
       homepageController = TextEditingController(text: currentHomepage);
