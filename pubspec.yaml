@@ -43,6 +43,7 @@ dependencies:
 
   http: ^1.5.0
   shared_preferences: ^2.5.4
+  # Secure storage for sensitive data like homepage URLs
   flutter_secure_storage: ^9.2.2
   path_provider: ^2.1.5
   webview_flutter: ^4.8.0
