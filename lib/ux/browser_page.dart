@@ -639,6 +639,23 @@ class _BrowserPageState extends State<BrowserPage>
   }
 
   void _showBookmarks() {
+    if (widget.privateBrowsing) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Bookmarks'),
+          content: const Text(
+              'Bookmarks are not accessible in private browsing mode'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Close'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -730,9 +747,6 @@ class _BrowserPageState extends State<BrowserPage>
       await tab.webViewController?.clearCache();
       await tab.webViewController
           ?.runJavaScript('localStorage.clear(); sessionStorage.clear();');
-    }
-    if (widget.privateBrowsing) {
-      bookmarkManager.clear();
     }
   }
 
