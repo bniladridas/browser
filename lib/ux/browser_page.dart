@@ -10,7 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+
 import 'dart:convert';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:http/http.dart' as http;
@@ -21,8 +21,6 @@ import '../features/bookmark_manager.dart';
 
 import '../features/video_manager.dart';
 import '../logging/logger.dart';
-
-const FlutterSecureStorage _secureStorage = FlutterSecureStorage();
 
 const String _modernUserAgent =
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0.2 Safari/605.1.15';
@@ -88,22 +86,12 @@ class _SettingsDialogState extends State<SettingsDialog> {
 
   Future<void> _loadCurrentHomepage() async {
     final prefs = await SharedPreferences.getInstance();
-    final homepage = await (() async {
-      String? homepage = await _secureStorage.read(key: homepageKey);
-      if (homepage == null) {
-        homepage = prefs.getString(homepageKey);
-        if (homepage != null) {
-          await _secureStorage.write(key: homepageKey, value: homepage);
-          await prefs.remove(homepageKey);
-        }
-      }
-      return homepage ?? 'https://www.google.com';
-    })();
+    final homepage = prefs.getString(homepageKey) ?? 'https://www.google.com';
     setState(() {
       currentHomepage = homepage;
       homepageController = TextEditingController(text: currentHomepage);
       _hideAppBar = prefs.getBool(hideAppBarKey) ?? false;
-      _useModernUserAgent = prefs.getBool(useModernUserAgentKey) ?? false;
+      _useModernUserAgent = prefs.getBool(useModernUserAgentKey) ?? true;
       _enableGitFetch = prefs.getBool(enableGitFetchKey) ?? false;
       _privateBrowsing = prefs.getBool(privateBrowsingKey) ?? false;
       _originalPrivateBrowsing = _privateBrowsing;
@@ -235,7 +223,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
               return;
             }
             final prefs = await SharedPreferences.getInstance();
-            await _secureStorage.write(key: homepageKey, value: homepage);
+            await prefs.setString(homepageKey, homepage);
             await prefs.setBool(hideAppBarKey, _hideAppBar);
             await prefs.setBool(useModernUserAgentKey, _useModernUserAgent);
             await prefs.setBool(enableGitFetchKey, _enableGitFetch);
