@@ -78,8 +78,8 @@ class SettingsDialog extends HookWidget {
     final homepageController = useTextEditingController();
 
     useEffect(() {
-      // Load preferences on first build
-      SharedPreferences.getInstance().then((prefs) {
+      Future<void> loadPreferences() async {
+        final prefs = await SharedPreferences.getInstance();
         final current = prefs.getString(homepageKey) ?? 'https://www.google.com';
         homepage.value = current;
         homepageController.text = current;
@@ -96,7 +96,9 @@ class SettingsDialog extends HookWidget {
               (m) => m.name == prefs.getString(themeModeKey),
               orElse: () => currentTheme ?? AppThemeMode.system);
         }
-      });
+      }
+
+      loadPreferences();
       return null;
     }, const []);
 
