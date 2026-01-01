@@ -18,6 +18,7 @@ import 'package:http/http.dart' as http;
 import '../constants.dart';
 import '../features/theme_utils.dart';
 import '../features/bookmark_manager.dart';
+import '../browser_state.dart';
 
 import '../features/video_manager.dart';
 import '../logging/logger.dart';
@@ -263,9 +264,7 @@ class TabData {
   final TextEditingController urlController;
   final FocusNode urlFocusNode;
   WebViewController? webViewController;
-  bool isLoading = false;
-  bool hasError = false;
-  String? errorMessage;
+  BrowserState state = const BrowserState.idle();
   final List<String> history = [];
   bool isClosed = false;
 
@@ -568,9 +567,7 @@ class _BrowserPageState extends State<BrowserPage>
   void _handleLoadError(TabData tab, String newErrorMessage) {
     if (mounted) {
       setState(() {
-        tab.hasError = true;
-        tab.errorMessage = newErrorMessage;
-        tab.isLoading = false;
+        tab.state = BrowserState.error(newErrorMessage);
         tab.webViewController = null;
       });
     }
@@ -889,8 +886,7 @@ class _BrowserPageState extends State<BrowserPage>
           ElevatedButton(
             onPressed: () {
               setState(() {
-                tab.hasError = false;
-                tab.errorMessage = null;
+                tab.state = const BrowserState.idle();
               });
             },
             child: const Text('Retry'),
@@ -901,7 +897,7 @@ class _BrowserPageState extends State<BrowserPage>
   }
 
   Widget _buildTabBody(TabData tab) {
-    if (tab.hasError) {
+    if (tab.state.maybeWhen(error: (_) => true, orElse: () => false)) {
       return _buildErrorView(tab);
     }
 
@@ -941,9 +937,7 @@ class _BrowserPageState extends State<BrowserPage>
               setState(() {
                 tab.currentUrl = url;
                 tab.urlController.text = tab.currentUrl;
-                tab.isLoading = true;
-                tab.hasError = false;
-                tab.errorMessage = null;
+                tab.state = const BrowserState.loading();
                 if (!widget.privateBrowsing &&
                     (tab.history.isEmpty ||
                         tab.history.last != tab.currentUrl)) {
@@ -959,7 +953,7 @@ class _BrowserPageState extends State<BrowserPage>
         onPageFinished: (url) {
           if (mounted) {
             setState(() {
-              tab.isLoading = false;
+              tab.state = BrowserState.success(url);
             });
           }
           // Add listeners for SPA navigations: popstate, pushState, replaceState
@@ -1013,7 +1007,7 @@ class _BrowserPageState extends State<BrowserPage>
         child: Stack(
           children: [
             WebViewWidget(controller: tab.webViewController!),
-            if (tab.isLoading)
+            if (tab.state.maybeWhen(loading: () => true, orElse: () => false))
               const Center(
                 child: CircularProgressIndicator(),
               ),
