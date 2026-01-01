@@ -9,6 +9,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'dart:convert';
@@ -51,7 +52,7 @@ class UrlUtils {
   }
 }
 
-class SettingsDialog extends StatefulWidget {
+class SettingsDialog extends HookWidget {
   const SettingsDialog(
       {super.key,
       this.onSettingsChanged,
@@ -63,53 +64,45 @@ class SettingsDialog extends StatefulWidget {
   final AppThemeMode? currentTheme;
 
   @override
-  State<SettingsDialog> createState() => _SettingsDialogState();
-}
-
-class _SettingsDialogState extends State<SettingsDialog> {
-  late TextEditingController homepageController;
-  String? currentHomepage;
-  bool _hideAppBar = false;
-  bool _useModernUserAgent = false;
-  bool _enableGitFetch = false;
-  bool _privateBrowsing = false;
-  bool _originalPrivateBrowsing = false;
-  bool _adBlocking = false;
-  bool _strictMode = false;
-  AppThemeMode _selectedTheme = AppThemeMode.system;
-
-  @override
-  void initState() {
-    super.initState();
-    _selectedTheme = widget.currentTheme ?? AppThemeMode.system;
-    _loadCurrentHomepage();
-  }
-
-  Future<void> _loadCurrentHomepage() async {
-    final prefs = await SharedPreferences.getInstance();
-    final homepage = prefs.getString(homepageKey) ?? 'https://www.google.com';
-    setState(() {
-      currentHomepage = homepage;
-      homepageController = TextEditingController(text: currentHomepage);
-      _hideAppBar = prefs.getBool(hideAppBarKey) ?? false;
-      _useModernUserAgent = prefs.getBool(useModernUserAgentKey) ?? true;
-      _enableGitFetch = prefs.getBool(enableGitFetchKey) ?? false;
-      _privateBrowsing = prefs.getBool(privateBrowsingKey) ?? false;
-      _originalPrivateBrowsing = _privateBrowsing;
-      _adBlocking = prefs.getBool(adBlockingKey) ?? false;
-      _strictMode = prefs.getBool(strictModeKey) ?? false;
-    });
-  }
-
-  @override
-  void dispose() {
-    homepageController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    if (currentHomepage == null) {
+    final homepage = useState<String?>(null);
+    final hideAppBar = useState(false);
+    final useModernUserAgent = useState(false);
+    final enableGitFetch = useState(false);
+    final privateBrowsing = useState(false);
+    final originalPrivateBrowsing = useRef<bool?>(null);
+    final adBlocking = useState(false);
+    final strictMode = useState(false);
+    final selectedTheme =
+        useState<AppThemeMode>(currentTheme ?? AppThemeMode.system);
+    final homepageController = useTextEditingController();
+
+    useEffect(() {
+      Future<void> loadPreferences() async {
+        final prefs = await SharedPreferences.getInstance();
+        final current = prefs.getString(homepageKey) ?? 'https://www.google.com';
+        homepage.value = current;
+        homepageController.text = current;
+        hideAppBar.value = prefs.getBool(hideAppBarKey) ?? false;
+        useModernUserAgent.value =
+            prefs.getBool(useModernUserAgentKey) ?? true;
+        enableGitFetch.value = prefs.getBool(enableGitFetchKey) ?? false;
+        privateBrowsing.value = prefs.getBool(privateBrowsingKey) ?? false;
+        originalPrivateBrowsing.value = privateBrowsing.value;
+        adBlocking.value = prefs.getBool(adBlockingKey) ?? false;
+        strictMode.value = prefs.getBool(strictModeKey) ?? false;
+        if (prefs.getString(themeModeKey) != null) {
+          selectedTheme.value = AppThemeMode.values.firstWhere(
+              (m) => m.name == prefs.getString(themeModeKey),
+              orElse: () => currentTheme ?? AppThemeMode.system);
+        }
+      }
+
+      loadPreferences();
+      return null;
+    }, const []);
+
+    if (homepage.value == null) {
       return const AlertDialog(
         title: Text('Settings'),
         content: CircularProgressIndicator(),
@@ -128,75 +121,47 @@ class _SettingsDialogState extends State<SettingsDialog> {
             ),
             SwitchListTile(
               title: const Text('Hide App Bar'),
-              value: _hideAppBar,
-              onChanged: (value) {
-                setState(() {
-                  _hideAppBar = value;
-                });
-              },
+              value: hideAppBar.value,
+              onChanged: (value) => hideAppBar.value = value,
             ),
             SwitchListTile(
               title: const Text('Use Modern User Agent'),
               subtitle: const Text(
                   'Load modern Google interface (applies to new tabs)'),
-              value: _useModernUserAgent,
-              onChanged: (value) {
-                setState(() {
-                  _useModernUserAgent = value;
-                });
-              },
+              value: useModernUserAgent.value,
+              onChanged: (value) => useModernUserAgent.value = value,
             ),
             SwitchListTile(
               title: const Text('Enable Git Fetch'),
               subtitle:
                   const Text('Show GitHub repository fetch option in menu'),
-              value: _enableGitFetch,
-              onChanged: (value) {
-                setState(() {
-                  _enableGitFetch = value;
-                });
-              },
+              value: enableGitFetch.value,
+              onChanged: (value) => enableGitFetch.value = value,
             ),
             SwitchListTile(
               title: const Text('Private Browsing'),
               subtitle: const Text(
                   'Clear cache and cookies on toggle (shared globally)'),
-              value: _privateBrowsing,
-              onChanged: (value) {
-                setState(() {
-                  _privateBrowsing = value;
-                });
-              },
+              value: privateBrowsing.value,
+              onChanged: (value) => privateBrowsing.value = value,
             ),
             SwitchListTile(
               title: const Text('Ad Blocking'),
               subtitle: const Text('Block common ad domains'),
-              value: _adBlocking,
-              onChanged: (value) {
-                setState(() {
-                  _adBlocking = value;
-                });
-              },
+              value: adBlocking.value,
+              onChanged: (value) => adBlocking.value = value,
             ),
             SwitchListTile(
               title: const Text('Strict Mode'),
               subtitle:
                   const Text('Disable JavaScript and third-party cookies'),
-              value: _strictMode,
-              onChanged: (value) {
-                setState(() {
-                  _strictMode = value;
-                });
-              },
+              value: strictMode.value,
+              onChanged: (value) => strictMode.value = value,
             ),
             DropdownButton<AppThemeMode>(
-              value: _selectedTheme,
+              value: selectedTheme.value,
               onChanged: (AppThemeMode? value) {
-                if (value != null) {
-                  setState(() {
-                    _selectedTheme = value;
-                  });
-                }
+                if (value != null) selectedTheme.value = value;
               },
               items: AppThemeMode.values
                   .map<DropdownMenuItem<AppThemeMode>>((AppThemeMode mode) {
@@ -216,33 +181,31 @@ class _SettingsDialogState extends State<SettingsDialog> {
         ),
         TextButton(
           onPressed: () async {
-            final homepage = homepageController.text.trim();
-            if (Uri.tryParse(homepage)?.hasScheme != true) {
+            final homepageText = homepageController.text.trim();
+            if (Uri.tryParse(homepageText)?.hasScheme != true) {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Invalid homepage URL')),
               );
               return;
             }
             final prefs = await SharedPreferences.getInstance();
-            await prefs.setString(homepageKey, homepage);
-            await prefs.setBool(hideAppBarKey, _hideAppBar);
-            await prefs.setBool(useModernUserAgentKey, _useModernUserAgent);
-            await prefs.setBool(enableGitFetchKey, _enableGitFetch);
-            await prefs.setBool(privateBrowsingKey, _privateBrowsing);
-            await prefs.setBool(adBlockingKey, _adBlocking);
-            await prefs.setBool(strictModeKey, _strictMode);
-            await prefs.setString(themeModeKey, _selectedTheme.name);
+            await prefs.setString(homepageKey, homepageText);
+            await prefs.setBool(hideAppBarKey, hideAppBar.value);
+            await prefs.setBool(useModernUserAgentKey, useModernUserAgent.value);
+            await prefs.setBool(enableGitFetchKey, enableGitFetch.value);
+            await prefs.setBool(privateBrowsingKey, privateBrowsing.value);
+            await prefs.setBool(adBlockingKey, adBlocking.value);
+            await prefs.setBool(strictModeKey, strictMode.value);
+            await prefs.setString(themeModeKey, selectedTheme.value.name);
 
-            widget.onSettingsChanged?.call();
-            if (_privateBrowsing != _originalPrivateBrowsing) {
-              widget.onClearCaches?.call();
+            onSettingsChanged?.call();
+            if (privateBrowsing.value != originalPrivateBrowsing.value) {
+              onClearCaches?.call();
             }
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Settings saved')),
-              );
-              Navigator.of(context).pop();
-            }
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Settings saved')),
+            );
+            Navigator.of(context).pop();
           },
           child: const Text('Save'),
         ),
@@ -273,78 +236,53 @@ class TabData {
         urlFocusNode = FocusNode();
 }
 
-class GitFetchDialog extends StatefulWidget {
+Future<Map<String, dynamic>> _fetchGitHubRepo(String url) async {
+  final response =
+      await http.get(Uri.parse(url)).timeout(const Duration(seconds: 10));
+  if (response.statusCode == 200) {
+    return jsonDecode(response.body);
+  } else {
+    throw Exception('Failed to load repo: ${response.statusCode}');
+  }
+}
+
+class GitFetchDialog extends HookWidget {
   const GitFetchDialog({super.key, required this.onOpenInNewTab});
 
   final void Function(String url) onOpenInNewTab;
 
   @override
-  State<GitFetchDialog> createState() => _GitFetchDialogState();
-}
-
-class _GitFetchDialogState extends State<GitFetchDialog> {
-  final TextEditingController repoController = TextEditingController();
-  bool isLoading = false;
-  Map<String, dynamic>? repoData;
-  String? errorMessage;
-
-  Future<void> _fetchRepo() async {
-    final repo = repoController.text.trim();
-    if (repo.isEmpty) return;
-
-    final parts = repo.split('/');
-    if (parts.length != 2) {
-      setState(() {
-        errorMessage = 'Invalid format. Use owner/repo';
-      });
-      return;
-    }
-
-    setState(() {
-      isLoading = true;
-      errorMessage = null;
-      repoData = null;
-    });
-
-    try {
-      final url = 'https://api.github.com/repos/${parts[0]}/${parts[1]}';
-      // Note: This would use webfetch tool in the assistant, but in code we use http
-      // For demo, using placeholder
-      final response = await fetchGitHubRepo(url);
-      if (mounted) {
-        setState(() {
-          repoData = response;
-          isLoading = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          errorMessage = 'Failed to fetch repo: $e';
-          isLoading = false;
-        });
-      }
-    }
-  }
-
-  Future<Map<String, dynamic>> fetchGitHubRepo(String url) async {
-    final response =
-        await http.get(Uri.parse(url)).timeout(const Duration(seconds: 10));
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body);
-    } else {
-      throw Exception('Failed to load repo: ${response.statusCode}');
-    }
-  }
-
-  @override
-  void dispose() {
-    repoController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
+    final repoController = useTextEditingController();
+    final isLoading = useState(false);
+    final repoData = useState<Map<String, dynamic>?>(null);
+    final errorMessage = useState<String?>(null);
+
+    Future<void> fetchRepo() async {
+      final repo = repoController.text.trim();
+      if (repo.isEmpty) return;
+
+      final parts = repo.split('/');
+      if (parts.length != 2) {
+        errorMessage.value = 'Invalid format. Use owner/repo';
+        return;
+      }
+
+      isLoading.value = true;
+      errorMessage.value = null;
+      repoData.value = null;
+
+      try {
+        final url = 'https://api.github.com/repos/${parts[0]}/${parts[1]}';
+        final response = await _fetchGitHubRepo(url);
+        isLoading.value = false;
+        repoData.value = response;
+      } catch (e) {
+        isLoading.value = false;
+        errorMessage.value = 'Failed to fetch repo: $e';
+      }
+    }
+
     return AlertDialog(
       title: const Text('Git Fetch'),
       content: Column(
@@ -358,17 +296,18 @@ class _GitFetchDialogState extends State<GitFetchDialog> {
             ),
           ),
           const SizedBox(height: 16),
-          if (isLoading) const CircularProgressIndicator(),
-          if (errorMessage != null)
-            Text(errorMessage!, style: const TextStyle(color: Colors.red)),
-          if (repoData != null) ...[
-            Text('Name: ${repoData!['name'] ?? 'N/A'}'),
+          if (isLoading.value) const CircularProgressIndicator(),
+          if (errorMessage.value != null)
+            Text(errorMessage.value!,
+                style: const TextStyle(color: Colors.red)),
+          if (repoData.value != null) ...[
+            Text('Name: ${repoData.value!['name'] ?? 'N/A'}'),
             Text(
-                'Description: ${repoData!['description'] ?? 'No description'}'),
-            Text('Stars: ${repoData!['stargazers_count'] ?? 0}'),
-            Text('Forks: ${repoData!['forks_count'] ?? 0}'),
-            Text('Language: ${repoData!['language'] ?? 'N/A'}'),
-            Text('Open Issues: ${repoData!['open_issues_count'] ?? 0}'),
+                'Description: ${repoData.value!['description'] ?? 'No description'}'),
+            Text('Stars: ${repoData.value!['stargazers_count'] ?? 0}'),
+            Text('Forks: ${repoData.value!['forks_count'] ?? 0}'),
+            Text('Language: ${repoData.value!['language'] ?? 'N/A'}'),
+            Text('Open Issues: ${repoData.value!['open_issues_count'] ?? 0}'),
           ],
         ],
       ),
@@ -378,14 +317,14 @@ class _GitFetchDialogState extends State<GitFetchDialog> {
           child: const Text('Cancel'),
         ),
         TextButton(
-          onPressed: _fetchRepo,
+          onPressed: fetchRepo,
           child: const Text('Fetch'),
         ),
-        if (repoData != null)
+        if (repoData.value != null)
           TextButton(
             onPressed: () {
               final url = 'https://github.com/${repoController.text}';
-              widget.onOpenInNewTab(url);
+              onOpenInNewTab(url);
               Navigator.of(context).pop();
             },
             child: const Text('Open in New Tab'),
