@@ -236,6 +236,16 @@ class TabData {
         urlFocusNode = FocusNode();
 }
 
+Future<Map<String, dynamic>> _fetchGitHubRepo(String url) async {
+  final response =
+      await http.get(Uri.parse(url)).timeout(const Duration(seconds: 10));
+  if (response.statusCode == 200) {
+    return jsonDecode(response.body);
+  } else {
+    throw Exception('Failed to load repo: ${response.statusCode}');
+  }
+}
+
 class GitFetchDialog extends HookWidget {
   const GitFetchDialog({super.key, required this.onOpenInNewTab});
 
@@ -247,16 +257,6 @@ class GitFetchDialog extends HookWidget {
     final isLoading = useState(false);
     final repoData = useState<Map<String, dynamic>?>(null);
     final errorMessage = useState<String?>(null);
-
-    Future<Map<String, dynamic>> fetchGitHubRepo(String url) async {
-      final response =
-          await http.get(Uri.parse(url)).timeout(const Duration(seconds: 10));
-      if (response.statusCode == 200) {
-        return jsonDecode(response.body);
-      } else {
-        throw Exception('Failed to load repo: ${response.statusCode}');
-      }
-    }
 
     Future<void> fetchRepo() async {
       final repo = repoController.text.trim();
@@ -274,7 +274,7 @@ class GitFetchDialog extends HookWidget {
 
       try {
         final url = 'https://api.github.com/repos/${parts[0]}/${parts[1]}';
-        final response = await fetchGitHubRepo(url);
+        final response = await _fetchGitHubRepo(url);
         isLoading.value = false;
         repoData.value = response;
       } catch (e) {
