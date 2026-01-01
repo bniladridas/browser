@@ -53,7 +53,7 @@ extension BrowserStatePatterns on BrowserState {
     TResult Function(Idle value)? idle,
     TResult Function(Loading value)? loading,
     TResult Function(Success value)? success,
-    TResult Function(Error value)? error,
+    TResult Function(BrowserError value)? error,
     required TResult orElse(),
   }) {
     final _that = this;
@@ -64,7 +64,7 @@ extension BrowserStatePatterns on BrowserState {
         return loading(_that);
       case Success() when success != null:
         return success(_that);
-      case Error() when error != null:
+      case BrowserError() when error != null:
         return error(_that);
       case _:
         return orElse();
@@ -89,7 +89,7 @@ extension BrowserStatePatterns on BrowserState {
     required TResult Function(Idle value) idle,
     required TResult Function(Loading value) loading,
     required TResult Function(Success value) success,
-    required TResult Function(Error value) error,
+    required TResult Function(BrowserError value) error,
   }) {
     final _that = this;
     switch (_that) {
@@ -99,7 +99,7 @@ extension BrowserStatePatterns on BrowserState {
         return loading(_that);
       case Success():
         return success(_that);
-      case Error():
+      case BrowserError():
         return error(_that);
       case _:
         throw StateError('Unexpected subclass');
@@ -123,7 +123,7 @@ extension BrowserStatePatterns on BrowserState {
     TResult? Function(Idle value)? idle,
     TResult? Function(Loading value)? loading,
     TResult? Function(Success value)? success,
-    TResult? Function(Error value)? error,
+    TResult? Function(BrowserError value)? error,
   }) {
     final _that = this;
     switch (_that) {
@@ -133,7 +133,7 @@ extension BrowserStatePatterns on BrowserState {
         return loading(_that);
       case Success() when success != null:
         return success(_that);
-      case Error() when error != null:
+      case BrowserError() when error != null:
         return error(_that);
       case _:
         return null;
@@ -168,7 +168,7 @@ extension BrowserStatePatterns on BrowserState {
         return loading();
       case Success() when success != null:
         return success(_that.url);
-      case Error() when error != null:
+      case BrowserError() when error != null:
         return error(_that.message);
       case _:
         return orElse();
@@ -203,7 +203,7 @@ extension BrowserStatePatterns on BrowserState {
         return loading();
       case Success():
         return success(_that.url);
-      case Error():
+      case BrowserError():
         return error(_that.message);
       case _:
         throw StateError('Unexpected subclass');
@@ -237,7 +237,7 @@ extension BrowserStatePatterns on BrowserState {
         return loading();
       case Success() when success != null:
         return success(_that.url);
-      case Error() when error != null:
+      case BrowserError() when error != null:
         return error(_that.message);
       case _:
         return null;
@@ -349,8 +349,8 @@ class _$SuccessCopyWithImpl<$Res> implements $SuccessCopyWith<$Res> {
 
 /// @nodoc
 
-class Error implements BrowserState {
-  const Error(this.message);
+class BrowserError implements BrowserState {
+  const BrowserError(this.message);
 
   final String message;
 
@@ -358,14 +358,14 @@ class Error implements BrowserState {
   /// with the given fields replaced by the non-null parameter values.
   @JsonKey(includeFromJson: false, includeToJson: false)
   @pragma('vm:prefer-inline')
-  $ErrorCopyWith<Error> get copyWith =>
-      _$ErrorCopyWithImpl<Error>(this, _$identity);
+  $BrowserErrorCopyWith<BrowserError> get copyWith =>
+      _$BrowserErrorCopyWithImpl<BrowserError>(this, _$identity);
 
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is Error &&
+            other is BrowserError &&
             (identical(other.message, message) || other.message == message));
   }
 
@@ -379,20 +379,21 @@ class Error implements BrowserState {
 }
 
 /// @nodoc
-abstract mixin class $ErrorCopyWith<$Res>
+abstract mixin class $BrowserErrorCopyWith<$Res>
     implements $BrowserStateCopyWith<$Res> {
-  factory $ErrorCopyWith(Error value, $Res Function(Error) _then) =
-      _$ErrorCopyWithImpl;
+  factory $BrowserErrorCopyWith(
+          BrowserError value, $Res Function(BrowserError) _then) =
+      _$BrowserErrorCopyWithImpl;
   @useResult
   $Res call({String message});
 }
 
 /// @nodoc
-class _$ErrorCopyWithImpl<$Res> implements $ErrorCopyWith<$Res> {
-  _$ErrorCopyWithImpl(this._self, this._then);
+class _$BrowserErrorCopyWithImpl<$Res> implements $BrowserErrorCopyWith<$Res> {
+  _$BrowserErrorCopyWithImpl(this._self, this._then);
 
-  final Error _self;
-  final $Res Function(Error) _then;
+  final BrowserError _self;
+  final $Res Function(BrowserError) _then;
 
   /// Create a copy of BrowserState
   /// with the given fields replaced by the non-null parameter values.
@@ -400,7 +401,7 @@ class _$ErrorCopyWithImpl<$Res> implements $ErrorCopyWith<$Res> {
   $Res call({
     Object? message = null,
   }) {
-    return _then(Error(
+    return _then(BrowserError(
       null == message
           ? _self.message
           : message // ignore: cast_nullable_to_non_nullable
