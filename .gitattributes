@@ -1,0 +1,21 @@
+# Flutter build artifacts
+build/** linguist-generated
+.dart_tool/** linguist-generated
+
+# Generated Dart files
+lib/**/*.g.dart linguist-generated
+lib/**/*.freezed.dart linguist-generated
+test/**/*.g.dart linguist-generated
+
+# Platform-specific generated files
+android/** linguist-generated
+ios/** linguist-generated
+linux/** linguist-generated
+macos/** linguist-generated
+windows/** linguist-generated
+
+# Dependency lock files (optional, to reduce noise)
+pubspec.lock linguist-generated
+
+# Exceptions: unmark important generated files if needed
+# lib/some_manual_file.g.dart -linguist-generated
