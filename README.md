@@ -23,6 +23,17 @@ Run `./check.sh` for checks.
 
 Build: `flutter build macos`.
 
+### Generated Files
+
+This project uses `.gitattributes` to mark generated files (e.g., from `freezed`, `build_runner`) as `linguist-generated`. This hides them from GitHub diffs and language statistics, keeping pull requests focused on hand-written code.
+
+Common generated paths include:
+- `build/**` and `.dart_tool/**` (Flutter build artifacts)
+- `lib/**/*.freezed.dart` and `lib/**/*.g.dart` (code-generated Dart files)
+- Platform-specific directories like `android/**`, `ios/**`
+
+To unmark a specific file, add `-linguist-generated` in `.gitattributes`.
+
 ## Contribute
 
 Fork, branch, edit, run `./check.sh`, commit, PR with labels for version bump.
