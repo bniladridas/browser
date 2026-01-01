@@ -1007,7 +1007,7 @@ class _BrowserPageState extends State<BrowserPage>
         child: Stack(
           children: [
             WebViewWidget(controller: tab.webViewController!),
-            if (tab.state.maybeWhen(loading: () => true, orElse: () => false))
+            if (tab.state is Loading)
               const Center(
                 child: CircularProgressIndicator(),
               ),
