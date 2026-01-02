@@ -33,6 +33,14 @@ migrate_working_dir/
 /build/
 /coverage/
 
+# Environment variables
+.env
+
+# Firebase config
+macos/Runner/GoogleService-Info.plist
+ios/Runner/GoogleService-Info.plist
+android/app/google-services.json
+
 # Symbolication related
 app.*.symbols
 

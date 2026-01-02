@@ -7,19 +7,37 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:window_manager/window_manager.dart';
 import 'constants.dart';
 import 'logging/logger.dart';
 import 'features/theme_utils.dart';
 import 'ux/browser_page.dart';
+import 'package:pkg/ai_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  try {
+    await dotenv.load();
+  } catch (e) {
+    logger
+        .w('Warning: .env file not found. Firebase keys will use defaults. $e');
+  }
   try {
     await windowManager.ensureInitialized();
   } catch (e) {
     logger.w(
         'Warning: Window manager initialization failed on this platform: $e. Some desktop window features (minimize, maximize, etc.) may not be available.');
+  }
+  try {
+    await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform);
+    AiService().initialize();
+  } catch (e) {
+    logger.w(
+        'Firebase initialization failed: $e. AI features will not be available.');
   }
   runApp(const MyApp());
 }
@@ -40,7 +58,7 @@ class _MyAppState extends State<MyApp> {
   bool _adBlocking = false;
   bool _strictMode = false;
   AppThemeMode _themeMode = AppThemeMode.system;
-  bool _prefsLoaded = true;
+  bool _prefsLoaded = false;
 
   @override
   void initState() {
@@ -65,10 +83,8 @@ class _MyAppState extends State<MyApp> {
             orElse: () => AppThemeMode.system);
       });
     } catch (e) {
-      setState(() {
-        _prefsLoaded = false;
-      });
       logger.e('Shared preferences not available: $e');
+      // _prefsLoaded remains false, build method will show snackbar and set to true
     }
   }
 
