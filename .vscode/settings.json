@@ -1,0 +1,7 @@
+{
+  "dart.analysis.exclude": [
+    "**/firebase_core/**",
+    "**/firebase_auth/**",
+    "**/firebase_app_check/**"
+  ]
+}
