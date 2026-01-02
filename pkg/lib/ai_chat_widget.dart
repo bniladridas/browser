@@ -21,17 +21,14 @@ class AiChatWidget extends HookWidget {
     Future<void> sendMessage() async {
       final text = controller.text.trim();
       if (text.isEmpty) return;
-      messages.value.add('You: $text');
-      messages.value = List.of(messages.value); // Efficient immutable update
+      messages.value = [...messages.value, 'You: $text'];
       controller.clear();
       isLoading.value = true;
       try {
         final response = await AiService().generateResponse(text);
-        messages.value.add('AI: $response');
-        messages.value = List.of(messages.value);
+        messages.value = [...messages.value, 'AI: $response'];
       } catch (e) {
-        messages.value.add('AI: Error: $e');
-        messages.value = List.of(messages.value);
+        messages.value = [...messages.value, 'AI: Error: $e'];
       } finally {
         isLoading.value = false;
       }
