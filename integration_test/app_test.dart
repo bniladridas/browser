@@ -21,10 +21,6 @@ Future<void> _launchApp(WidgetTester tester) async {
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  if (Platform.isMacOS) {
-    return;
-  }
-
   group('Browser App Tests', () {
     testWidgets('App launches and shows initial UI',
         (WidgetTester tester) async {
@@ -238,5 +234,5 @@ void main() {
       // Should show saved snackbar
       expect(find.text('Settings saved'), findsOneWidget);
     }, timeout: testTimeout);
-  });
+  }, skip: Platform.isMacOS);
 }
