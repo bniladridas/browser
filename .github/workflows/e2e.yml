@@ -23,4 +23,37 @@ jobs:
         with:
           flutter-version: '3.38.3'
       - run: flutter pub get
+      - name: Create .env file
+        run: |
+          {
+            echo "FIREBASE_API_KEY=dummy_api_key"
+            echo "FIREBASE_APP_ID=dummy_app_id"
+            echo "FIREBASE_MESSAGING_SENDER_ID=dummy_sender_id"
+            echo "FIREBASE_PROJECT_ID=dummy_project_id"
+            echo "FIREBASE_STORAGE_BUCKET=dummy_storage_bucket"
+          } > .env
+      - name: Create GoogleService-Info.plist
+        run: |
+          cat > macos/Runner/GoogleService-Info.plist << 'EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>API_KEY</key>
+              <string>dummy_api_key</string>
+              <key>GCM_SENDER_ID</key>
+              <string>dummy_sender_id</string>
+              <key>PROJECT_ID</key>
+              <string>dummy_project_id</string>
+              <key>STORAGE_BUCKET</key>
+              <string>dummy_storage_bucket</string>
+              <key>APP_ID</key>
+              <string>dummy_app_id</string>
+              <key>CLIENT_ID</key>
+              <string>dummy_client_id</string>
+              <key>REVERSED_CLIENT_ID</key>
+              <string>dummy_reversed_client_id</string>
+          </dict>
+          </plist>
+          EOF
       - run: ./scripts/e2e.sh

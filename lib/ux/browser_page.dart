@@ -23,6 +23,7 @@ import '../browser_state.dart';
 
 import '../features/video_manager.dart';
 import '../logging/logger.dart';
+import 'package:pkg/ai_chat_widget.dart';
 
 const String _modernUserAgent =
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0.2 Safari/605.1.15';
@@ -80,12 +81,12 @@ class SettingsDialog extends HookWidget {
     useEffect(() {
       Future<void> loadPreferences() async {
         final prefs = await SharedPreferences.getInstance();
-        final current = prefs.getString(homepageKey) ?? 'https://www.google.com';
+        final current =
+            prefs.getString(homepageKey) ?? 'https://www.google.com';
         homepage.value = current;
         homepageController.text = current;
         hideAppBar.value = prefs.getBool(hideAppBarKey) ?? false;
-        useModernUserAgent.value =
-            prefs.getBool(useModernUserAgentKey) ?? true;
+        useModernUserAgent.value = prefs.getBool(useModernUserAgentKey) ?? true;
         enableGitFetch.value = prefs.getBool(enableGitFetchKey) ?? false;
         privateBrowsing.value = prefs.getBool(privateBrowsingKey) ?? false;
         originalPrivateBrowsing.value = privateBrowsing.value;
@@ -191,7 +192,8 @@ class SettingsDialog extends HookWidget {
             final prefs = await SharedPreferences.getInstance();
             await prefs.setString(homepageKey, homepageText);
             await prefs.setBool(hideAppBarKey, hideAppBar.value);
-            await prefs.setBool(useModernUserAgentKey, useModernUserAgent.value);
+            await prefs.setBool(
+                useModernUserAgentKey, useModernUserAgent.value);
             await prefs.setBool(enableGitFetchKey, enableGitFetch.value);
             await prefs.setBool(privateBrowsingKey, privateBrowsing.value);
             await prefs.setBool(adBlockingKey, adBlocking.value);
@@ -724,6 +726,13 @@ class _BrowserPageState extends State<BrowserPage>
     );
   }
 
+  void _showAiChat() {
+    showDialog(
+      context: context,
+      builder: (context) => const AiChatWidget(),
+    );
+  }
+
   void _showHistory() {
     if (widget.privateBrowsing) {
       showDialog(
@@ -1022,7 +1031,9 @@ class _BrowserPageState extends State<BrowserPage>
                           case 'history':
                             _showHistory();
                             break;
-
+                          case 'ai_chat':
+                            _showAiChat();
+                            break;
                           case 'settings':
                             _showSettings();
                             break;
@@ -1059,6 +1070,10 @@ class _BrowserPageState extends State<BrowserPage>
                         const PopupMenuItem(
                           value: 'history',
                           child: Text('History'),
+                        ),
+                        const PopupMenuItem(
+                          value: 'ai_chat',
+                          child: Text('AI Chat'),
                         ),
                         if (widget.enableGitFetch)
                           const PopupMenuItem(
