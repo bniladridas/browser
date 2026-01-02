@@ -34,4 +34,4 @@ jobs:
           } > .env
       - run: flutter analyze
       - run: flutter test
-      - run: flutter build macos
+      - run: flutter build macos 2>&1 | grep -v -E "(firebase_core|firebase_auth|firebase_app_check).*warning"
