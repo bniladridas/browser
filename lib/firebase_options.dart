@@ -5,6 +5,15 @@ import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, kIsWeb, TargetPlatform;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
+/// Helper to get required environment variables with validation
+String _getEnv(String key) {
+  final value = dotenv.env[key];
+  if (value == null || value.isEmpty) {
+    throw ArgumentError('Missing or empty required environment variable: $key');
+  }
+  return value;
+}
+
 /// Default [FirebaseOptions] for use with your Firebase apps.
 ///
 /// Example:
@@ -54,11 +63,11 @@ class DefaultFirebaseOptions {
   }
 
   static FirebaseOptions get macos => FirebaseOptions(
-        apiKey: dotenv.env['FIREBASE_API_KEY'] ?? '',
-        appId: dotenv.env['FIREBASE_APP_ID'] ?? '',
-        messagingSenderId: dotenv.env['FIREBASE_MESSAGING_SENDER_ID'] ?? '',
-        projectId: dotenv.env['FIREBASE_PROJECT_ID'] ?? '',
-        storageBucket: dotenv.env['FIREBASE_STORAGE_BUCKET'] ?? '',
+        apiKey: _getEnv('FIREBASE_API_KEY'),
+        appId: _getEnv('FIREBASE_APP_ID'),
+        messagingSenderId: _getEnv('FIREBASE_MESSAGING_SENDER_ID'),
+        projectId: _getEnv('FIREBASE_PROJECT_ID'),
+        storageBucket: _getEnv('FIREBASE_STORAGE_BUCKET'),
         iosBundleId: 'com.example.browser',
       );
 }
