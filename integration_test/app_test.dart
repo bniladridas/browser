@@ -21,11 +21,13 @@ Future<void> _launchApp(WidgetTester tester) async {
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
+  if (Platform.isMacOS) {
+    return;
+  }
+
   group('Browser App Tests', () {
     testWidgets('App launches and shows initial UI',
         (WidgetTester tester) async {
-      if (Platform.isMacOS) return; // Skip on macOS due to webview test issues
-
       // Build the app
       await tester.pumpWidget(const MyApp());
       await Future.delayed(const Duration(seconds: 1));
@@ -41,8 +43,6 @@ void main() {
     }, timeout: testTimeout);
 
     testWidgets('Bookmark adding and viewing', (WidgetTester tester) async {
-      if (Platform.isMacOS) return; // Skip on macOS due to webview test issues
-
       await _launchApp(tester);
 
       // Enter a URL and load
@@ -71,8 +71,6 @@ void main() {
     }, timeout: testTimeout);
 
     testWidgets('History viewing', (WidgetTester tester) async {
-      if (Platform.isMacOS) return; // Skip on macOS due to webview test issues
-
       await _launchApp(tester);
 
       // Open menu and view history
@@ -86,8 +84,6 @@ void main() {
     }, timeout: testTimeout);
 
     testWidgets('Special characters in URL', (WidgetTester tester) async {
-      if (Platform.isMacOS) return; // Skip on macOS due to webview test issues
-
       await _launchApp(tester);
 
       // Enter URL with special characters
@@ -104,8 +100,6 @@ void main() {
     }, timeout: testTimeout);
 
     testWidgets('Clear cache functionality', (WidgetTester tester) async {
-      if (Platform.isMacOS) return; // Skip on macOS due to webview test issues
-
       await _launchApp(tester);
 
       // Open menu and clear cache
@@ -120,8 +114,6 @@ void main() {
 
     testWidgets('Settings dialog and user agent toggle',
         (WidgetTester tester) async {
-      if (Platform.isMacOS) return; // Skip on macOS due to webview test issues
-
       await _launchApp(tester);
 
       // Open menu and go to settings
@@ -150,8 +142,6 @@ void main() {
     }, timeout: testTimeout);
 
     testWidgets('Git fetch dialog', (WidgetTester tester) async {
-      if (Platform.isMacOS) return; // Skip on macOS due to webview test issues
-
       await _launchApp(tester);
 
       // First, enable Git Fetch in settings
@@ -203,8 +193,6 @@ void main() {
     }, timeout: testTimeout);
 
     testWidgets('New feature toggles in settings', (WidgetTester tester) async {
-      if (Platform.isMacOS) return; // Skip on macOS due to webview test issues
-
       await _launchApp(tester);
 
       // Open settings
