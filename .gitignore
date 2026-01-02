@@ -37,6 +37,7 @@ migrate_working_dir/
 .env
 
 # Firebase config
+firebase.json
 macos/Runner/GoogleService-Info.plist
 ios/Runner/GoogleService-Info.plist
 android/app/google-services.json
