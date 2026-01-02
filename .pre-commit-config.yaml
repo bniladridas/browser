@@ -11,9 +11,11 @@ repos:
     hooks:
       - id: trailing-whitespace
       - id: check-yaml
+      - id: check-json
       - id: check-added-large-files
       - id: check-merge-conflict
       - id: end-of-file-fixer
+      - id: mixed-line-ending
       - id: check-executables-have-shebangs
   - repo: local
     hooks:
