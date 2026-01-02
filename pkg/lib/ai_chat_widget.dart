@@ -21,7 +21,8 @@ class AiChatWidget extends HookWidget {
     Future<void> sendMessage() async {
       final text = controller.text.trim();
       if (text.isEmpty) return;
-      messages.value = [...messages.value, 'You: $text'];
+      messages.value.add('You: $text');
+      messages.value = List.from(messages.value);
       controller.clear();
       isLoading.value = true;
       try {
