@@ -61,6 +61,7 @@ class AiChatWidget extends HookWidget {
                 Expanded(
                   child: TextField(
                     controller: controller,
+                    autofocus: true,
                     decoration: const InputDecoration(hintText: 'Ask AI...'),
                     onSubmitted: (_) => sendMessage(),
                   ),
