@@ -10,13 +10,41 @@ import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:window_manager/window_manager.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'logging/logger.dart';
 import 'features/theme_utils.dart';
 import 'ux/browser_page.dart';
 import 'package:pkg/ai_service.dart';
+import 'constants.dart';
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  AppThemeMode themeMode = AppThemeMode.system;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTheme();
+  }
+
+  Future<void> _loadTheme() async {
+    final prefs = await SharedPreferences.getInstance();
+    final themeString = prefs.getString(themeModeKey);
+    if (themeString != null) {
+      setState(() {
+        themeMode = AppThemeMode.values.firstWhere(
+          (m) => m.name == themeString,
+          orElse: () => AppThemeMode.system,
+        );
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -33,7 +61,7 @@ class MyApp extends StatelessWidget {
               seedColor: Colors.blue, brightness: Brightness.dark),
           useMaterial3: true,
         ),
-        themeMode: toThemeMode(AppThemeMode.system),
+        themeMode: toThemeMode(themeMode),
         home: BrowserPage(
           initialUrl: 'https://www.google.com',
           hideAppBar: false,
@@ -42,8 +70,8 @@ class MyApp extends StatelessWidget {
           privateBrowsing: false,
           adBlocking: false,
           strictMode: false,
-          themeMode: AppThemeMode.system,
-          onSettingsChanged: () {},
+          themeMode: themeMode,
+          onSettingsChanged: _loadTheme,
         ),
       ),
     );
