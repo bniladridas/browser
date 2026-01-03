@@ -37,12 +37,14 @@ class _MyAppState extends State<MyApp> {
     final prefs = await SharedPreferences.getInstance();
     final themeString = prefs.getString(themeModeKey);
     if (themeString != null) {
-      setState(() {
-        themeMode = AppThemeMode.values.firstWhere(
-          (m) => m.name == themeString,
-          orElse: () => AppThemeMode.system,
-        );
-      });
+      if (mounted) {
+        setState(() {
+          themeMode = AppThemeMode.values.firstWhere(
+            (m) => m.name == themeString,
+            orElse: () => AppThemeMode.system,
+          );
+        });
+      }
     }
   }
 
