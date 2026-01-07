@@ -26,25 +26,39 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   AppThemeMode themeMode = AppThemeMode.system;
+  String homepage = 'https://www.google.com';
+  bool hideAppBar = false;
+  bool useModernUserAgent = false;
+  bool enableGitFetch = false;
+  bool privateBrowsing = false;
+  bool adBlocking = false;
+  bool strictMode = false;
 
   @override
   void initState() {
     super.initState();
-    _loadTheme();
+    _loadSettings();
   }
 
-  Future<void> _loadTheme() async {
+  Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
-    final themeString = prefs.getString(themeModeKey);
-    if (themeString != null) {
-      if (mounted) {
-        setState(() {
+    if (mounted) {
+      setState(() {
+        homepage = prefs.getString(homepageKey) ?? 'https://www.google.com';
+        hideAppBar = prefs.getBool(hideAppBarKey) ?? false;
+        useModernUserAgent = prefs.getBool(useModernUserAgentKey) ?? false;
+        enableGitFetch = prefs.getBool(enableGitFetchKey) ?? false;
+        privateBrowsing = prefs.getBool(privateBrowsingKey) ?? false;
+        adBlocking = prefs.getBool(adBlockingKey) ?? false;
+        strictMode = prefs.getBool(strictModeKey) ?? false;
+        final themeString = prefs.getString(themeModeKey);
+        if (themeString != null) {
           themeMode = AppThemeMode.values.firstWhere(
             (m) => m.name == themeString,
             orElse: () => AppThemeMode.system,
           );
-        });
-      }
+        }
+      });
     }
   }
 
@@ -65,15 +79,15 @@ class _MyAppState extends State<MyApp> {
         ),
         themeMode: toThemeMode(themeMode),
         home: BrowserPage(
-          initialUrl: 'https://www.google.com',
-          hideAppBar: false,
-          useModernUserAgent: false,
-          enableGitFetch: false,
-          privateBrowsing: false,
-          adBlocking: false,
-          strictMode: false,
+          initialUrl: homepage,
+          hideAppBar: hideAppBar,
+          useModernUserAgent: useModernUserAgent,
+          enableGitFetch: enableGitFetch,
+          privateBrowsing: privateBrowsing,
+          adBlocking: adBlocking,
+          strictMode: strictMode,
           themeMode: themeMode,
-          onSettingsChanged: _loadTheme,
+          onSettingsChanged: _loadSettings,
         ),
       ),
     );
