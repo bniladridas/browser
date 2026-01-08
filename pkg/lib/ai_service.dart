@@ -13,6 +13,7 @@ class AiService {
   AiService._internal();
 
   GenerativeModel? _model;
+  ChatSession? _chatSession;
 
   void initialize() {
     try {
@@ -23,18 +24,20 @@ class AiService {
           maxOutputTokens: 1000,
         ),
       );
+      _chatSession = _model?.startChat();
     } catch (e) {
       debugPrint('AI model initialization failed: $e');
       _model = null;
+      _chatSession = null;
     }
   }
 
   Future<String> generateResponse(String prompt) async {
-    if (_model == null) {
+    if (_chatSession == null) {
       return 'AI is not available. Please configure Firebase.';
     }
-    final content = [Content.text(prompt)];
-    final response = await _model!.generateContent(content);
+    final content = Content.text(prompt);
+    final response = await _chatSession!.sendMessage(content);
     return response.text ?? 'No response generated.';
   }
 

@@ -726,10 +726,28 @@ class _BrowserPageState extends State<BrowserPage>
     );
   }
 
-  void _showAiChat() {
+  Future<void> _showAiChat() async {
+    final activeTab = tabs[tabController.index];
+    String? pageTitle;
+    String? pageUrl;
+    try {
+      final titleResult = await activeTab.webViewController
+          ?.runJavaScriptReturningResult('document.title');
+      if (titleResult != null && titleResult is String) {
+        pageTitle = titleResult;
+      }
+      final urlResult = await activeTab.webViewController
+          ?.runJavaScriptReturningResult('window.location.href');
+      if (urlResult != null && urlResult is String) {
+        pageUrl = urlResult;
+      }
+    } catch (e) {
+      debugPrint('Error fetching page info: $e');
+    }
     showDialog(
       context: context,
-      builder: (context) => const AiChatWidget(),
+      builder: (context) =>
+          AiChatWidget(pageTitle: pageTitle, pageUrl: pageUrl),
     );
   }
 

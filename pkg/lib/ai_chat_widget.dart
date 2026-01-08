@@ -6,11 +6,15 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 
 import 'ai_service.dart';
 
 class AiChatWidget extends HookWidget {
-  const AiChatWidget({super.key});
+  const AiChatWidget({super.key, this.pageTitle, this.pageUrl});
+
+  final String? pageTitle;
+  final String? pageUrl;
 
   @override
   Widget build(BuildContext context) {
@@ -26,7 +30,18 @@ class AiChatWidget extends HookWidget {
       controller.clear();
       isLoading.value = true;
       try {
-        final response = await AiService().generateResponse(text);
+        String prompt = text;
+        final lowerText = text.toLowerCase();
+        if (lowerText.contains('page') ||
+            lowerText.contains('website') ||
+            lowerText.contains('tell me about') ||
+            lowerText.contains('what is this') ||
+            lowerText.contains('current site')) {
+          final context =
+              'Current page: ${pageTitle != null ? 'Title: "$pageTitle"' : 'Title unknown'}, URL: ${pageUrl ?? 'unknown'}. ';
+          prompt = context + text;
+        }
+        final response = await AiService().generateResponse(prompt);
         messages.value = [...messages.value, 'AI: $response'];
       } catch (e) {
         messages.value = [...messages.value, 'AI: Error: $e'];
@@ -49,8 +64,15 @@ class AiChatWidget extends HookWidget {
             Expanded(
               child: ListView.builder(
                 itemCount: messages.value.length,
-                itemBuilder: (context, index) =>
-                    ListTile(title: Text(messages.value[index])),
+                itemBuilder: (context, index) {
+                  final message = messages.value[index];
+                  if (message.startsWith('AI: ')) {
+                    final content = message.substring(4);
+                    return ListTile(title: MarkdownBody(data: content));
+                  } else {
+                    return ListTile(title: Text(message));
+                  }
+                },
               ),
             ),
             if (isLoading.value) const CircularProgressIndicator(),
