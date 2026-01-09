@@ -8,16 +8,16 @@ import 'package:firebase_ai/firebase_ai.dart';
 import 'package:flutter/foundation.dart';
 
 class AiService {
-  static final AiService _instance = AiService._internal();
-  factory AiService() => _instance;
-  AiService._internal();
-
-  GenerativeModel? _model;
+  static GenerativeModel? _model;
   ChatSession? _chatSession;
+
+  AiService() {
+    initialize();
+  }
 
   void initialize() {
     try {
-      _model = FirebaseAI.googleAI().generativeModel(
+      _model ??= FirebaseAI.googleAI().generativeModel(
         model: 'gemini-2.5-flash-lite',
         generationConfig: GenerationConfig(
           temperature: 0.7,
