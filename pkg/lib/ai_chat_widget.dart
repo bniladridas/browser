@@ -42,7 +42,7 @@ class AiChatWidget extends HookWidget {
               'Current page: ${pageTitle != null ? 'Title: "$pageTitle"' : 'Title unknown'}, URL: ${pageUrl ?? 'unknown'}. ';
           prompt = context + text;
         }
-         final response = await aiService.generateResponse(prompt);
+        final response = await aiService.generateResponse(prompt);
         messages.value = [...messages.value, 'AI: $response'];
       } catch (e) {
         messages.value = [...messages.value, 'AI: Error: $e'];
