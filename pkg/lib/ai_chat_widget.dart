@@ -9,6 +9,7 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 
 import 'ai_service.dart';
+import 'callout_box.dart';
 
 class AiChatWidget extends HookWidget {
   const AiChatWidget({super.key, this.pageTitle, this.pageUrl});
@@ -69,7 +70,17 @@ class AiChatWidget extends HookWidget {
                   final message = messages.value[index];
                   if (message.startsWith('AI: ')) {
                     final content = message.substring(4);
-                    return ListTile(title: MarkdownBody(data: content));
+                    final hasEmphasis =
+                        content.contains('**') ||
+                        content.contains('*') ||
+                        content.contains('warning') ||
+                        content.contains('error') ||
+                        content.contains('suggestion') ||
+                        content.contains('option');
+                    final child = MarkdownBody(data: content);
+                    return ListTile(
+                      title: hasEmphasis ? CalloutBox(child: child) : child,
+                    );
                   } else {
                     return ListTile(title: Text(message));
                   }
