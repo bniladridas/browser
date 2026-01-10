@@ -32,7 +32,7 @@ const String _legacyUserAgent =
 
 class UrlUtils {
   static String processUrl(String url) {
-    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+    if (!url.contains('://')) {
       if (url.contains(' ') ||
           (!url.contains('.') &&
               !url.contains(':') &&
@@ -86,7 +86,8 @@ class SettingsDialog extends HookWidget {
         homepage.value = current;
         homepageController.text = current;
         hideAppBar.value = prefs.getBool(hideAppBarKey) ?? false;
-        useModernUserAgent.value = prefs.getBool(useModernUserAgentKey) ?? true;
+        useModernUserAgent.value =
+            prefs.getBool(useModernUserAgentKey) ?? false;
         enableGitFetch.value = prefs.getBool(enableGitFetchKey) ?? false;
         privateBrowsing.value = prefs.getBool(privateBrowsingKey) ?? false;
         originalPrivateBrowsing.value = privateBrowsing.value;
@@ -495,7 +496,12 @@ class _BrowserPageState extends State<BrowserPage>
     final prefs = await SharedPreferences.getInstance();
     final bookmarksJson = prefs.getString('bookmarks');
     if (bookmarksJson != null) {
-      bookmarkManager.load(bookmarksJson);
+      try {
+        bookmarkManager.load(bookmarksJson);
+      } catch (e, s) {
+        logger.w('Failed to load bookmarks', error: e, stackTrace: s);
+        await prefs.remove('bookmarks');
+      }
     }
   }
 
@@ -680,12 +686,16 @@ class _BrowserPageState extends State<BrowserPage>
   }
 
   Future<void> _clearAllCaches() async {
-    final cookieManager = WebViewCookieManager();
-    await cookieManager.clearCookies();
-    for (final tab in tabs) {
-      await tab.webViewController?.clearCache();
-      await tab.webViewController
-          ?.runJavaScript('localStorage.clear(); sessionStorage.clear();');
+    try {
+      final cookieManager = WebViewCookieManager();
+      await cookieManager.clearCookies();
+      for (final tab in tabs) {
+        await tab.webViewController?.clearCache();
+        await tab.webViewController
+            ?.runJavaScript('localStorage.clear(); sessionStorage.clear();');
+      }
+    } catch (e, s) {
+      logger.w('Failed to clear caches', error: e, stackTrace: s);
     }
   }
 

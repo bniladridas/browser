@@ -19,11 +19,17 @@ void main() {
     });
 
     test('should leave valid URLs unchanged', () {
-      expect(UrlUtils.processUrl('https://www.google.com'), 'https://www.google.com');
+      expect(UrlUtils.processUrl('https://www.google.com'),
+          'https://www.google.com');
     });
 
     test('should handle localhost URLs', () {
       expect(UrlUtils.processUrl('localhost:3000'), 'https://localhost:3000');
+    });
+
+    test('should leave URLs with other schemes unchanged', () {
+      expect(UrlUtils.processUrl('ftp://example.com'), 'ftp://example.com');
+      expect(UrlUtils.processUrl('custom://path'), 'custom://path');
     });
   });
 }
