@@ -8,8 +8,9 @@ Flutter desktop web browser with tabs, bookmarks, history.
 git clone https://github.com/bniladridas/browser.git
 cd browser
 flutter pub get
-cp .env.example .env  # Fill in Firebase credentials
-flutterfire configure --platforms macos  # Download Firebase config
+cp .env.example .env  # Fill in Firebase credentials from your Firebase project
+flutterfire configure --platforms macos  # This will generate platform-specific files and may overwrite lib/firebase_options.dart
+git checkout -- lib/firebase_options.dart # Restore the version that uses environment variables
 flutter run
 ```
 
