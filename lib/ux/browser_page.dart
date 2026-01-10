@@ -498,8 +498,8 @@ class _BrowserPageState extends State<BrowserPage>
     if (bookmarksJson != null) {
       try {
         bookmarkManager.load(bookmarksJson);
-      } catch (e) {
-        logger.w('Failed to load bookmarks: $e');
+      } catch (e, s) {
+        logger.w('Failed to load bookmarks', error: e, stackTrace: s);
         await prefs.remove('bookmarks');
       }
     }
