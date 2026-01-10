@@ -45,6 +45,11 @@ class UrlUtils {
     return url;
   }
 
+  static bool isValidUrl(String url) {
+    final uri = Uri.tryParse(url);
+    return uri != null && const {'http', 'https'}.contains(uri.scheme);
+  }
+
   static String truncate(String text, int maxLength) {
     if (text.length <= maxLength) return text;
     const ellipsis = '...';
@@ -831,18 +836,17 @@ class _BrowserPageState extends State<BrowserPage>
 
   void _loadUrl(String url) {
     url = UrlUtils.processUrl(url);
-    final uri = Uri.tryParse(url);
-    if (uri == null) {
-      logger.w('Invalid URL: $url');
+    if (!UrlUtils.isValidUrl(url)) {
+      logger.w('Invalid or unsafe URL: $url');
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Invalid URL')),
+        const SnackBar(content: Text('Invalid or unsafe URL')),
       );
       return; // Don't update tab state for invalid URL
     }
     activeTab.currentUrl = url;
     activeTab.urlController.text = url;
     try {
-      activeTab.webViewController?.loadRequest(uri);
+      activeTab.webViewController?.loadRequest(Uri.parse(url));
     } on PlatformException {
       // Ignore MissingPluginException on macOS
     }
