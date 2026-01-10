@@ -498,8 +498,8 @@ class _BrowserPageState extends State<BrowserPage>
     if (bookmarksJson != null) {
       try {
         bookmarkManager.load(bookmarksJson);
-      } catch (e) {
-        logger.w('Failed to load bookmarks: $e');
+      } catch (e, s) {
+        logger.w('Failed to load bookmarks', error: e, stackTrace: s);
         await prefs.remove('bookmarks');
       }
     }
@@ -694,8 +694,8 @@ class _BrowserPageState extends State<BrowserPage>
         await tab.webViewController
             ?.runJavaScript('localStorage.clear(); sessionStorage.clear();');
       }
-    } catch (e) {
-      logger.w('Failed to clear caches: $e');
+    } catch (e, s) {
+      logger.w('Failed to clear caches', error: e, stackTrace: s);
     }
   }
 
