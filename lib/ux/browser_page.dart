@@ -832,10 +832,10 @@ class _BrowserPageState extends State<BrowserPage>
   void _loadUrl(String url) {
     url = UrlUtils.processUrl(url);
     final uri = Uri.tryParse(url);
-    if (uri == null) {
-      logger.w('Invalid URL: $url');
+    if (uri == null || !['http', 'https'].contains(uri.scheme)) {
+      logger.w('Invalid or unsafe URL: $url');
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Invalid URL')),
+        const SnackBar(content: Text('Invalid or unsafe URL')),
       );
       return; // Don't update tab state for invalid URL
     }
