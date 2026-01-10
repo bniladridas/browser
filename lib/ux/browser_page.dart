@@ -23,7 +23,6 @@ import '../browser_state.dart';
 
 import '../features/video_manager.dart';
 import '../logging/logger.dart';
-import 'package:pkg/ai_chat_widget.dart';
 
 const _userAgents = {
   TargetPlatform.macOS: {
@@ -764,28 +763,19 @@ class _BrowserPageState extends State<BrowserPage>
     );
   }
 
-  Future<void> _showAiChat() async {
-    final activeTab = tabs[tabController.index];
-    String? pageTitle;
-    String? pageUrl;
-    try {
-      final titleResult = await activeTab.webViewController
-          ?.runJavaScriptReturningResult('document.title');
-      if (titleResult != null && titleResult is String) {
-        pageTitle = titleResult;
-      }
-      final urlResult = await activeTab.webViewController
-          ?.runJavaScriptReturningResult('window.location.href');
-      if (urlResult != null && urlResult is String) {
-        pageUrl = urlResult;
-      }
-    } catch (e) {
-      debugPrint('Error fetching page info: $e');
-    }
+  void _showAiChat() {
     showDialog(
       context: context,
-      builder: (context) =>
-          AiChatWidget(pageTitle: pageTitle, pageUrl: pageUrl),
+      builder: (context) => AlertDialog(
+        title: Text('AI Chat'),
+        content: Text('AI features temporarily disabled.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text('OK'),
+          ),
+        ],
+      ),
     );
   }
 
