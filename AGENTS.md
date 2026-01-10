@@ -14,3 +14,50 @@ Examples:
 - `fix[ui] :: resolve button alignment issue`
 
 This ensures consistent, readable PR titles for better tracking and automation.
+
+## Release Template
+
+Use the format for GitHub releases:
+
+- **Tag**: `desktop/app-X.Y.Z` (where X.Y.Z is the version without +build number)
+- **Title**: `Release X.Y.Z`
+- **Notes**: Summarize the changes, including new features, fixes, and breaking changes. Use bullet points for clarity.
+
+Example:
+```
+## What's New
+- Added Firebase Crashlytics for crash reporting
+- Improved UI responsiveness
+
+## Bug Fixes
+- Fixed button alignment issue
+
+## Technical Changes
+- Updated Podfile for better warnings handling
+```
+
+This ensures consistent, informative release notes.
+
+## Commit Message Guidelines
+
+Follow the repository's pre-commit hooks for commit messages:
+
+- Use conventional commit format: `type(scope): description` or `type[scope]: description`
+- Keep the first line lowercase
+- Examples:
+  - `feat(firebase): add crashlytics integration`
+  - `fix[ui]: resolve button alignment`
+
+Agents must adhere to these rules to pass CI checks. Do not use --no-verify or bypass hooks; fix issues to ensure code quality.
+
+## Workflow Creation
+
+When creating GitHub Actions workflows:
+
+- Include SPDX license header at the top.
+- Add document start `---` for YAML.
+- Run `yamllint` to check syntax and formatting.
+- Ensure lines are under 120 characters.
+- Add a new line at the end of the file.
+
+This ensures safe and valid workflow files.
