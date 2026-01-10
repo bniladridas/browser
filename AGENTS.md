@@ -15,6 +15,23 @@ Examples:
 
 This ensures consistent, readable PR titles for better tracking and automation.
 
+## PR Description Template
+
+Use the format:
+
+## Summary
+- Bullet point descriptions of changes
+
+## Impact
+- [x] Build / CI
+- [x] Refactor / cleanup
+- [x] Documentation
+
+## Notes for reviewers
+- Additional details or context
+
+This ensures consistent, structured PR descriptions for clear communication.
+
 ## Release Template
 
 Use the format for GitHub releases:
