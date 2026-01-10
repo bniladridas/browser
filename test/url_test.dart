@@ -31,5 +31,14 @@ void main() {
       expect(UrlUtils.processUrl('ftp://example.com'), 'ftp://example.com');
       expect(UrlUtils.processUrl('custom://path'), 'custom://path');
     });
+
+    test('should validate safe URLs', () {
+      expect(UrlUtils.isValidUrl('https://example.com'), true);
+      expect(UrlUtils.isValidUrl('http://example.com'), true);
+      expect(UrlUtils.isValidUrl('ftp://example.com'), false);
+      expect(UrlUtils.isValidUrl('javascript:alert(1)'), false);
+      expect(UrlUtils.isValidUrl('data:text/html,<h1>Hi</h1>'), false);
+      expect(UrlUtils.isValidUrl('invalid'), false);
+    });
   });
 }
