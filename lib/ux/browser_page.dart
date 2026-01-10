@@ -694,8 +694,8 @@ class _BrowserPageState extends State<BrowserPage>
         await tab.webViewController
             ?.runJavaScript('localStorage.clear(); sessionStorage.clear();');
       }
-    } catch (e) {
-      logger.w('Failed to clear caches: $e');
+    } catch (e, s) {
+      logger.w('Failed to clear caches', error: e, stackTrace: s);
     }
   }
 
