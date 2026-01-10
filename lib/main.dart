@@ -98,29 +98,29 @@ class _MyAppState extends State<MyApp> {
 }
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  try {
-    await dotenv.load();
-  } catch (e) {
-    logger
-        .w('Warning: .env file not found. Firebase keys will use defaults. $e');
-  }
-  try {
-    await windowManager.ensureInitialized();
-  } catch (e) {
-    logger.w(
-        'Warning: Window manager initialization failed on this platform: $e. Some desktop window features (minimize, maximize, etc.) may not be available.');
-  }
-  try {
-    await Firebase.initializeApp(
-        options: DefaultFirebaseOptions.currentPlatform);
-    AiService().initialize();
-    await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(true);
-  } catch (e) {
-    logger.w(
-        'Firebase initialization failed: $e. AI features will not be available.');
-  }
-  runZonedGuarded(() {
+  runZonedGuarded(() async {
+    WidgetsFlutterBinding.ensureInitialized();
+    try {
+      await dotenv.load();
+    } catch (e) {
+      logger.w(
+          'Warning: .env file not found. Firebase keys will use defaults. $e');
+    }
+    try {
+      await windowManager.ensureInitialized();
+    } catch (e) {
+      logger.w(
+          'Warning: Window manager initialization failed on this platform: $e. Some desktop window features (minimize, maximize, etc.) may not be available.');
+    }
+    try {
+      await Firebase.initializeApp(
+          options: DefaultFirebaseOptions.currentPlatform);
+      AiService().initialize();
+      await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(true);
+    } catch (e) {
+      logger.w(
+          'Firebase initialization failed: $e. AI features will not be available.');
+    }
     runApp(const MyApp());
   }, (error, stack) {
     FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
