@@ -99,9 +99,9 @@ runs:
             git add VERSION pubspec.yaml
             git commit -m "chore: bump version to ${VERSION}"
             git push --force-with-lease origin "$BRANCH_NAME"
-            gh pr create --title "chore: bump version to ${VERSION}" \
-            --body "Automated version bump to ${VERSION} after merging PR ${{ inputs.pr-number }}." \
-            --base main --head "$BRANCH_NAME"
+             gh pr create --title "chore[version] :: bump version to ${VERSION}" \
+             --body "Automated version bump to ${VERSION} after merging PR ${{ inputs.pr-number }}." \
+             --base main --head "$BRANCH_NAME"
 
     - name: Create and push tag if it does not exist on remote
       # This runs when merging a version bump PR (bump-type == 'skip' for the merge PR)
