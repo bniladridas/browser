@@ -244,7 +244,7 @@
 				33CC110E2044A8840003C045 /* Bundle Framework */,
 				3399D490228B24CF009A79C7 /* ShellScript */,
 				FA0B5588D006049F9F229597 /* [CP] Embed Pods Frameworks */,
-				EB7BF4F6EA8795CC08C63E9A /* FlutterFire: "exit 0
+EB7BF4F6EA8795CC08C63E9A /* FlutterFire: "flutterfire upload-crashlytics-symbols" */,
 			);
 			buildRules = (
 			);
@@ -410,7 +410,7 @@
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
 		};
-		EB7BF4F6EA8795CC08C63E9A /* FlutterFire: "exit 0
+EB7BF4F6EA8795CC08C63E9A /* FlutterFire: "flutterfire upload-crashlytics-symbols" */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -419,17 +419,14 @@
 			);
 			inputPaths = (
 			);
-			name = "FlutterFire: \"exit 0
+name = "FlutterFire: \"flutterfire upload-crashlytics-symbols\"";
 			outputFileListPaths = (
 			);
 			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-shellScript = "
-#!/bin/bash
-exit 0
-";
+shellScript = "#!/bin/bash\n# This script is disabled to avoid build issues when using environment variables for Firebase keys.\nexit 0\n";
 		};
 		FA0B5588D006049F9F229597 /* [CP] Embed Pods Frameworks */ = {
 			isa = PBXShellScriptBuildPhase;
