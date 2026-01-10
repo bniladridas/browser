@@ -23,25 +23,33 @@ import '../browser_state.dart';
 
 import '../features/video_manager.dart';
 import '../logging/logger.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:pkg/ai_chat_widget.dart';
 
 const _userAgents = {
   TargetPlatform.macOS: {
-    'modern': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0.2 Safari/605.1.15',
-    'legacy': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.0.0 Safari/537.36',
+    'modern':
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0.2 Safari/605.1.15',
+    'legacy':
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.0.0 Safari/537.36',
   },
   TargetPlatform.windows: {
-    'modern': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0',
-    'legacy': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.0.0 Safari/537.36',
+    'modern':
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0',
+    'legacy':
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.0.0 Safari/537.36',
   },
   TargetPlatform.linux: {
-    'modern': 'Mozilla/5.0 (X11; Linux x86_64; rv:120.0) Gecko/20100101 Firefox/120.0',
-    'legacy': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.0.0 Safari/537.36',
+    'modern':
+        'Mozilla/5.0 (X11; Linux x86_64; rv:120.0) Gecko/20100101 Firefox/120.0',
+    'legacy':
+        'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.0.0 Safari/537.36',
   },
 };
 
 String _getUserAgent(bool modern) {
-  final platformAgents = _userAgents[defaultTargetPlatform] ?? _userAgents[TargetPlatform.macOS]!;
+  final platformAgents =
+      _userAgents[defaultTargetPlatform] ?? _userAgents[TargetPlatform.macOS]!;
   final agentType = modern ? 'modern' : 'legacy';
   return platformAgents[agentType]!;
 }
@@ -533,6 +541,8 @@ class _BrowserPageState extends State<BrowserPage>
   }
 
   void _handleLoadError(TabData tab, String newErrorMessage) {
+    FirebaseCrashlytics.instance
+        .recordError(newErrorMessage, null, reason: 'Web view load error');
     if (mounted) {
       setState(() {
         tab.state = BrowserState.error(newErrorMessage);
