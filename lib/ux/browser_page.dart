@@ -542,7 +542,7 @@ class _BrowserPageState extends State<BrowserPage>
 
   void _handleLoadError(TabData tab, String newErrorMessage) {
     FirebaseCrashlytics.instance
-        .recordError(newErrorMessage, null, reason: 'Web view load error');
+        .recordError(Exception(newErrorMessage), null, reason: 'Web view load error');
     if (mounted) {
       setState(() {
         tab.state = BrowserState.error(newErrorMessage);
