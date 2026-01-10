@@ -10,7 +10,6 @@ import 'package:flutter/material.dart';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
-import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -115,14 +114,9 @@ void main() async {
     await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform);
     AiService().initialize();
-    await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(true);
   } catch (e) {
     logger.w(
         'Firebase initialization failed: $e. AI features will not be available.');
   }
-  runZonedGuarded(() {
-    runApp(const MyApp());
-  }, (error, stack) {
-    FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
-  });
+  runApp(const MyApp());
 }

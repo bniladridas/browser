@@ -23,7 +23,6 @@ import '../browser_state.dart';
 
 import '../features/video_manager.dart';
 import '../logging/logger.dart';
-import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:pkg/ai_chat_widget.dart';
 
 const _userAgents = {
@@ -541,8 +540,6 @@ class _BrowserPageState extends State<BrowserPage>
   }
 
   void _handleLoadError(TabData tab, String newErrorMessage) {
-    FirebaseCrashlytics.instance
-        .recordError(Exception(newErrorMessage), null, reason: 'Web view load error');
     if (mounted) {
       setState(() {
         tab.state = BrowserState.error(newErrorMessage);
