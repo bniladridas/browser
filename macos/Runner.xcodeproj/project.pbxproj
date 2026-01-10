@@ -427,7 +427,7 @@ name = "FlutterFire: \"flutterfire upload-crashlytics-symbols\"";
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "#!/bin/bash\n# This script is disabled to avoid build issues when using environment variables for Firebase keys.\ntouch \"${TARGET_BUILD_DIR}/flutterfire_dummy.txt\"\nexit 0\n";
+			shellScript = "#!/bin/sh\n# This script is disabled to avoid build issues when using environment variables for Firebase keys.\ntouch \"${TARGET_BUILD_DIR}/flutterfire_dummy.txt\"\nexit 0\n";
 		};
 		FA0B5588D006049F9F229597 /* [CP] Embed Pods Frameworks */ = {
 			isa = PBXShellScriptBuildPhase;
