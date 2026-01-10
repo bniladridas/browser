@@ -97,9 +97,9 @@ runs:
             git config --local user.name "github-actions[bot]"
             git checkout -B "$BRANCH_NAME"
             git add VERSION pubspec.yaml
-            git commit -m "chore: bump version to ${VERSION}"
+            git commit -m "chore[version] :: bump version to ${VERSION}"
             git push --force-with-lease origin "$BRANCH_NAME"
-            gh pr create --title "chore: bump version to ${VERSION}" \
+            gh pr create --title "chore[version] :: bump version to ${VERSION}" \
             --body "Automated version bump to ${VERSION} after merging PR ${{ inputs.pr-number }}." \
             --base main --head "$BRANCH_NAME"
 
