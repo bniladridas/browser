@@ -33,6 +33,9 @@ migrate_working_dir/
 /build/
 /coverage/
 
+# Generated files
+*.freezed.dart
+
 # Environment variables
 .env
 
