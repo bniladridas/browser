@@ -383,6 +383,7 @@ EB7BF4F6EA8795CC08C63E9A /* FlutterFire: "flutterfire upload-crashlytics-symbols
 				Flutter/ephemeral/FlutterOutputs.xcfilelist,
 			);
 			outputPaths = (
+				"$(BUILT_PRODUCTS_DIR)/$(PRODUCT_NAME).app",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;

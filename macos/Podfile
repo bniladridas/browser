@@ -40,7 +40,7 @@ post_install do |installer|
     flutter_additional_macos_build_settings(target)
     # Suppress warnings for certain pods
     # These are harmless deprecation and unused variable warnings
-    if ['PromisesObjC', 'PromisesObjC-FBLPromises_Privacy', 'PromisesSwift', 'PromisesSwift-Promises_Privacy', 'FirebaseAuth', 'FirebaseCore', 'FirebaseAppCheck'].include?(target.name)
+    if ['PromisesObjC', 'PromisesObjC-FBLPromises_Privacy', 'PromisesSwift', 'PromisesSwift-Promises_Privacy', 'firebase_auth', 'firebase_core', 'firebase_app_check', 'FirebaseAuth', 'FirebaseCore', 'FirebaseAppCheck'].include?(target.name)
       target.build_configurations.each do |config|
         config.build_settings['GCC_WARN_INHIBIT_ALL_WARNINGS'] = 'YES'
         config.build_settings['SWIFT_SUPPRESS_WARNINGS'] = 'YES'
@@ -48,14 +48,16 @@ post_install do |installer|
       end
     end
     # Suppress linker warnings for Runner
-     if target.name == 'Runner'
-       target.build_configurations.each do |config|
-        config.build_settings['OTHER_LDFLAGS'] ||= ['$(inherited)']
-        config.build_settings['OTHER_LDFLAGS'] << '-w'
-        config.build_settings['OTHER_LDFLAGS'] << '-Wno-unused-command-line-argument'  # Suppress unused argument warnings
-        config.build_settings['OTHER_LDFLAGS'] = config.build_settings['OTHER_LDFLAGS'].uniq
-      end
-    end
+      if target.name == 'Runner'
+        target.build_configurations.each do |config|
+         config.build_settings['GCC_WARN_INHIBIT_ALL_WARNINGS'] = 'YES'
+         config.build_settings['OTHER_LDFLAGS'] ||= ['$(inherited)']
+         config.build_settings['OTHER_LDFLAGS'] << '-w'
+         config.build_settings['OTHER_LDFLAGS'] << '-Wl,-w'  # Suppress linker warnings
+         config.build_settings['OTHER_LDFLAGS'] << '-Wno-unused-command-line-argument'  # Suppress unused argument warnings
+         config.build_settings['OTHER_LDFLAGS'] = config.build_settings['OTHER_LDFLAGS'].uniq
+       end
+     end
     # Remove duplicate linker flags (e.g., -lc++) to suppress warnings
     target.build_configurations.each do |config|
       ldflags = config.build_settings['OTHER_LDFLAGS']
