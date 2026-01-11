@@ -31,7 +31,8 @@ jobs:
             echo "FIREBASE_MESSAGING_SENDER_ID=dummy_sender_id"
             echo "FIREBASE_PROJECT_ID=dummy_project_id"
             echo "FIREBASE_STORAGE_BUCKET=dummy_storage_bucket"
-          } > .env
+            } > .env
+      - run: flutter pub run build_runner build
       - run: flutter analyze
       - run: flutter test
       - run: flutter build macos 2>&1 | grep -v -E "(firebase_core|firebase_auth|firebase_app_check).*warning"

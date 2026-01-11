@@ -6,10 +6,8 @@
 # found in the LICENSE file.
 set -e
 
-cleanup() {
-  rm -f actionlint actionlint.tar.gz
-}
-trap cleanup EXIT
+echo "Generating code..."
+flutter pub run build_runner build
 
 echo "Running Flutter analyze..."
 flutter analyze
