@@ -32,6 +32,15 @@ Use the format:
 
 This ensures consistent, structured PR descriptions for clear communication.
 
+## PR Review Process
+
+When reviewing PRs, use the following format in the PR description:
+
+## Review
+Reviewed using Graphite Agent
+
+This documents the review tool used for transparency and tracking.
+
 ## Release Template
 
 Use the format for GitHub releases:
