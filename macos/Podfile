@@ -1,4 +1,4 @@
-platform :osx, '10.15'
+platform :osx, '11.0'
 
 # CocoaPods analytics sends network stats synchronously affecting flutter build latency.
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
@@ -38,13 +38,20 @@ end
 post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_macos_build_settings(target)
+
+    # Suppress all linker warnings globally
+    target.build_configurations.each do |config|
+      config.build_settings['OTHER_LDFLAGS'] ||= ['$(inherited)']
+      config.build_settings['OTHER_LDFLAGS'] << '-w'
+    end
+
     # Suppress warnings for certain pods
     # These are harmless deprecation and unused variable warnings
     if ['PromisesObjC', 'PromisesObjC-FBLPromises_Privacy', 'PromisesSwift', 'PromisesSwift-Promises_Privacy', 'firebase_auth', 'firebase_core', 'firebase_app_check', 'FirebaseAuth', 'FirebaseCore', 'FirebaseAppCheck'].include?(target.name)
       target.build_configurations.each do |config|
         config.build_settings['GCC_WARN_INHIBIT_ALL_WARNINGS'] = 'YES'
         config.build_settings['SWIFT_SUPPRESS_WARNINGS'] = 'YES'
-        config.build_settings['MACOSX_DEPLOYMENT_TARGET'] = '10.15'
+        config.build_settings['MACOSX_DEPLOYMENT_TARGET'] = '11.0'
       end
     end
     # Suppress linker warnings for Runner
