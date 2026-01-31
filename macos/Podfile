@@ -38,13 +38,13 @@ end
 post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_macos_build_settings(target)
-    
+
     # Suppress all linker warnings globally
     target.build_configurations.each do |config|
       config.build_settings['OTHER_LDFLAGS'] ||= ['$(inherited)']
       config.build_settings['OTHER_LDFLAGS'] << '-w'
     end
-    
+
     # Suppress warnings for certain pods
     # These are harmless deprecation and unused variable warnings
     if ['PromisesObjC', 'PromisesObjC-FBLPromises_Privacy', 'PromisesSwift', 'PromisesSwift-Promises_Privacy', 'firebase_auth', 'firebase_core', 'firebase_app_check', 'FirebaseAuth', 'FirebaseCore', 'FirebaseAppCheck'].include?(target.name)
