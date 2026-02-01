@@ -877,25 +877,50 @@ class _BrowserPageState extends State<BrowserPage>
   }
 
   Widget _buildErrorView(TabData tab) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.error,
-              size: 48, color: Theme.of(context).colorScheme.error),
-          const SizedBox(height: 12),
-          Text('Page failed to load.',
-              style: Theme.of(context).textTheme.headlineSmall),
-          const SizedBox(height: 12),
-          ElevatedButton(
-            onPressed: () {
-              setState(() {
-                tab.state = const BrowserState.idle();
-              });
-            },
-            child: const Text('Retry'),
-          ),
-        ],
+    return Container(
+      color: Theme.of(context).colorScheme.surface,
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.errorContainer,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Icon(
+                Icons.error_outline,
+                size: 48,
+                color: Theme.of(context).colorScheme.onErrorContainer,
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'Page failed to load',
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Check your connection and try again',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 24),
+            FilledButton.icon(
+              onPressed: () {
+                setState(() {
+                  tab.state = const BrowserState.idle();
+                });
+              },
+              icon: const Icon(Icons.refresh),
+              label: const Text('Retry'),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1012,8 +1037,26 @@ class _BrowserPageState extends State<BrowserPage>
           children: [
             WebViewWidget(controller: tab.webViewController!),
             if (tab.state is Loading)
-              const Center(
-                child: CircularProgressIndicator(),
+              Container(
+                color: Theme.of(context).colorScheme.surface.withOpacity(0.8),
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      CircularProgressIndicator(
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Loading...',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurface,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
           ],
         ),
@@ -1063,19 +1106,35 @@ class _BrowserPageState extends State<BrowserPage>
               ? null
               : AppBar(
                   actions: [
-                    IconButton(
-                      icon: const Icon(Icons.arrow_back),
-                      onPressed: _goBack,
+                    Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 4),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surfaceContainerHigh,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.arrow_back_ios, size: 18),
+                            onPressed: _goBack,
+                            tooltip: 'Back',
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.arrow_forward_ios, size: 18),
+                            onPressed: _goForward,
+                            tooltip: 'Forward',
+                          ),
+                        ],
+                      ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.arrow_forward),
-                      onPressed: _goForward,
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.refresh),
-                      onPressed: _refresh,
+                      icon: const Icon(Icons.add),
+                      onPressed: _addNewTab,
+                      tooltip: 'New Tab',
                     ),
                     PopupMenuButton<String>(
+                      icon: const Icon(Icons.more_vert),
                       onSelected: (value) {
                         switch (value) {
                           case 'add_bookmark':
@@ -1093,13 +1152,6 @@ class _BrowserPageState extends State<BrowserPage>
                           case 'settings':
                             _showSettings();
                             break;
-                          case 'new_tab':
-                            _addNewTab();
-                            break;
-                          case 'close_tab':
-                            _closeTab(tabController.index);
-                            break;
-
                           case 'git_fetch':
                             _showGitFetchDialog();
                             break;
@@ -1107,72 +1159,185 @@ class _BrowserPageState extends State<BrowserPage>
                       },
                       itemBuilder: (context) => [
                         const PopupMenuItem(
-                          value: 'new_tab',
-                          child: Text('New Tab'),
-                        ),
-                        if (tabs.length > 1)
-                          const PopupMenuItem(
-                            value: 'close_tab',
-                            child: Text('Close Tab'),
-                          ),
-                        const PopupMenuItem(
                           value: 'add_bookmark',
-                          child: Text('Add Bookmark'),
+                          child: Row(
+                            children: [
+                              Icon(Icons.bookmark_add),
+                              SizedBox(width: 12),
+                              Text('Add Bookmark'),
+                            ],
+                          ),
                         ),
                         const PopupMenuItem(
                           value: 'view_bookmarks',
-                          child: Text('Bookmarks'),
+                          child: Row(
+                            children: [
+                              Icon(Icons.bookmarks),
+                              SizedBox(width: 12),
+                              Text('Bookmarks'),
+                            ],
+                          ),
                         ),
                         const PopupMenuItem(
                           value: 'history',
-                          child: Text('History'),
+                          child: Row(
+                            children: [
+                              Icon(Icons.history),
+                              SizedBox(width: 12),
+                              Text('History'),
+                            ],
+                          ),
                         ),
                         const PopupMenuItem(
                           value: 'ai_chat',
-                          child: Text('AI Chat'),
+                          child: Row(
+                            children: [
+                              Icon(Icons.smart_toy),
+                              SizedBox(width: 12),
+                              Text('AI Chat'),
+                            ],
+                          ),
                         ),
                         if (widget.enableGitFetch)
                           const PopupMenuItem(
                             value: 'git_fetch',
-                            child: Text('Git Fetch'),
+                            child: Row(
+                              children: [
+                                Icon(Icons.code),
+                                SizedBox(width: 12),
+                                Text('Git Fetch'),
+                              ],
+                            ),
                           ),
                         const PopupMenuItem(
                           value: 'settings',
-                          child: Text('Settings'),
+                          child: Row(
+                            children: [
+                              Icon(Icons.settings),
+                              SizedBox(width: 12),
+                              Text('Settings'),
+                            ],
+                          ),
                         ),
                       ],
                     ),
                   ],
-                  title: Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: activeTab.urlController,
-                          focusNode: activeTab.urlFocusNode,
-                          decoration: const InputDecoration(
-                            hintText: 'Enter URL',
-                            border: InputBorder.none,
-                          ),
-                          onSubmitted: _loadUrl,
+                  title: Container(
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                    child: Row(
+                      children: [
+                        const SizedBox(width: 16),
+                        Icon(
+                          Icons.search,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          size: 20,
                         ),
-                      ),
-                    ],
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: TextField(
+                            controller: activeTab.urlController,
+                            focusNode: activeTab.urlFocusNode,
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.onSurface,
+                              fontSize: 14,
+                            ),
+                            decoration: InputDecoration(
+                              hintText: 'Search or enter URL',
+                              hintStyle: TextStyle(
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                fontSize: 14,
+                              ),
+                              border: InputBorder.none,
+                              contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                            ),
+                            onSubmitted: _loadUrl,
+                          ),
+                        ),
+                        if (activeTab.state is Loading)
+                          Padding(
+                            padding: const EdgeInsets.only(right: 12),
+                            child: SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                            ),
+                          )
+                        else
+                          IconButton(
+                            icon: Icon(
+                              Icons.refresh,
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                              size: 20,
+                            ),
+                            onPressed: _refresh,
+                            padding: const EdgeInsets.all(8),
+                            constraints: const BoxConstraints(),
+                          ),
+                      ],
+                    ),
                   ),
                 ),
           body: Stack(
             children: [
               Column(
                 children: [
-                  TabBar(
-                    controller: tabController,
-                    isScrollable: true,
-                    tabs: tabs
-                        .map((tab) => Tab(
-                            text: UrlUtils.truncate(
-                                Uri.tryParse(tab.currentUrl)?.host ??
-                                    tab.currentUrl,
-                                20)))
-                        .toList(),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.surface,
+                      border: Border(
+                        bottom: BorderSide(
+                          color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+                          width: 1,
+                        ),
+                      ),
+                    ),
+                    child: TabBar(
+                      controller: tabController,
+                      isScrollable: true,
+                      indicatorColor: Theme.of(context).colorScheme.primary,
+                      labelColor: Theme.of(context).colorScheme.onSurface,
+                      unselectedLabelColor: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                      tabs: tabs.asMap().entries.map((entry) {
+                        final index = entry.key;
+                        final tab = entry.value;
+                        return Tab(
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.public,
+                                size: 16,
+                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                UrlUtils.truncate(
+                                  Uri.tryParse(tab.currentUrl)?.host ?? tab.currentUrl,
+                                  15,
+                                ),
+                              ),
+                              if (tabs.length > 1) ...[
+                                const SizedBox(width: 8),
+                                GestureDetector(
+                                  onTap: () => _closeTab(index),
+                                  child: Icon(
+                                    Icons.close,
+                                    size: 16,
+                                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        );
+                      }).toList(),
+                    ),
                   ),
                   Expanded(
                     child: TabBarView(
@@ -1184,12 +1349,50 @@ class _BrowserPageState extends State<BrowserPage>
               ),
               if (widget.hideAppBar)
                 Positioned(
-                  top: 10,
-                  right: 10,
-                  child: FloatingActionButton(
-                    mini: true,
-                    onPressed: _showSettings,
-                    child: const Icon(Icons.settings),
+                  top: 16,
+                  right: 16,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.surfaceContainer,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.arrow_back_ios, size: 18),
+                          onPressed: _goBack,
+                          tooltip: 'Back',
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.arrow_forward_ios, size: 18),
+                          onPressed: _goForward,
+                          tooltip: 'Forward',
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.refresh, size: 18),
+                          onPressed: _refresh,
+                          tooltip: 'Refresh',
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.add, size: 18),
+                          onPressed: _addNewTab,
+                          tooltip: 'New Tab',
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.settings, size: 18),
+                          onPressed: _showSettings,
+                          tooltip: 'Settings',
+                        ),
+                      ],
+                    ),
                   ),
                 ),
             ],
