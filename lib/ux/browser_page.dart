@@ -96,7 +96,7 @@ class SettingsDialog extends HookWidget {
   Widget build(BuildContext context) {
     final homepage = useState<String?>(null);
     final hideAppBar = useState(false);
-    final useModernUserAgent = useState(false);
+    final useModernUserAgent = useState(true);
     final enableGitFetch = useState(false);
     final privateBrowsing = useState(false);
     final originalPrivateBrowsing = useRef<bool?>(null);
@@ -115,7 +115,7 @@ class SettingsDialog extends HookWidget {
         homepageController.text = current;
         hideAppBar.value = prefs.getBool(hideAppBarKey) ?? false;
         useModernUserAgent.value =
-            prefs.getBool(useModernUserAgentKey) ?? false;
+            prefs.getBool(useModernUserAgentKey) ?? true;
         enableGitFetch.value = prefs.getBool(enableGitFetchKey) ?? false;
         privateBrowsing.value = prefs.getBool(privateBrowsingKey) ?? false;
         originalPrivateBrowsing.value = privateBrowsing.value;
@@ -370,7 +370,7 @@ class BrowserPage extends StatefulWidget {
       {super.key,
       required this.initialUrl,
       this.hideAppBar = false,
-      this.useModernUserAgent = false,
+      this.useModernUserAgent = true,
       this.enableGitFetch = false,
       this.privateBrowsing = false,
       this.adBlocking = false,
