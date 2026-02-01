@@ -30,7 +30,7 @@ class _MyAppState extends State<MyApp> {
   AppThemeMode themeMode = AppThemeMode.system;
   String homepage = 'https://www.google.com';
   bool hideAppBar = false;
-  bool useModernUserAgent = false;
+  bool useModernUserAgent = true;
   bool enableGitFetch = false;
   bool privateBrowsing = false;
   bool adBlocking = false;
@@ -48,7 +48,7 @@ class _MyAppState extends State<MyApp> {
       setState(() {
         homepage = prefs.getString(homepageKey) ?? 'https://www.google.com';
         hideAppBar = prefs.getBool(hideAppBarKey) ?? false;
-        useModernUserAgent = prefs.getBool(useModernUserAgentKey) ?? false;
+        useModernUserAgent = prefs.getBool(useModernUserAgentKey) ?? true;
         enableGitFetch = prefs.getBool(enableGitFetchKey) ?? false;
         privateBrowsing = prefs.getBool(privateBrowsingKey) ?? false;
         adBlocking = prefs.getBool(adBlockingKey) ?? false;
