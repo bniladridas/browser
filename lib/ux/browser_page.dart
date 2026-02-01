@@ -1038,7 +1038,7 @@ class _BrowserPageState extends State<BrowserPage>
             WebViewWidget(controller: tab.webViewController!),
             if (tab.state is Loading)
               Container(
-                color: Theme.of(context).colorScheme.surface.withOpacity(0.8),
+                color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.8),
                 child: Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -1292,7 +1292,7 @@ class _BrowserPageState extends State<BrowserPage>
                       color: Theme.of(context).colorScheme.surface,
                       border: Border(
                         bottom: BorderSide(
-                          color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+                          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
                           width: 1,
                         ),
                       ),
@@ -1302,7 +1302,7 @@ class _BrowserPageState extends State<BrowserPage>
                       isScrollable: true,
                       indicatorColor: Theme.of(context).colorScheme.primary,
                       labelColor: Theme.of(context).colorScheme.onSurface,
-                      unselectedLabelColor: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                      unselectedLabelColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                       tabs: tabs.asMap().entries.map((entry) {
                         final index = entry.key;
                         final tab = entry.value;
@@ -1313,7 +1313,7 @@ class _BrowserPageState extends State<BrowserPage>
                               Icon(
                                 Icons.public,
                                 size: 16,
-                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                               ),
                               const SizedBox(width: 8),
                               Text(
@@ -1329,7 +1329,7 @@ class _BrowserPageState extends State<BrowserPage>
                                   child: Icon(
                                     Icons.close,
                                     size: 16,
-                                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                                   ),
                                 ),
                               ],
@@ -1357,7 +1357,7 @@ class _BrowserPageState extends State<BrowserPage>
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
+                          color: Colors.black.withValues(alpha: 0.1),
                           blurRadius: 8,
                           offset: const Offset(0, 2),
                         ),
