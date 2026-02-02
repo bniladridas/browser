@@ -544,7 +544,6 @@ class _BrowserPageState extends State<BrowserPage>
     if (mounted) {
       setState(() {
         tab.state = BrowserState.error(newErrorMessage);
-        tab.webViewController = null;
       });
     }
   }
