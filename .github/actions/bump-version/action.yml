@@ -137,26 +137,20 @@ runs:
         PR_TITLE=$(gh pr view "$PR_NUMBER" --json title -q '.title')
         PR_BODY=$(gh pr view "$PR_NUMBER" --json body -q '.body')
 
-        # Extract sections from PR body if it follows AGENTS.md template
-        SUMMARY_SECTION=$(echo "$PR_BODY" | sed -n '/## Summary/,/## Impact/p' | sed '$d' | sed '1d')
-        IMPACT_SECTION=$(echo "$PR_BODY" | sed -n '/## Impact/,/## Related Items/p' | sed '$d' | sed '1d')
+        # Extract Summary section using awk for robust parsing
+        SUMMARY_SECTION=$(echo "$PR_BODY" | awk '/## Impact/{exit} /## Summary/{p=1; next} p')
 
         # Build release notes using AGENTS.md template
-        NOTES="## What's New\n"
-        if [ -n "$SUMMARY_SECTION" ]; then
-            NOTES="${NOTES}${SUMMARY_SECTION}\n"
-        else
-            NOTES="${NOTES}- ${PR_TITLE}\n"
+        SUMMARY_CONTENT="${SUMMARY_SECTION:-- ${PR_TITLE}}"
+
+        BUG_FIX_CONTENT=""
+        # Infer bug fixes from PR title convention (e.g., "fix: ...")
+        if [[ "${PR_TITLE}" =~ ^fix(\(|\[) ]]; then
+            BUG_FIX_CONTENT="- Fixed issues based on merged PR"
         fi
 
-        NOTES="${NOTES}\n## Bug Fixes\n"
-        if [ -n "$IMPACT_SECTION" ] && echo "$IMPACT_SECTION" | grep -q "\[x\]"; then
-            NOTES="${NOTES}- Fixed issues based on merged PR\n"
-        fi
-
-        NOTES="${NOTES}\n## Technical Changes\n"
-        NOTES="${NOTES}- Updated version to ${VERSION}\n"
-        NOTES="${NOTES}\n(auto bump)"
+        NOTES=$(printf "## What's New\n%s\n\n## Bug Fixes\n%s\n\n## Technical Changes\n- Updated version to %s\n\n(auto bump)" \
+            "$SUMMARY_CONTENT" "$BUG_FIX_CONTENT" "${VERSION}")
 
         gh release create "${TAG_PREFIX}-${VERSION}" --title "Release ${VERSION}" --notes "${NOTES}"
         fi
