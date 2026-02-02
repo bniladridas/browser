@@ -27,10 +27,15 @@ Use the format:
 - [x] Refactor / cleanup
 - [x] Documentation
 
+## Related Items
+- Resolves issues: #[issue-number]
+- Closes PRs: #[pr-number]
+- Resources: [PRs tab](../../pulls), [Issues tab](../../issues)
+
 ## Notes for reviewers
 - Additional details or context
 
-This ensures consistent, structured PR descriptions for clear communication.
+This ensures consistent, structured PR descriptions for clear communication and easy tracking of related items.
 
 ## PR Review Process
 
