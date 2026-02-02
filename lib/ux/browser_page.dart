@@ -114,8 +114,7 @@ class SettingsDialog extends HookWidget {
         homepage.value = current;
         homepageController.text = current;
         hideAppBar.value = prefs.getBool(hideAppBarKey) ?? false;
-        useModernUserAgent.value =
-            prefs.getBool(useModernUserAgentKey) ?? true;
+        useModernUserAgent.value = prefs.getBool(useModernUserAgentKey) ?? true;
         enableGitFetch.value = prefs.getBool(enableGitFetchKey) ?? false;
         privateBrowsing.value = prefs.getBool(privateBrowsingKey) ?? false;
         originalPrivateBrowsing.value = privateBrowsing.value;
@@ -898,15 +897,15 @@ class _BrowserPageState extends State<BrowserPage>
             Text(
               'Page failed to load',
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurface,
-              ),
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
             ),
             const SizedBox(height: 8),
             Text(
               'Check your connection and try again',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
             ),
             const SizedBox(height: 24),
             FilledButton.icon(
@@ -986,7 +985,8 @@ class _BrowserPageState extends State<BrowserPage>
             });
           }
           // Add listeners for SPA navigations: popstate, pushState, replaceState
-          tab.webViewController!.runJavaScript('''
+          if (tab.webViewController != null) {
+            tab.webViewController!.runJavaScript('''
             if (!window.historyListenerAdded) {
               window.addEventListener('popstate', function(event) {
                 HistoryChannel.postMessage(window.location.href);
@@ -1005,6 +1005,7 @@ class _BrowserPageState extends State<BrowserPage>
               window.historyListenerAdded = true;
             }
           ''');
+          }
         },
         onNavigationRequest: (request) {
           if (widget.adBlocking &&
@@ -1038,7 +1039,10 @@ class _BrowserPageState extends State<BrowserPage>
             WebViewWidget(controller: tab.webViewController!),
             if (tab.state is Loading)
               Container(
-                color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.8),
+                color: Theme.of(context)
+                    .colorScheme
+                    .surface
+                    .withValues(alpha: 0.8),
                 child: Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -1109,7 +1113,8 @@ class _BrowserPageState extends State<BrowserPage>
                     Container(
                       margin: const EdgeInsets.symmetric(horizontal: 4),
                       decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.surfaceContainerHigh,
+                        color:
+                            Theme.of(context).colorScheme.surfaceContainerHigh,
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Row(
@@ -1224,7 +1229,8 @@ class _BrowserPageState extends State<BrowserPage>
                   ],
                   title: Container(
                     decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                      color:
+                          Theme.of(context).colorScheme.surfaceContainerHighest,
                       borderRadius: BorderRadius.circular(24),
                     ),
                     child: Row(
@@ -1247,11 +1253,14 @@ class _BrowserPageState extends State<BrowserPage>
                             decoration: InputDecoration(
                               hintText: 'Search or enter URL',
                               hintStyle: TextStyle(
-                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant,
                                 fontSize: 14,
                               ),
                               border: InputBorder.none,
-                              contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                              contentPadding:
+                                  const EdgeInsets.symmetric(vertical: 12),
                             ),
                             onSubmitted: _loadUrl,
                           ),
@@ -1272,7 +1281,9 @@ class _BrowserPageState extends State<BrowserPage>
                           IconButton(
                             icon: Icon(
                               Icons.refresh,
-                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
                               size: 20,
                             ),
                             onPressed: _refresh,
@@ -1292,7 +1303,10 @@ class _BrowserPageState extends State<BrowserPage>
                       color: Theme.of(context).colorScheme.surface,
                       border: Border(
                         bottom: BorderSide(
-                          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
+                          color: Theme.of(context)
+                              .colorScheme
+                              .outline
+                              .withValues(alpha: 0.2),
                           width: 1,
                         ),
                       ),
@@ -1302,7 +1316,10 @@ class _BrowserPageState extends State<BrowserPage>
                       isScrollable: true,
                       indicatorColor: Theme.of(context).colorScheme.primary,
                       labelColor: Theme.of(context).colorScheme.onSurface,
-                      unselectedLabelColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                      unselectedLabelColor: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withValues(alpha: 0.6),
                       tabs: tabs.asMap().entries.map((entry) {
                         final index = entry.key;
                         final tab = entry.value;
@@ -1313,12 +1330,16 @@ class _BrowserPageState extends State<BrowserPage>
                               Icon(
                                 Icons.public,
                                 size: 16,
-                                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurface
+                                    .withValues(alpha: 0.7),
                               ),
                               const SizedBox(width: 8),
                               Text(
                                 UrlUtils.truncate(
-                                  Uri.tryParse(tab.currentUrl)?.host ?? tab.currentUrl,
+                                  Uri.tryParse(tab.currentUrl)?.host ??
+                                      tab.currentUrl,
                                   15,
                                 ),
                               ),
@@ -1329,7 +1350,10 @@ class _BrowserPageState extends State<BrowserPage>
                                   child: Icon(
                                     Icons.close,
                                     size: 16,
-                                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurface
+                                        .withValues(alpha: 0.7),
                                   ),
                                 ),
                               ],
