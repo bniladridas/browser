@@ -1,0 +1,57 @@
+---
+# SPDX-License-Identifier: MIT
+#
+# Copyright 2026 bniladridas. All rights reserved.
+# Use of this source code is governed by a MIT license that can be
+# found in the LICENSE file.
+
+name: Release
+
+on:
+  push:
+    tags:
+      - 'desktop/app-*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: ./.github/actions/setup-flutter
+        with:
+          flutter-version: '3.38.3'
+
+      - run: flutter pub get
+      - name: Create .env file
+        run: |
+          {
+            echo "FIREBASE_API_KEY=dummy_api_key"
+            echo "FIREBASE_APP_ID=dummy_app_id"
+            echo "FIREBASE_MESSAGING_SENDER_ID=dummy_sender_id"
+            echo "FIREBASE_PROJECT_ID=dummy_project_id"
+            echo "FIREBASE_STORAGE_BUCKET=dummy_bucket"
+          } > .env
+
+      - name: Build generated files
+        run: flutter pub run build_runner build
+
+      - name: Build macOS app
+        run: flutter build macos --release 2>&1 | grep -v -E "(firebase_core|firebase_auth|firebase_app_check).*warning"
+
+      - name: Create DMG
+        run: |
+          cd build/macos/Build/Products/Release
+          hdiutil create -volname "Browser" -srcfolder . -ov -format UDZO browser.dmg
+
+      - name: Upload release asset
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/macos/Build/Products/Release/browser.dmg
+          generate_release_notes: false
