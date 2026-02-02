@@ -914,6 +914,7 @@ class _BrowserPageState extends State<BrowserPage>
                 setState(() {
                   tab.state = const BrowserState.idle();
                 });
+                tab.webViewController?.reload();
               },
               icon: const Icon(Icons.refresh),
               label: const Text('Retry'),
