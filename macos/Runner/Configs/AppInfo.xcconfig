@@ -11,7 +11,7 @@ PRODUCT_NAME = browser
 PRODUCT_BUNDLE_IDENTIFIER = com.example.browser
 
 // The copyright displayed in application information
-PRODUCT_COPYRIGHT = Copyright © 2025 bniladridas. All rights reserved.
+PRODUCT_COPYRIGHT = Copyright © 2026 bniladridas. All rights reserved.
 
 // Include CocoaPods configuration for the current build configuration
 #include? "../../Pods/Target Support Files/Pods-Runner/Pods-Runner.$(CONFIGURATION:lower).xcconfig"
