@@ -544,7 +544,6 @@ class _BrowserPageState extends State<BrowserPage>
     if (mounted) {
       setState(() {
         tab.state = BrowserState.error(newErrorMessage);
-        tab.webViewController = null;
       });
     }
   }
@@ -915,6 +914,7 @@ class _BrowserPageState extends State<BrowserPage>
                 setState(() {
                   tab.state = const BrowserState.idle();
                 });
+                tab.webViewController?.reload();
               },
               icon: const Icon(Icons.refresh),
               label: const Text('Retry'),
