@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pkg/pkg.dart';
 

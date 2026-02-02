@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'browser_state.freezed.dart';
