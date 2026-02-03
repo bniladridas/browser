@@ -149,8 +149,19 @@ runs:
             BUG_FIX_CONTENT="- Fixed issues based on merged PR"
         fi
 
-        NOTES=$(printf "## What's New\n%s\n\n## Bug Fixes\n%s\n\n## Technical Changes\n- Updated version to %s\n\n(auto bump)" \
-            "$SUMMARY_CONTENT" "$BUG_FIX_CONTENT" "${VERSION}")
+        NOTES=$(cat <<EOF
+        ## What's New
+        ${SUMMARY_CONTENT}
+
+        ## Bug Fixes
+        ${BUG_FIX_CONTENT}
+
+        ## Technical Changes
+        - Updated version to ${VERSION}
+
+        (auto bump)
+        EOF
+        )
 
         gh release create "${TAG_PREFIX}-${VERSION}" --title "Release ${VERSION}" --notes "${NOTES}"
         fi
