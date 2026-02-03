@@ -981,7 +981,9 @@ class _BrowserPageState extends State<BrowserPage>
         onPageFinished: (url) {
           if (mounted) {
             setState(() {
-              tab.state = BrowserState.success(url);
+              if (tab.state is! BrowserError) {
+                tab.state = BrowserState.success(url);
+              }
             });
           }
           // Add listeners for SPA navigations: popstate, pushState, replaceState
