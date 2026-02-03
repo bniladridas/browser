@@ -28,6 +28,15 @@ Run `./check.sh` for checks.
 
 Build: `flutter build macos`.
 
+### Codex
+
+Codex-specific notes and helper assets live in `.codex/README.md`.
+
+Usage:
+- Check `.codex/NOTES.md` for conventions.
+- Use `.codex/WORKFLOWS.md` for repeatable tasks.
+- Add new AI-specific guidance in `.codex/`.
+
 ### Generated Files
 
 This project uses `.gitattributes` to mark generated files (e.g., from `freezed`, `build_runner`) as `linguist-generated`. This hides them from GitHub diffs and language statistics, keeping pull requests focused on hand-written code.
