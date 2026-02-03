@@ -3,6 +3,8 @@ PODS:
     - GoogleUtilities/Environment (~> 8.0)
     - GoogleUtilities/UserDefaults (~> 8.0)
     - PromisesObjC (~> 2.4)
+  - file_selector_macos (0.0.1):
+    - FlutterMacOS
   - Firebase/AppCheck (12.8.0):
     - Firebase/CoreOnly
     - FirebaseAppCheck (~> 12.8.0)
@@ -88,6 +90,7 @@ PODS:
     - FlutterMacOS
 
 DEPENDENCIES:
+  - file_selector_macos (from `Flutter/ephemeral/.symlinks/plugins/file_selector_macos/macos`)
   - firebase_app_check (from `Flutter/ephemeral/.symlinks/plugins/firebase_app_check/macos`)
   - firebase_auth (from `Flutter/ephemeral/.symlinks/plugins/firebase_auth/macos`)
   - firebase_core (from `Flutter/ephemeral/.symlinks/plugins/firebase_core/macos`)
@@ -113,6 +116,8 @@ SPEC REPOS:
     - PromisesObjC
 
 EXTERNAL SOURCES:
+  file_selector_macos:
+    :path: Flutter/ephemeral/.symlinks/plugins/file_selector_macos/macos
   firebase_app_check:
     :path: Flutter/ephemeral/.symlinks/plugins/firebase_app_check/macos
   firebase_auth:
@@ -132,6 +137,7 @@ EXTERNAL SOURCES:
 
 SPEC CHECKSUMS:
   AppCheckCore: cc8fd0a3a230ddd401f326489c99990b013f0c4f
+  file_selector_macos: 9e9e068e90ebee155097d00e89ae91edb2374db7
   Firebase: 9a58fdbc9d8655ed7b79a19cf9690bb007d3d46d
   firebase_app_check: daf97f2d7044e28b68d23bc90e16751acee09732
   firebase_auth: 2c2438e41f061c03bd67dcb045dfd7bc843b5f52
