@@ -13,8 +13,10 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'dart:convert';
+import 'dart:io';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:http/http.dart' as http;
+import 'package:file_selector/file_selector.dart';
 
 import '../constants.dart';
 import '../features/theme_utils.dart';
@@ -419,6 +421,35 @@ class _BrowserPageState extends State<BrowserPage>
   final bookmarkManager = BookmarkManager();
   late int previousTabIndex;
   List<RegExp> adBlockerPatterns = [];
+  final Set<String> _downloadableExtensions = {
+    'dmg',
+    'zip',
+    'tar',
+    'gz',
+    'tgz',
+    'bz2',
+    'xz',
+    '7z',
+    'rar',
+    'exe',
+    'msi',
+    'pkg',
+    'deb',
+    'rpm',
+    'apk',
+    'iso',
+    'pdf',
+    'csv',
+    'json',
+    'xml',
+    'mp3',
+    'mp4',
+    'm4a',
+    'mov',
+    'avi',
+    'mkv',
+  };
+  final Set<String> _pendingHeaderChecks = {};
 
   @override
   void initState() {
@@ -464,6 +495,131 @@ class _BrowserPageState extends State<BrowserPage>
   }
 
   TabData get activeTab => tabs[tabController.index];
+
+  bool _isDownloadUrl(String url) {
+    final uri = Uri.tryParse(url);
+    if (uri == null || uri.pathSegments.isEmpty) {
+      return false;
+    }
+    final lastSegment = uri.pathSegments.last;
+    final dotIndex = lastSegment.lastIndexOf('.');
+    if (dotIndex == -1 || dotIndex == lastSegment.length - 1) {
+      return false;
+    }
+    final extension = lastSegment.substring(dotIndex + 1).toLowerCase();
+    return _downloadableExtensions.contains(extension);
+  }
+
+  String _fileNameFromUrl(String url) {
+    final uri = Uri.tryParse(url);
+    if (uri == null || uri.pathSegments.isEmpty) {
+      return 'download';
+    }
+    final lastSegment = uri.pathSegments.last;
+    final decoded = Uri.decodeComponent(lastSegment);
+    return decoded.isEmpty ? 'download' : decoded;
+  }
+
+  bool _looksLikeBinaryContentType(String? contentType) {
+    if (contentType == null) return false;
+    final lower = contentType.toLowerCase();
+    if (lower.startsWith('text/')) return false;
+    if (lower.contains('application/json')) return false;
+    if (lower.contains('application/xml')) return false;
+    if (lower.contains('application/xhtml+xml')) return false;
+    return lower.contains('application') ||
+        lower.contains('audio') ||
+        lower.contains('video') ||
+        lower.contains('image');
+  }
+
+  bool _isAttachmentHeader(String? contentDisposition) {
+    if (contentDisposition == null) return false;
+    final lower = contentDisposition.toLowerCase();
+    return lower.contains('attachment') || lower.contains('filename=');
+  }
+
+  Future<bool> _hasDownloadHeaders(String url) async {
+    final uri = Uri.tryParse(url);
+    if (uri == null) return false;
+    try {
+      final head = await http.head(uri);
+      if (_isAttachmentHeader(head.headers['content-disposition']) ||
+          _looksLikeBinaryContentType(head.headers['content-type'])) {
+        return true;
+      }
+      if (head.statusCode != 405 && head.statusCode != 403) {
+        return false;
+      }
+    } catch (_) {
+      // Fall back to a ranged GET for servers that block HEAD.
+    }
+
+    try {
+      final client = http.Client();
+      final request = http.Request('GET', uri);
+      request.headers['Range'] = 'bytes=0-0';
+      final response = await client.send(request);
+      final isDownload =
+          _isAttachmentHeader(response.headers['content-disposition']) ||
+              _looksLikeBinaryContentType(response.headers['content-type']);
+      await response.stream.drain();
+      client.close();
+      return isDownload;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<void> _maybeDownloadByHeaders(String url, TabData tab) async {
+    if (_pendingHeaderChecks.contains(url)) return;
+    _pendingHeaderChecks.add(url);
+    try {
+      final shouldDownload = await _hasDownloadHeaders(url);
+      if (shouldDownload) {
+        await _downloadFile(url);
+      }
+    } finally {
+      _pendingHeaderChecks.remove(url);
+    }
+  }
+
+  Future<void> _downloadFile(String url) async {
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(
+      const SnackBar(content: Text('Downloading...')),
+    );
+
+    try {
+      final fileName = _fileNameFromUrl(url);
+      final saveLocation = await getSaveLocation(suggestedName: fileName);
+      if (saveLocation == null) {
+        messenger.hideCurrentSnackBar();
+        messenger.showSnackBar(
+          const SnackBar(content: Text('Download canceled')),
+        );
+        return;
+      }
+      final filePath = saveLocation.path;
+      final response = await http.get(Uri.parse(url));
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final file = File(filePath);
+        await file.writeAsBytes(response.bodyBytes);
+        messenger.hideCurrentSnackBar();
+        messenger.showSnackBar(
+          SnackBar(content: Text('Saved to Downloads: $fileName')),
+        );
+      } else {
+        throw Exception('HTTP ${response.statusCode}');
+      }
+    } catch (e) {
+      messenger.hideCurrentSnackBar();
+      messenger.showSnackBar(
+        SnackBar(content: Text('Download failed: $e')),
+      );
+    }
+  }
 
   void _addNewTab() {
     if (mounted) {
@@ -1010,6 +1166,11 @@ class _BrowserPageState extends State<BrowserPage>
           }
         },
         onNavigationRequest: (request) {
+          if (_isDownloadUrl(request.url)) {
+            _downloadFile(request.url);
+            return NavigationDecision.prevent;
+          }
+          _maybeDownloadByHeaders(request.url, tab);
           if (widget.adBlocking &&
               adBlockerPatterns
                   .any((pattern) => pattern.hasMatch(request.url.toString()))) {
