@@ -1,0 +1,54 @@
+# SPDX-License-Identifier: MIT
+---
+name: Create Codex PR
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  create-pr:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Create PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          title="chore[codex] :: add codex docs and workflows"
+          body=$(cat <<'BODY'
+          ## Summary
+          - Add committed .codex directory with guidance, templates, and checklists
+          - Document Codex usage in README and MANUAL
+
+          ## Impact
+          - [ ] Build / CI
+          - [ ] Refactor / cleanup
+          - [x] Documentation
+
+          ## Related Items
+          - Resolves issues: #
+          - Closes PRs: #
+          - Resources: [PRs tab](../../pulls), [Issues tab](../../issues)
+
+          ## Notes for reviewers
+          - Docs-only change
+          BODY
+          )
+
+          if gh pr view --head "chore/codex-dir" --json url >/dev/null 2>&1; then
+            gh pr view --head "chore/codex-dir" --json url
+            exit 0
+          fi
+
+          gh pr create \
+            --head "chore/codex-dir" \
+            --base "main" \
+            --title "$title" \
+            --body "$body"
