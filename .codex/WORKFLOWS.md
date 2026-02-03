@@ -15,6 +15,14 @@ Use this file for repeatable Codex-assisted tasks and checklists.
 - Avoid committing `.env` or secrets.
 - Keep generated files out of hand-edited diffs.
 
+## GitHub Operations (Local)
+
+- Run GitHub commands locally if this sandbox lacks network access.
+- Typical commands:
+  - `git push`
+  - `gh pr create`
+  - `gh pr merge`
+
 ## Version Bump (Manual)
 
 - Update `VERSION` to `X.Y.Z+N`.
