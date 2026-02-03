@@ -557,21 +557,24 @@ class _BrowserPageState extends State<BrowserPage>
 
     try {
       final client = http.Client();
-      final request = http.Request('GET', uri);
-      request.headers['Range'] = 'bytes=0-0';
-      final response = await client.send(request);
-      final isDownload =
-          _isAttachmentHeader(response.headers['content-disposition']) ||
-              _looksLikeBinaryContentType(response.headers['content-type']);
-      await response.stream.drain();
-      client.close();
-      return isDownload;
+      try {
+        final request = http.Request('GET', uri);
+        request.headers['Range'] = 'bytes=0-0';
+        final response = await client.send(request);
+        final isDownload =
+            _isAttachmentHeader(response.headers['content-disposition']) ||
+                _looksLikeBinaryContentType(response.headers['content-type']);
+        await response.stream.drain();
+        return isDownload;
+      } finally {
+        client.close();
+      }
     } catch (_) {
       return false;
     }
   }
 
-  Future<void> _maybeDownloadByHeaders(String url, TabData tab) async {
+  Future<void> _maybeDownloadByHeaders(String url) async {
     if (_pendingHeaderChecks.contains(url)) return;
     _pendingHeaderChecks.add(url);
     try {
@@ -585,6 +588,7 @@ class _BrowserPageState extends State<BrowserPage>
   }
 
   Future<void> _downloadFile(String url) async {
+    if (!mounted) return;
     final messenger = ScaffoldMessenger.of(context);
     messenger.hideCurrentSnackBar();
     messenger.showSnackBar(
@@ -594,6 +598,7 @@ class _BrowserPageState extends State<BrowserPage>
     try {
       final fileName = _fileNameFromUrl(url);
       final saveLocation = await getSaveLocation(suggestedName: fileName);
+      if (!mounted) return;
       if (saveLocation == null) {
         messenger.hideCurrentSnackBar();
         messenger.showSnackBar(
@@ -603,9 +608,11 @@ class _BrowserPageState extends State<BrowserPage>
       }
       final filePath = saveLocation.path;
       final response = await http.get(Uri.parse(url));
+      if (!mounted) return;
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final file = File(filePath);
         await file.writeAsBytes(response.bodyBytes);
+        if (!mounted) return;
         messenger.hideCurrentSnackBar();
         messenger.showSnackBar(
           SnackBar(content: Text('Saved to Downloads: $fileName')),
@@ -614,6 +621,7 @@ class _BrowserPageState extends State<BrowserPage>
         throw Exception('HTTP ${response.statusCode}');
       }
     } catch (e) {
+      if (!mounted) return;
       messenger.hideCurrentSnackBar();
       messenger.showSnackBar(
         SnackBar(content: Text('Download failed: $e')),
@@ -1170,7 +1178,7 @@ class _BrowserPageState extends State<BrowserPage>
             _downloadFile(request.url);
             return NavigationDecision.prevent;
           }
-          _maybeDownloadByHeaders(request.url, tab);
+          _maybeDownloadByHeaders(request.url);
           if (widget.adBlocking &&
               adBlockerPatterns
                   .any((pattern) => pattern.hasMatch(request.url.toString()))) {
