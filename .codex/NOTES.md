@@ -32,3 +32,4 @@ Don't:
 ## Decision Log
 
 - 2026-02-03: Added `.codex/` as a committed directory to centralize Codex guidance and templates.
+- 2026-02-03: GitHub operations may require running `gh` locally if this sandbox lacks outbound access.
