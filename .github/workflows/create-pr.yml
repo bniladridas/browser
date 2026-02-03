@@ -4,6 +4,24 @@ name: Create Codex PR
 
 on:
   workflow_dispatch:
+    inputs:
+      head:
+        description: "Source branch (head) for the PR"
+        required: true
+        type: string
+      base:
+        description: "Target branch (base) for the PR"
+        required: true
+        default: "main"
+        type: string
+      title:
+        description: "PR title"
+        required: true
+        type: string
+      body:
+        description: "PR body (markdown)"
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -21,34 +39,18 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          title="chore[codex] :: add codex docs and workflows"
-          body=$(cat <<'BODY'
-          ## Summary
-          - Add committed .codex directory with guidance, templates, and checklists
-          - Document Codex usage in README and MANUAL
+          head="${{ inputs.head }}"
+          base="${{ inputs.base }}"
+          title="${{ inputs.title }}"
+          body="${{ inputs.body }}"
 
-          ## Impact
-          - [ ] Build / CI
-          - [ ] Refactor / cleanup
-          - [x] Documentation
-
-          ## Related Items
-          - Resolves issues: #
-          - Closes PRs: #
-          - Resources: [PRs tab](../../pulls), [Issues tab](../../issues)
-
-          ## Notes for reviewers
-          - Docs-only change
-          BODY
-          )
-
-          if gh pr view --head "chore/codex-dir" --json url >/dev/null 2>&1; then
-            gh pr view --head "chore/codex-dir" --json url
+          if gh pr view --head "$head" --json url >/dev/null 2>&1; then
+            gh pr view --head "$head" --json url
             exit 0
           fi
 
           gh pr create \
-            --head "chore/codex-dir" \
-            --base "main" \
+            --head "$head" \
+            --base "$base" \
             --title "$title" \
             --body "$body"
