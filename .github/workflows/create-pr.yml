@@ -1,0 +1,56 @@
+# SPDX-License-Identifier: MIT
+---
+name: Create Codex PR
+
+on:
+  workflow_dispatch:
+    inputs:
+      head:
+        description: "Source branch (head) for the PR"
+        required: true
+        type: string
+      base:
+        description: "Target branch (base) for the PR"
+        required: true
+        default: "main"
+        type: string
+      title:
+        description: "PR title"
+        required: true
+        type: string
+      body:
+        description: "PR body (markdown)"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  create-pr:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Create PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          head="${{ inputs.head }}"
+          base="${{ inputs.base }}"
+          title="${{ inputs.title }}"
+          body="${{ inputs.body }}"
+
+          if gh pr view --head "$head" --json url >/dev/null 2>&1; then
+            gh pr view --head "$head" --json url
+            exit 0
+          fi
+
+          gh pr create \
+            --head "$head" \
+            --base "$base" \
+            --title "$title" \
+            --body "$body"

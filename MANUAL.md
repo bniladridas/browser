@@ -30,3 +30,9 @@ If the automated version bump workflow fails (e.g., due to branch deletion or wo
 ## Notes
 - The automated workflow should handle this, but use this as a fallback.
 - Ensure the tag prefix `desktop/app` matches the script configuration.
+
+## Codex Quickstart
+
+- Read `.codex/README.md` for the directory overview.
+- Check `.codex/NOTES.md` for conventions and decisions.
+- Use `.codex/WORKFLOWS.md` and `.codex/CHECKLISTS.md` for repeatable tasks.
