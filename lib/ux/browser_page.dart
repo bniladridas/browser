@@ -980,6 +980,7 @@ class _BrowserPageState extends State<BrowserPage>
 
   Future<void> _showAiChat() async {
     if (!widget.aiAvailable) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('AI is not available in this build')));
       return;
