@@ -84,15 +84,18 @@ class UrlUtils {
 }
 
 class SettingsDialog extends HookWidget {
-  const SettingsDialog(
-      {super.key,
-      this.onSettingsChanged,
-      this.onClearCaches,
-      this.currentTheme});
+  const SettingsDialog({
+    super.key,
+    this.onSettingsChanged,
+    this.onClearCaches,
+    this.currentTheme,
+    required this.aiAvailable,
+  });
 
   final void Function()? onSettingsChanged;
   final void Function()? onClearCaches;
   final AppThemeMode? currentTheme;
+  final bool aiAvailable;
 
   @override
   Widget build(BuildContext context) {
@@ -201,6 +204,37 @@ class SettingsDialog extends HookWidget {
                   child: Text('Theme: ${mode.name}'),
                 );
               }).toList(),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'AI Chat',
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    aiAvailable
+                        ? 'Firebase configuration is present, so AI Chat is available.'
+                        : 'Firebase keys are missing, so AI Chat will stay hidden.',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Git Fetch requires GitHub access and only appears when '
+                    'Enable Git Fetch is turned on.',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -379,6 +413,7 @@ class BrowserPage extends StatefulWidget {
       this.adBlocking = false,
       this.strictMode = false,
       this.themeMode = AppThemeMode.system,
+      this.aiAvailable = true,
       this.onSettingsChanged});
 
   final String initialUrl;
@@ -389,6 +424,7 @@ class BrowserPage extends StatefulWidget {
   final bool adBlocking;
   final bool strictMode;
   final AppThemeMode themeMode;
+  final bool aiAvailable;
   final void Function()? onSettingsChanged;
 
   @override
@@ -910,7 +946,8 @@ class _BrowserPageState extends State<BrowserPage>
       builder: (context) => SettingsDialog(
           onSettingsChanged: widget.onSettingsChanged,
           onClearCaches: _clearAllCaches,
-          currentTheme: widget.themeMode),
+          currentTheme: widget.themeMode,
+          aiAvailable: widget.aiAvailable),
     );
   }
 
@@ -942,6 +979,12 @@ class _BrowserPageState extends State<BrowserPage>
   }
 
   Future<void> _showAiChat() async {
+    if (!widget.aiAvailable) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('AI is not available in this build')));
+      return;
+    }
     final activeTab = tabs[tabController.index];
     String? pageTitle;
     String? pageUrl;
@@ -1412,16 +1455,6 @@ class _BrowserPageState extends State<BrowserPage>
                             ],
                           ),
                         ),
-                        const PopupMenuItem(
-                          value: 'ai_chat',
-                          child: Row(
-                            children: [
-                              Icon(Icons.smart_toy),
-                              SizedBox(width: 12),
-                              Text('AI Chat'),
-                            ],
-                          ),
-                        ),
                         if (widget.enableGitFetch)
                           const PopupMenuItem(
                             value: 'git_fetch',
@@ -1430,6 +1463,17 @@ class _BrowserPageState extends State<BrowserPage>
                                 Icon(Icons.code),
                                 SizedBox(width: 12),
                                 Text('Git Fetch'),
+                              ],
+                            ),
+                          ),
+                        if (widget.aiAvailable)
+                          const PopupMenuItem(
+                            value: 'ai_chat',
+                            child: Row(
+                              children: [
+                                Icon(Icons.smart_toy),
+                                SizedBox(width: 12),
+                                Text('AI Chat'),
                               ],
                             ),
                           ),
