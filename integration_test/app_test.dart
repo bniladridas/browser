@@ -14,7 +14,7 @@ import 'package:browser/main.dart';
 const testTimeout = Timeout(Duration(seconds: 60));
 
 Future<void> _launchApp(WidgetTester tester) async {
-  await tester.pumpWidget(const MyApp());
+  await tester.pumpWidget(const MyApp(aiAvailable: true));
   await tester.pumpAndSettle();
 }
 
@@ -25,7 +25,7 @@ void main() {
     testWidgets('App launches and shows initial UI',
         (WidgetTester tester) async {
       // Build the app
-      await tester.pumpWidget(const MyApp());
+      await tester.pumpWidget(const MyApp(aiAvailable: true));
       await Future.delayed(const Duration(seconds: 1));
       await tester.pumpAndSettle();
 
