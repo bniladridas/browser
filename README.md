@@ -28,6 +28,21 @@ Run `./check.sh` for checks.
 
 Build: `flutter build macos`.
 
+## macOS Unsigned Install (No Paid Apple Dev Account)
+Unsigned builds will trigger macOS Gatekeeper warnings. This is expected without a
+paid Developer ID and notarization.
+
+### First Launch Steps
+1. Drag `browser.app` to Applications.
+2. Right-click `browser.app` and choose **Open**, then **Open** again.
+3. Or go to **System Settings → Privacy & Security** and click **Open Anyway**.
+
+### Power-User Override
+```bash
+xattr -rd com.apple.quarantine /Applications/browser.app
+```
+Only run this if you trust the source.
+
 ### Codex
 
 Codex-specific notes and helper assets live in `.codex/README.md`.
