@@ -259,18 +259,21 @@ class SettingsDialog extends HookWidget {
         TextButton(
           onPressed: () async {
         final homepageText = homepageController.text.trim();
-        if (homepageText.isNotEmpty &&
-            Uri.tryParse(homepageText)?.hasScheme != true) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Invalid homepage URL')),
-          );
-          return;
+        String homepageToSave;
+        if (homepageText.isEmpty) {
+          homepageToSave = defaultHomepageUrl;
+        } else {
+          final processed = UrlUtils.processUrl(homepageText);
+          if (!UrlUtils.isValidUrl(processed)) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Invalid homepage URL')),
+            );
+            return;
+          }
+          homepageToSave = processed;
         }
         final prefs = await SharedPreferences.getInstance();
-        final finalHomepage = homepageText.isEmpty
-            ? defaultHomepageUrl
-            : homepageText;
-        await prefs.setString(homepageKey, finalHomepage);
+        await prefs.setString(homepageKey, homepageToSave);
             await prefs.setBool(hideAppBarKey, hideAppBar.value);
             await prefs.setBool(
                 useModernUserAgentKey, useModernUserAgent.value);
