@@ -20,3 +20,16 @@ final Logger logger = Logger(
   ),
   level: kReleaseMode ? Level.info : Level.debug,
 );
+
+/// Logger variant without method/stack callouts for quieter logs.
+final Logger quietLogger = Logger(
+  printer: PrettyPrinter(
+    methodCount: 0,
+    errorMethodCount: 0,
+    lineLength: 120,
+    colors: true,
+    printEmojis: false,
+    dateTimeFormat: DateTimeFormat.onlyTimeAndSinceStart,
+  ),
+  level: kReleaseMode ? Level.info : Level.debug,
+);

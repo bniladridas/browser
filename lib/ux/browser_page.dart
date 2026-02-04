@@ -711,7 +711,7 @@ class _BrowserPageState extends State<BrowserPage>
         now.difference(tab.lastErrorAt!).inMilliseconds < 1500;
     if (!isDuplicate) {
       if (newErrorMessage.startsWith('HTTP 404')) {
-        logger.w('Web view load error: $newErrorMessage');
+        quietLogger.w('Web view load error: $newErrorMessage');
       } else {
         logger.e('Web view load error: $newErrorMessage');
       }
