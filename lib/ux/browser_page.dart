@@ -262,6 +262,8 @@ class TabData {
   BrowserState state = const BrowserState.idle();
   final List<String> history = [];
   bool isClosed = false;
+  String? lastErrorMessage;
+  DateTime? lastErrorAt;
 
   TabData(this.currentUrl)
       : urlController = TextEditingController(text: currentUrl),
@@ -703,7 +705,19 @@ class _BrowserPageState extends State<BrowserPage>
   }
 
   void _handleLoadError(TabData tab, String newErrorMessage) {
-    logger.e('Web view load error: $newErrorMessage');
+    final now = DateTime.now();
+    final isDuplicate = tab.lastErrorMessage == newErrorMessage &&
+        tab.lastErrorAt != null &&
+        now.difference(tab.lastErrorAt!).inMilliseconds < 1500;
+    if (!isDuplicate) {
+      if (newErrorMessage.startsWith('HTTP 404')) {
+        logger.w('Web view load error: $newErrorMessage');
+      } else {
+        logger.e('Web view load error: $newErrorMessage');
+      }
+      tab.lastErrorMessage = newErrorMessage;
+      tab.lastErrorAt = now;
+    }
     if (mounted) {
       setState(() {
         tab.state = BrowserState.error(newErrorMessage);
