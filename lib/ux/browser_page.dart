@@ -1122,7 +1122,7 @@ class _BrowserPageState extends State<BrowserPage>
     } on PlatformException {
       // Ignore MissingPluginException on macOS
     }
-    }
+  }
 
   Widget _buildBrandingView(TabData tab) {
     final theme = Theme.of(context);
