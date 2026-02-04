@@ -20,7 +20,9 @@ import 'package:pkg/ai_service.dart';
 import 'constants.dart';
 
 class MyApp extends StatefulWidget {
-  const MyApp({super.key});
+  const MyApp({super.key, required this.aiAvailable});
+
+  final bool aiAvailable;
 
   @override
   State<MyApp> createState() => _MyAppState();
@@ -85,6 +87,7 @@ class _MyAppState extends State<MyApp> {
           hideAppBar: hideAppBar,
           useModernUserAgent: useModernUserAgent,
           enableGitFetch: enableGitFetch,
+          aiAvailable: widget.aiAvailable,
           privateBrowsing: privateBrowsing,
           adBlocking: adBlocking,
           strictMode: strictMode,
@@ -99,6 +102,7 @@ class _MyAppState extends State<MyApp> {
 void main() async {
   runZonedGuarded(() async {
     WidgetsFlutterBinding.ensureInitialized();
+    bool aiAvailable = false;
     try {
       await dotenv.load();
     } catch (e) {
@@ -115,11 +119,12 @@ void main() async {
       await Firebase.initializeApp(
           options: DefaultFirebaseOptions.currentPlatform);
       AiService().initialize();
+      aiAvailable = true;
     } catch (e) {
       logger.w(
           'Firebase initialization failed: $e. AI features will not be available.');
     }
-    runApp(const MyApp());
+    runApp(MyApp(aiAvailable: aiAvailable));
   }, (error, stack) {
     logger.e('Uncaught error: $error', error: error, stackTrace: stack);
   });
