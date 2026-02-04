@@ -8,22 +8,25 @@ TMP_ROOT="${TMP_ROOT:-}"
 ALLOW_UNSIGNED="${ALLOW_UNSIGNED:-}"
 
 unsigned_release=false
-if [[ -z "${MACOS_CODE_SIGN_IDENTITY:-}" ]]; then
-  if [[ "${ALLOW_UNSIGNED}" == "1" ]]; then
+
+if [[ "${ALLOW_UNSIGNED}" == "1" ]]; then
+  if [[ -z "${MACOS_CODE_SIGN_IDENTITY:-}" ]]; then
     unsigned_release=true
     echo "Warning: MACOS_CODE_SIGN_IDENTITY not set. Proceeding with unsigned DMG." >&2
-  else
+  fi
+
+  if [[ -z "${APPLE_ID:-}" || -z "${APPLE_TEAM_ID:-}" || -z "${APPLE_APP_SPECIFIC_PASSWORD:-}" ]]; then
+    unsigned_release=true
+    echo "Warning: notarization credentials not set. Skipping notarization." >&2
+  fi
+else
+  if [[ -z "${MACOS_CODE_SIGN_IDENTITY:-}" ]]; then
     echo "Missing MACOS_CODE_SIGN_IDENTITY (Developer ID Application identity)." >&2
     echo "Set ALLOW_UNSIGNED=1 to create an unsigned DMG for testing." >&2
     exit 1
   fi
-fi
 
-if [[ -z "${APPLE_ID:-}" || -z "${APPLE_TEAM_ID:-}" || -z "${APPLE_APP_SPECIFIC_PASSWORD:-}" ]]; then
-  if [[ "${ALLOW_UNSIGNED}" == "1" ]]; then
-    unsigned_release=true
-    echo "Warning: notarization credentials not set. Skipping notarization." >&2
-  else
+  if [[ -z "${APPLE_ID:-}" || -z "${APPLE_TEAM_ID:-}" || -z "${APPLE_APP_SPECIFIC_PASSWORD:-}" ]]; then
     echo "Missing APPLE_ID, APPLE_TEAM_ID, or APPLE_APP_SPECIFIC_PASSWORD." >&2
     echo "Set ALLOW_UNSIGNED=1 to create an unsigned DMG for testing." >&2
     exit 1
