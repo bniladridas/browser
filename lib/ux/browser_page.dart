@@ -1045,7 +1045,7 @@ class _BrowserPageState extends State<BrowserPage>
 
   Widget _buildErrorView(TabData tab) {
     final errorMessage = tab.state is BrowserError
-        ? tab.state.message
+        ? (tab.state as BrowserError).message
         : 'We could not load that page.';
     return Container(
       color: Theme.of(context).colorScheme.surface,
