@@ -1096,16 +1096,17 @@ class _BrowserPageState extends State<BrowserPage>
               runSpacing: 12,
               alignment: WrapAlignment.center,
               children: [
-                FilledButton.icon(
-                  onPressed: () {
-                    setState(() {
-                      tab.state = const BrowserState.idle();
-                    });
-                    tab.webViewController?.reload();
-                  },
-                  icon: const Icon(Icons.refresh),
-                  label: const Text('Try Again'),
-                ),
+                if (tab.webViewController != null)
+                  FilledButton.icon(
+                    onPressed: () {
+                      setState(() {
+                        tab.state = const BrowserState.idle();
+                      });
+                      tab.webViewController?.reload();
+                    },
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Try Again'),
+                  ),
                 OutlinedButton.icon(
                   onPressed: () {
                     tab.urlFocusNode.requestFocus();
