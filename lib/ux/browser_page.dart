@@ -114,10 +114,14 @@ class SettingsDialog extends HookWidget {
     useEffect(() {
       Future<void> loadPreferences() async {
         final prefs = await SharedPreferences.getInstance();
-        final current =
-            prefs.getString(homepageKey) ?? 'https://www.google.com';
-        homepage.value = current;
-        homepageController.text = current;
+        final storedHomepage = prefs.getString(homepageKey);
+        final resolvedHomepage =
+            (storedHomepage == null || storedHomepage.isEmpty)
+                ? defaultHomepageUrl
+                : storedHomepage;
+        homepage.value = resolvedHomepage;
+        homepageController.text =
+            resolvedHomepage == defaultHomepageUrl ? '' : resolvedHomepage;
         hideAppBar.value = prefs.getBool(hideAppBarKey) ?? false;
         useModernUserAgent.value = prefs.getBool(useModernUserAgentKey) ?? true;
         enableGitFetch.value = prefs.getBool(enableGitFetchKey) ?? false;
@@ -152,6 +156,14 @@ class SettingsDialog extends HookWidget {
             TextField(
               controller: homepageController,
               decoration: const InputDecoration(labelText: 'Homepage'),
+            ),
+            const SizedBox(height: 4),
+            SizedBox(
+              width: double.infinity,
+              child: Text(
+                'Leave this blank to show the Browser welcome screen.',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
             ),
             SwitchListTile(
               title: const Text('Hide App Bar'),
@@ -246,15 +258,19 @@ class SettingsDialog extends HookWidget {
         ),
         TextButton(
           onPressed: () async {
-            final homepageText = homepageController.text.trim();
-            if (Uri.tryParse(homepageText)?.hasScheme != true) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Invalid homepage URL')),
-              );
-              return;
-            }
-            final prefs = await SharedPreferences.getInstance();
-            await prefs.setString(homepageKey, homepageText);
+        final homepageText = homepageController.text.trim();
+        if (homepageText.isNotEmpty &&
+            Uri.tryParse(homepageText)?.hasScheme != true) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Invalid homepage URL')),
+          );
+          return;
+        }
+        final prefs = await SharedPreferences.getInstance();
+        final finalHomepage = homepageText.isEmpty
+            ? defaultHomepageUrl
+            : homepageText;
+        await prefs.setString(homepageKey, finalHomepage);
             await prefs.setBool(hideAppBarKey, hideAppBar.value);
             await prefs.setBool(
                 useModernUserAgentKey, useModernUserAgent.value);
@@ -299,8 +315,8 @@ class TabData {
   String? lastErrorMessage;
   DateTime? lastErrorAt;
 
-  TabData(this.currentUrl)
-      : urlController = TextEditingController(text: currentUrl),
+  TabData(this.currentUrl, {String? displayUrl})
+      : urlController = TextEditingController(text: displayUrl ?? currentUrl),
         urlFocusNode = FocusNode();
 }
 
@@ -489,10 +505,14 @@ class _BrowserPageState extends State<BrowserPage>
   };
   final Set<String> _pendingHeaderChecks = {};
 
+  String _displayUrl(String url) =>
+      url == defaultHomepageUrl ? '' : url;
+
   @override
   void initState() {
     super.initState();
-    tabs.add(TabData(widget.initialUrl));
+    tabs.add(TabData(widget.initialUrl,
+        displayUrl: _displayUrl(widget.initialUrl)));
     tabController = TabController(length: 1, vsync: this);
     previousTabIndex = 0;
     tabController.addListener(_onTabChanged);
@@ -670,7 +690,8 @@ class _BrowserPageState extends State<BrowserPage>
   void _addNewTab() {
     if (mounted) {
       setState(() {
-        tabs.add(TabData('https://www.google.com'));
+        tabs.add(TabData(widget.initialUrl,
+            displayUrl: _displayUrl(widget.initialUrl)));
         tabController
             .dispose(); // Dispose the old controller to prevent memory leaks.
         tabController = TabController(
@@ -1093,11 +1114,85 @@ class _BrowserPageState extends State<BrowserPage>
     }
     activeTab.currentUrl = processedUrl;
     activeTab.urlController.text = processedUrl;
+    if (activeTab.webViewController == null && mounted) {
+      setState(() {});
+    }
     try {
       activeTab.webViewController?.loadRequest(Uri.parse(processedUrl));
     } on PlatformException {
       // Ignore MissingPluginException on macOS
     }
+    }
+
+  Widget _buildBrandingView(TabData tab) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    return Container(
+      color: colorScheme.surface,
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: colorScheme.primaryContainer,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Icon(
+                Icons.language,
+                size: 54,
+                color: colorScheme.onPrimaryContainer,
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'Browser',
+              style: theme.textTheme.titleLarge?.copyWith(
+                    color: colorScheme.primary,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.6,
+                  ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'A focused desktop browser experience.',
+              style: theme.textTheme.headlineSmall?.copyWith(
+                    color: colorScheme.onSurface,
+                  ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Enter a URL above, open Settings to choose a homepage, or download the latest build to get started.',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              alignment: WrapAlignment.center,
+              children: [
+                FilledButton.icon(
+                  onPressed: () => _loadUrl(
+                      'https://github.com/bniladridas/browser/releases/latest'),
+                  icon: const Icon(Icons.download),
+                  label: const Text('View release'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: _showSettings,
+                  icon: const Icon(Icons.settings),
+                  label: const Text('Set homepage'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildErrorView(TabData tab) {
@@ -1180,6 +1275,9 @@ class _BrowserPageState extends State<BrowserPage>
   }
 
   Widget _buildTabBody(TabData tab) {
+    if (tab.currentUrl == defaultHomepageUrl) {
+      return _buildBrandingView(tab);
+    }
     if (tab.state is BrowserError) {
       return _buildErrorView(tab);
     }
