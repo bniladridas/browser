@@ -30,6 +30,15 @@ If builds fail with "FlutterMacOS module not found" after adding Firebase, ensur
 | dev | Cutting-edge with breaking changes | Low | Early testing, bug fixes |
 | master | Bleeding-edge for contributors | Very Low | Core development |
 
+## macOS Unsigned Build Warning
+If you distribute an unsigned macOS build (no paid Developer ID + notarization), Gatekeeper will
+show a warning like "Apple could not verify ..." on first launch. This is expected.
+
+Workarounds for trusted builds:
+- Right-click the app and choose **Open**, then **Open** again.
+- Or go to **System Settings → Privacy & Security** and click **Open Anyway**.
+- Power users can run `xattr -rd com.apple.quarantine /Applications/browser.app`.
+
 ### Manual Fix
 
 If needed, manually edit the Xcode project: Open `macos/Runner.xcodeproj` in Xcode, select the Runner target, go to Build Phases, find the "FlutterFire: \"flutterfire upload-crashlytics-symbols\"" run script phase, and replace its contents with:
