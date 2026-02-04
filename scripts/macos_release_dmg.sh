@@ -4,7 +4,6 @@ set -euo pipefail
 APP_PATH="${APP_PATH:-build/macos/Build/Products/Release/browser.app}"
 DMG_PATH="${DMG_PATH:-build/macos/Build/Products/Release/browser.dmg}"
 VOLUME_NAME="${VOLUME_NAME:-Browser}"
-DMG_TITLE="${DMG_TITLE:-Browser}"
 TMP_ROOT="${TMP_ROOT:-}"
 
 if [[ -z "${MACOS_CODE_SIGN_IDENTITY:-}" ]]; then

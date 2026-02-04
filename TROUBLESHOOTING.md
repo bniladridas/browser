@@ -26,6 +26,9 @@ If builds fail with "FlutterMacOS module not found" after adding Firebase, ensur
 | Channel | Description | Stability | Use Case |
 |---------|-------------|-----------|----------|
 | stable | Latest stable release | High | Production apps |
+| beta | Upcoming stable with new features | Medium | Testing new features |
+| dev | Cutting-edge with breaking changes | Low | Early testing, bug fixes |
+| master | Bleeding-edge for contributors | Very Low | Core development |
 
 ## macOS Unsigned Build Warning
 If you distribute an unsigned macOS build (no paid Developer ID + notarization), Gatekeeper will
@@ -35,9 +38,6 @@ Workarounds for trusted builds:
 - Right-click the app and choose **Open**, then **Open** again.
 - Or go to **System Settings → Privacy & Security** and click **Open Anyway**.
 - Power users can run `xattr -rd com.apple.quarantine /Applications/browser.app`.
-| beta | Upcoming stable with new features | Medium | Testing new features |
-| dev | Cutting-edge with breaking changes | Low | Early testing, bug fixes |
-| master | Bleeding-edge for contributors | Very Low | Core development |
 
 ### Manual Fix
 
