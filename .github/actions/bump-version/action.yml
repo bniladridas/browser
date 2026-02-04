@@ -159,6 +159,10 @@ runs:
         ## Technical Changes
         - Updated version to ${VERSION}
 
+        ## macOS Install Notes
+        - Unsigned builds may show Gatekeeper warnings. Users can right-click the app and choose Open, or use
+          System Settings → Privacy & Security → Open Anyway.
+
         (auto bump)
         EOF
         )

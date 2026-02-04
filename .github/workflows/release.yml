@@ -18,6 +18,8 @@ permissions:
 jobs:
   build-and-release:
     runs-on: macos-latest
+    env:
+      MACOS_CODE_SIGN_IDENTITY: ${{ secrets.MACOS_CODE_SIGN_IDENTITY }}
 
     steps:
       - uses: actions/checkout@v4
@@ -43,15 +45,41 @@ jobs:
         run: flutter pub run build_runner build
 
       - name: Build macOS app
+        env:
+          APP_BUNDLE_ID: ${{ secrets.MACOS_APP_BUNDLE_ID }}
         run: flutter build macos --release 2>&1 | grep -v -E "(firebase_core|firebase_auth|firebase_app_check).*warning"
 
-      - name: Create DMG
+      - name: Import signing certificate
+        env:
+          MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          MACOS_KEYCHAIN_PASSWORD: ${{ secrets.MACOS_KEYCHAIN_PASSWORD }}
         run: |
-          cd build/macos/Build/Products/Release
-          hdiutil create -volname "Browser" -srcfolder . -ov -format UDZO browser.dmg
+          echo "${MACOS_CERTIFICATE}" | base64 --decode > /tmp/cert.p12
+          security create-keychain -p "${MACOS_KEYCHAIN_PASSWORD}" build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p "${MACOS_KEYCHAIN_PASSWORD}" build.keychain
+          security import /tmp/cert.p12 -k build.keychain -P "${MACOS_CERTIFICATE_PASSWORD}" \
+            -T /usr/bin/codesign -T /usr/bin/security
+          security set-key-partition-list -S apple-tool:,apple: -s -k "${MACOS_KEYCHAIN_PASSWORD}" build.keychain
+
+      - name: Sign, notarize, and create DMG
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          MACOS_CODE_SIGN_IDENTITY: ${{ secrets.MACOS_CODE_SIGN_IDENTITY }}
+        run: |
+          chmod +x scripts/macos_release_dmg.sh
+          scripts/macos_release_dmg.sh
 
       - name: Upload release asset
         uses: softprops/action-gh-release@v2
         with:
           files: build/macos/Build/Products/Release/browser.dmg
           generate_release_notes: false
+
+      - name: Unsigned build reminder
+        if: ${{ env.MACOS_CODE_SIGN_IDENTITY == '' }}
+        run: |
+          echo "Warning: DMG is unsigned. Users will see Gatekeeper warnings on first launch."

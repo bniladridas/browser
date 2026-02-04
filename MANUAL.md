@@ -30,6 +30,19 @@ If the automated version bump workflow fails (e.g., due to branch deletion or wo
 ## Notes
 - The automated workflow should handle this, but use this as a fallback.
 - Ensure the tag prefix `desktop/app` matches the script configuration.
+ - Unsigned macOS builds will show Gatekeeper warnings for users.
+
+## macOS Release Signing Prereqs
+- Add GitHub Actions secret `MACOS_CERTIFICATE` (base64 .p12).
+- Add GitHub Actions secret `MACOS_CERTIFICATE_PASSWORD`.
+- Add GitHub Actions secret `MACOS_KEYCHAIN_PASSWORD`.
+- Add GitHub Actions secret `MACOS_CODE_SIGN_IDENTITY`.
+- Add GitHub Actions secret `APPLE_ID`.
+- Add GitHub Actions secret `APPLE_TEAM_ID`.
+- Add GitHub Actions secret `APPLE_APP_SPECIFIC_PASSWORD`.
+- Add GitHub Actions secret `MACOS_APP_BUNDLE_ID`.
+- The `MACOS_CODE_SIGN_IDENTITY` should be a Developer ID Application identity.
+- The `MACOS_APP_BUNDLE_ID` should match the bundle ID you want to ship (not `com.example.browser`).
 
 ## Codex Quickstart
 
