@@ -1089,7 +1089,7 @@ class _BrowserPageState extends State<BrowserPage>
   }
 
   Widget _buildTabBody(TabData tab) {
-    if (tab.state is Error) {
+    if (tab.state is BrowserError) {
       return _buildErrorView(tab);
     }
 
