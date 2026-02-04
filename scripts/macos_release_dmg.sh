@@ -35,6 +35,10 @@ codesign --verify --strict --deep --verbose=2 "${APP_PATH}"
 echo "Creating DMG..."
 if [[ -n "${TMP_ROOT}" ]]; then
   dmg_root="${TMP_ROOT}"
+  if [[ -z "${dmg_root}" || "${dmg_root}" == "/" ]]; then
+    echo "Aborting: unsafe TMP_ROOT specified: '${dmg_root}'" >&2
+    exit 1
+  fi
   rm -rf "${dmg_root}"
   mkdir -p "${dmg_root}"
 else
