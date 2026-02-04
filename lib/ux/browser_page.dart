@@ -262,6 +262,8 @@ class TabData {
   BrowserState state = const BrowserState.idle();
   final List<String> history = [];
   bool isClosed = false;
+  String? lastErrorMessage;
+  DateTime? lastErrorAt;
 
   TabData(this.currentUrl)
       : urlController = TextEditingController(text: currentUrl),
@@ -703,7 +705,19 @@ class _BrowserPageState extends State<BrowserPage>
   }
 
   void _handleLoadError(TabData tab, String newErrorMessage) {
-    logger.e('Web view load error: $newErrorMessage');
+    final now = DateTime.now();
+    final isDuplicate = tab.lastErrorMessage == newErrorMessage &&
+        tab.lastErrorAt != null &&
+        now.difference(tab.lastErrorAt!).inMilliseconds < 1500;
+    if (!isDuplicate) {
+      if (newErrorMessage.startsWith('HTTP 404')) {
+        quietLogger.w('Web view load error: $newErrorMessage');
+      } else {
+        logger.e('Web view load error: $newErrorMessage');
+      }
+      tab.lastErrorMessage = newErrorMessage;
+      tab.lastErrorAt = now;
+    }
     if (mounted) {
       setState(() {
         tab.state = BrowserState.error(newErrorMessage);
@@ -1021,24 +1035,32 @@ class _BrowserPageState extends State<BrowserPage>
   }
 
   void _loadUrl(String url) {
-    url = UrlUtils.processUrl(url);
-    if (!UrlUtils.isValidUrl(url)) {
-      logger.w('Invalid or unsafe URL: $url');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Invalid or unsafe URL')),
-      );
-      return; // Don't update tab state for invalid URL
+    final processedUrl = UrlUtils.processUrl(url);
+    if (!UrlUtils.isValidUrl(processedUrl)) {
+      logger.w('Invalid or unsafe URL: $processedUrl');
+      if (mounted) {
+        setState(() {
+          activeTab.currentUrl = url;
+          activeTab.urlController.text = url;
+          activeTab.state =
+              const BrowserState.error('That address does not look valid.');
+        });
+      }
+      return;
     }
-    activeTab.currentUrl = url;
-    activeTab.urlController.text = url;
+    activeTab.currentUrl = processedUrl;
+    activeTab.urlController.text = processedUrl;
     try {
-      activeTab.webViewController?.loadRequest(Uri.parse(url));
+      activeTab.webViewController?.loadRequest(Uri.parse(processedUrl));
     } on PlatformException {
       // Ignore MissingPluginException on macOS
     }
   }
 
   Widget _buildErrorView(TabData tab) {
+    final errorMessage = tab.state is BrowserError
+        ? (tab.state as BrowserError).message
+        : 'We could not load that page.';
     return Container(
       color: Theme.of(context).colorScheme.surface,
       child: Center(
@@ -1048,39 +1070,65 @@ class _BrowserPageState extends State<BrowserPage>
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.errorContainer,
-                borderRadius: BorderRadius.circular(16),
+                color: Theme.of(context).colorScheme.primaryContainer,
+                borderRadius: BorderRadius.circular(20),
               ),
               child: Icon(
-                Icons.error_outline,
-                size: 48,
-                color: Theme.of(context).colorScheme.onErrorContainer,
+                Icons.public_off,
+                size: 54,
+                color: Theme.of(context).colorScheme.onPrimaryContainer,
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
             Text(
-              'Page failed to load',
+              'Browser',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    color: Theme.of(context).colorScheme.primary,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.6,
+                  ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Sorry, we can’t open this page.',
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                     color: Theme.of(context).colorScheme.onSurface,
                   ),
+              textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
             Text(
-              'Check your connection and try again',
+              errorMessage,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
+              textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
-            FilledButton.icon(
-              onPressed: () {
-                setState(() {
-                  tab.state = const BrowserState.idle();
-                });
-                tab.webViewController?.reload();
-              },
-              icon: const Icon(Icons.refresh),
-              label: const Text('Retry'),
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              alignment: WrapAlignment.center,
+              children: [
+                if (tab.webViewController != null)
+                  FilledButton.icon(
+                    onPressed: () {
+                      setState(() {
+                        tab.state = const BrowserState.idle();
+                      });
+                      tab.webViewController?.reload();
+                    },
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Try Again'),
+                  ),
+                OutlinedButton.icon(
+                  onPressed: () {
+                    tab.urlFocusNode.requestFocus();
+                  },
+                  icon: const Icon(Icons.edit),
+                  label: const Text('Edit URL'),
+                ),
+              ],
             ),
           ],
         ),
