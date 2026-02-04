@@ -18,6 +18,8 @@ permissions:
 jobs:
   build-and-release:
     runs-on: macos-latest
+    env:
+      MACOS_CODE_SIGN_IDENTITY: ${{ secrets.MACOS_CODE_SIGN_IDENTITY }}
 
     steps:
       - uses: actions/checkout@v4
@@ -77,6 +79,6 @@ jobs:
           generate_release_notes: false
 
       - name: Unsigned build reminder
-        if: ${{ secrets.MACOS_CODE_SIGN_IDENTITY == '' }}
+        if: ${{ env.MACOS_CODE_SIGN_IDENTITY == '' }}
         run: |
           echo "Warning: DMG is unsigned. Users will see Gatekeeper warnings on first launch."
