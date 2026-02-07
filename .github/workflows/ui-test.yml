@@ -40,6 +40,8 @@ jobs:
         run: |
           cd ios
           pod install
+      - name: Build iOS project
+        run: flutter build ios --debug --no-codesign
       - name: Run iOS Runner tests
         run: |
           cd ios
