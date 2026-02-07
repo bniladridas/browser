@@ -16,10 +16,6 @@ flutter run
 
 **Note:** Do not commit .env to version control. It contains sensitive Firebase keys.
 
-## Use
-
-Enter URLs. Navigate via buttons or shortcuts: `Cmd+L` focus, `Cmd+R` refresh, `Alt+Left/Right` back/forward.
-
 ## Develop
 
 Requires Flutter >=3.0.0.
@@ -43,14 +39,13 @@ xattr -rd com.apple.quarantine /Applications/browser.app
 ```
 Only run this if you trust the source.
 
-### Codex
+## Need Help?
 
-Codex-specific notes and helper assets live in `.codex/README.md`.
+See the documentation and project notes:
+- `docs/`
+- `.codex/README.md`
 
-Usage:
-- Check `.codex/NOTES.md` for conventions.
-- Use `.codex/WORKFLOWS.md` for repeatable tasks.
-- Add new AI-specific guidance in `.codex/`.
+For bugs or questions, use GitHub Issues.
 
 ### Generated Files
 
@@ -65,7 +60,7 @@ To unmark a specific file, add `-linguist-generated` in `.gitattributes`.
 
 ## Contribute
 
-Fork, branch, edit, run `./check.sh`, commit, PR with labels for version bump.
+Fork, branch, edit, commit, run `pre-commit run --all-files`, PR with labels for version bump.
 
 ## License
 
