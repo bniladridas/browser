@@ -37,10 +37,10 @@ jobs:
       - name: Run iOS Runner tests
         run: |
           cd ios
-          xcodebuild test -project Runner.xcodeproj -scheme RunnerTests \
+          xcodebuild test -project Runner.xcodeproj -scheme Runner \
             -destination 'platform=iOS Simulator,name=iPhone 15' \
             CODE_SIGNING_ALLOWED=NO
       - name: Run macOS Runner tests
         run: |
           xcodebuild test -project macos/Runner.xcodeproj \
-            -scheme RunnerTests CODE_SIGNING_ALLOWED=NO
+            -scheme Runner CODE_SIGNING_ALLOWED=NO
