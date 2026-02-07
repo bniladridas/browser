@@ -4,18 +4,22 @@ Copyright 2026 bniladridas. All rights reserved.
 Use of this source code is governed by a MIT license that can be
 found in the LICENSE file. -->
 
-### What changed
-- …
+## Summary
+- Bullet point descriptions of changes
 
-### Why
-- …
+## Impact
+- [ ] Build / CI
+- [ ] Refactor / cleanup
+- [ ] Documentation
 
-### Context
-- Related issue / discussion:
+## Related Items
+- Resolves issues: #[issue-number]
+- Closes PRs: #[pr-number]
+- Resources: [PRs tab](../../pulls), [Issues tab](../../issues]
 
-### Impact
-- User-facing: yes / no
-- Breaking change: yes / no
+## Notes for reviewers
+- Additional details or context
 
-### Notes
-- …
+## Review
+- [ ] Self-reviewed
+- [ ] Code reviewed by reviewer
