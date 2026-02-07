@@ -42,13 +42,22 @@ jobs:
           pod install
       - name: Build iOS project
         run: flutter build ios --debug --no-codesign
+      - name: Build iOS for testing
+        run: |
+          cd ios
+          xcodebuild -project Runner.xcodeproj -scheme Runner \
+            -destination 'platform=iOS Simulator,name=iPhone 16' \
+            -configuration Debug build-for-testing \
+            CODE_SIGNING_ALLOWED=NO
       - name: Run iOS Runner tests
         run: |
           cd ios
-          xcodebuild test -project Runner.xcodeproj -scheme Runner \
+          xcodebuild test-without-building -project Runner.xcodeproj \
+            -scheme Runner \
             -destination 'platform=iOS Simulator,name=iPhone 16' \
             CODE_SIGNING_ALLOWED=NO
       - name: Run macOS Runner tests
         run: |
-          xcodebuild test -project macos/Runner.xcodeproj \
+          cd macos
+          xcodebuild test -project Runner.xcodeproj \
             -scheme Runner CODE_SIGNING_ALLOWED=NO
