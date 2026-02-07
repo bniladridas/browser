@@ -7,6 +7,7 @@
 import 'dart:async';
 import 'dart:collection';
 import 'package:flutter/material.dart';
+import '../utils/string_utils.dart';
 import '../logging/network_monitor.dart';
 
 class NetworkDebugDialog extends StatefulWidget {

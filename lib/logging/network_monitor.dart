@@ -6,15 +6,7 @@
 
 import 'dart:async';
 import 'dart:collection';
-
-extension StringTruncate on String {
-  String truncate(int maxLength) {
-    if (length <= maxLength) return this;
-    const ellipsis = '...';
-    if (maxLength <= ellipsis.length) return substring(0, maxLength);
-    return '${substring(0, maxLength - ellipsis.length)}$ellipsis';
-  }
-}
+import '../utils/string_utils.dart';
 
 class NetworkEvent {
   final String url;

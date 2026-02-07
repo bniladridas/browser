@@ -26,6 +26,7 @@ import '../browser_state.dart';
 import '../features/video_manager.dart';
 import '../logging/logger.dart';
 import '../logging/network_monitor.dart';
+import '../utils/string_utils.dart';
 import 'package:pkg/ai_chat_widget.dart';
 import 'network_debug_dialog.dart';
 
@@ -75,13 +76,6 @@ class UrlUtils {
   static bool isValidUrl(String url) {
     final uri = Uri.tryParse(url);
     return uri != null && const {'http', 'https'}.contains(uri.scheme);
-  }
-
-  static String truncate(String text, int maxLength) {
-    if (text.length <= maxLength) return text;
-    const ellipsis = '...';
-    if (maxLength <= ellipsis.length) return text.substring(0, maxLength);
-    return '${text.substring(0, maxLength - ellipsis.length)}$ellipsis';
   }
 }
 
@@ -1771,11 +1765,9 @@ class _BrowserPageState extends State<BrowserPage>
                               ),
                               const SizedBox(width: 8),
                               Text(
-                                UrlUtils.truncate(
-                                  Uri.tryParse(tab.currentUrl)?.host ??
-                                      tab.currentUrl,
-                                  15,
-                                ),
+                                (Uri.tryParse(tab.currentUrl)?.host ??
+                                        tab.currentUrl)
+                                    .truncate(15),
                               ),
                               if (tabs.length > 1) ...[
                                 const SizedBox(width: 8),
