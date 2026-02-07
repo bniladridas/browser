@@ -15,7 +15,7 @@ found in the LICENSE file. -->
 ## Related Items
 - Resolves issues: #[issue-number]
 - Closes PRs: #[pr-number]
-- Resources: [PRs tab](../../pulls), [Issues tab](../../issues]
+- Resources: [PRs tab](../../pulls), [Issues tab](../../issues)
 
 ## Notes for reviewers
 - Additional details or context
