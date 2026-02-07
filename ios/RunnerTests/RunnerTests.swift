@@ -4,9 +4,14 @@ import XCTest
 
 class RunnerTests: XCTestCase {
 
-  func testExample() {
-    // If you add code to the Runner application, consider adding tests here.
-    // See https://developer.apple.com/documentation/xctest for more information about using XCTest.
+  func testAppDelegateWindowExists() {
+    let appDelegate = UIApplication.shared.delegate as! AppDelegate
+    XCTAssertNotNil(appDelegate.window, "App delegate should have a window")
+  }
+
+  func testAppDelegateWindowHasRootViewController() {
+    let appDelegate = UIApplication.shared.delegate as! AppDelegate
+    XCTAssertNotNil(appDelegate.window?.rootViewController, "Window should have a root view controller")
   }
 
 }
