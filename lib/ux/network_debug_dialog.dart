@@ -42,13 +42,6 @@ class _NetworkDebugDialogState extends State<NetworkDebugDialog> {
     super.dispose();
   }
 
-  static String _truncate(String text, int maxLength) {
-    if (text.length <= maxLength) return text;
-    const ellipsis = '...';
-    if (maxLength <= ellipsis.length) return text.substring(0, maxLength);
-    return '${text.substring(0, maxLength - ellipsis.length)}$ellipsis';
-  }
-
   @override
   Widget build(BuildContext context) {
     final failedEvents = _events.where((e) => !e.success).toList();
@@ -106,7 +99,7 @@ class _NetworkDebugDialogState extends State<NetworkDebugDialog> {
                             size: 18,
                           ),
                           title: Text(
-                            '${event.method} ${_truncate(event.url, 50)}',
+                            '${event.method} ${event.url.truncate(50)}',
                             style: TextStyle(
                               fontSize: 12,
                               color: event.success ? null : Colors.red,

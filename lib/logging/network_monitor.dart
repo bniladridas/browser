@@ -7,6 +7,15 @@
 import 'dart:async';
 import 'dart:collection';
 
+extension StringTruncate on String {
+  String truncate(int maxLength) {
+    if (length <= maxLength) return this;
+    const ellipsis = '...';
+    if (maxLength <= ellipsis.length) return substring(0, maxLength);
+    return '${substring(0, maxLength - ellipsis.length)}$ellipsis';
+  }
+}
+
 class NetworkEvent {
   final String url;
   final String method;
@@ -39,15 +48,7 @@ class NetworkEvent {
   String toString() {
     final statusStr = statusCode != null ? ' $statusCode' : '';
     final errorStr = error != null ? ' Error: ${error.toString()}' : '';
-    final truncatedUrl = _truncate(url, 80);
-    return '$method $truncatedUrl$statusStr (${duration.inMilliseconds}ms)$errorStr';
-  }
-
-  static String _truncate(String text, int maxLength) {
-    if (text.length <= maxLength) return text;
-    const ellipsis = '...';
-    if (maxLength <= ellipsis.length) return text.substring(0, maxLength);
-    return '${text.substring(0, maxLength - ellipsis.length)}$ellipsis';
+    return '$method ${url.truncate(80)}$statusStr (${duration.inMilliseconds}ms)$errorStr';
   }
 }
 
