@@ -25,7 +25,9 @@ import '../browser_state.dart';
 
 import '../features/video_manager.dart';
 import '../logging/logger.dart';
+import '../logging/network_monitor.dart';
 import 'package:pkg/ai_chat_widget.dart';
+import 'network_debug_dialog.dart';
 
 const _userAgents = {
   TargetPlatform.macOS: {
@@ -258,22 +260,22 @@ class SettingsDialog extends HookWidget {
         ),
         TextButton(
           onPressed: () async {
-        final homepageText = homepageController.text.trim();
-        String homepageToSave;
-        if (homepageText.isEmpty) {
-          homepageToSave = defaultHomepageUrl;
-        } else {
-          final processed = UrlUtils.processUrl(homepageText);
-          if (!UrlUtils.isValidUrl(processed)) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Invalid homepage URL')),
-            );
-            return;
-          }
-          homepageToSave = processed;
-        }
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString(homepageKey, homepageToSave);
+            final homepageText = homepageController.text.trim();
+            String homepageToSave;
+            if (homepageText.isEmpty) {
+              homepageToSave = defaultHomepageUrl;
+            } else {
+              final processed = UrlUtils.processUrl(homepageText);
+              if (!UrlUtils.isValidUrl(processed)) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Invalid homepage URL')),
+                );
+                return;
+              }
+              homepageToSave = processed;
+            }
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.setString(homepageKey, homepageToSave);
             await prefs.setBool(hideAppBarKey, hideAppBar.value);
             await prefs.setBool(
                 useModernUserAgentKey, useModernUserAgent.value);
@@ -324,12 +326,29 @@ class TabData {
 }
 
 Future<Map<String, dynamic>> _fetchGitHubRepo(String url) async {
-  final response =
-      await http.get(Uri.parse(url)).timeout(const Duration(seconds: 10));
-  if (response.statusCode == 200) {
-    return jsonDecode(response.body);
-  } else {
-    throw Exception('Failed to load repo: ${response.statusCode}');
+  final stopwatch = Stopwatch()..start();
+  try {
+    final response =
+        await http.get(Uri.parse(url)).timeout(const Duration(seconds: 10));
+    NetworkMonitor().logRequest(
+      url: url,
+      method: 'GET',
+      statusCode: response.statusCode,
+      duration: stopwatch.elapsed,
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to load repo: ${response.statusCode}');
+    }
+  } catch (e) {
+    NetworkMonitor().onRequestFailed(
+      url: url,
+      method: 'GET',
+      error: e as Exception,
+      duration: stopwatch.elapsed,
+    );
+    rethrow;
   }
 }
 
@@ -508,14 +527,13 @@ class _BrowserPageState extends State<BrowserPage>
   };
   final Set<String> _pendingHeaderChecks = {};
 
-  String _displayUrl(String url) =>
-      url == defaultHomepageUrl ? '' : url;
+  String _displayUrl(String url) => url == defaultHomepageUrl ? '' : url;
 
   @override
   void initState() {
     super.initState();
-    tabs.add(TabData(widget.initialUrl,
-        displayUrl: _displayUrl(widget.initialUrl)));
+    tabs.add(
+        TabData(widget.initialUrl, displayUrl: _displayUrl(widget.initialUrl)));
     tabController = TabController(length: 1, vsync: this);
     previousTabIndex = 0;
     tabController.addListener(_onTabChanged);
@@ -604,7 +622,14 @@ class _BrowserPageState extends State<BrowserPage>
     final uri = Uri.tryParse(url);
     if (uri == null) return false;
     try {
+      final stopwatch = Stopwatch()..start();
       final head = await http.head(uri);
+      NetworkMonitor().logRequest(
+        url: url,
+        method: 'HEAD',
+        statusCode: head.statusCode,
+        duration: stopwatch.elapsed,
+      );
       if (_isAttachmentHeader(head.headers['content-disposition']) ||
           _looksLikeBinaryContentType(head.headers['content-type'])) {
         return true;
@@ -612,16 +637,28 @@ class _BrowserPageState extends State<BrowserPage>
       if (head.statusCode != 405 && head.statusCode != 403) {
         return false;
       }
-    } catch (_) {
-      // Fall back to a ranged GET for servers that block HEAD.
+    } catch (e) {
+      NetworkMonitor().onRequestFailed(
+        url: url,
+        method: 'HEAD',
+        error: e as Exception,
+        duration: Duration.zero,
+      );
     }
 
     try {
       final client = http.Client();
+      final stopwatch = Stopwatch()..start();
       try {
         final request = http.Request('GET', uri);
         request.headers['Range'] = 'bytes=0-0';
         final response = await client.send(request);
+        NetworkMonitor().logRequest(
+          url: url,
+          method: 'GET',
+          statusCode: response.statusCode,
+          duration: stopwatch.elapsed,
+        );
         final isDownload =
             _isAttachmentHeader(response.headers['content-disposition']) ||
                 _looksLikeBinaryContentType(response.headers['content-type']);
@@ -630,7 +667,13 @@ class _BrowserPageState extends State<BrowserPage>
       } finally {
         client.close();
       }
-    } catch (_) {
+    } catch (e) {
+      NetworkMonitor().onRequestFailed(
+        url: url,
+        method: 'GET',
+        error: e as Exception,
+        duration: Duration.zero,
+      );
       return false;
     }
   }
@@ -668,7 +711,14 @@ class _BrowserPageState extends State<BrowserPage>
         return;
       }
       final filePath = saveLocation.path;
+      final stopwatch = Stopwatch()..start();
       final response = await http.get(Uri.parse(url));
+      NetworkMonitor().logRequest(
+        url: url,
+        method: 'GET',
+        statusCode: response.statusCode,
+        duration: stopwatch.elapsed,
+      );
       if (!mounted) return;
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final file = File(filePath);
@@ -975,6 +1025,13 @@ class _BrowserPageState extends State<BrowserPage>
     );
   }
 
+  void _showNetworkDebug() {
+    showDialog(
+      context: context,
+      builder: (context) => const NetworkDebugDialog(),
+    );
+  }
+
   void _showGitFetchDialog() {
     showDialog(
       context: context,
@@ -1152,25 +1209,25 @@ class _BrowserPageState extends State<BrowserPage>
             Text(
               'Browser',
               style: theme.textTheme.titleLarge?.copyWith(
-                    color: colorScheme.primary,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.6,
-                  ),
+                color: colorScheme.primary,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.6,
+              ),
             ),
             const SizedBox(height: 12),
             Text(
               'A focused desktop browser experience.',
               style: theme.textTheme.headlineSmall?.copyWith(
-                    color: colorScheme.onSurface,
-                  ),
+                color: colorScheme.onSurface,
+              ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
             Text(
               'Enter a URL above, open Settings to choose a homepage, or download the latest build to get started.',
               style: theme.textTheme.bodyMedium?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                  ),
+                color: colorScheme.onSurfaceVariant,
+              ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
@@ -1523,6 +1580,9 @@ class _BrowserPageState extends State<BrowserPage>
                           case 'git_fetch':
                             _showGitFetchDialog();
                             break;
+                          case 'network_debug':
+                            _showNetworkDebug();
+                            break;
                         }
                       },
                       itemBuilder: (context) => [
@@ -1585,6 +1645,16 @@ class _BrowserPageState extends State<BrowserPage>
                               Icon(Icons.settings),
                               SizedBox(width: 12),
                               Text('Settings'),
+                            ],
+                          ),
+                        ),
+                        PopupMenuItem(
+                          value: 'network_debug',
+                          child: Row(
+                            children: [
+                              Icon(Icons.network_check),
+                              SizedBox(width: 12),
+                              Text('Network Debug'),
                             ],
                           ),
                         ),
