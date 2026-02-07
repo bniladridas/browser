@@ -1,0 +1,46 @@
+---
+# SPDX-License-Identifier: MIT
+#
+# Copyright 2026 bniladridas. All rights reserved.
+# Use of this source code is governed by a MIT license that can be
+# found in the LICENSE file.
+
+name: UI Tests
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  ui-test:
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-flutter
+        with:
+          flutter-version: '3.38.9'
+      - run: flutter pub get
+      - name: Create .env file
+        run: |
+          {
+            echo "FIREBASE_API_KEY=dummy_api_key"
+            echo "FIREBASE_APP_ID=dummy_app_id"
+            echo "FIREBASE_MESSAGING_SENDER_ID=dummy_sender_id"
+            echo "FIREBASE_PROJECT_ID=dummy_project_id"
+            echo "FIREBASE_STORAGE_BUCKET=dummy_storage_bucket"
+          } > .env
+      - name: Run widget tests
+        run: flutter test test/widget_test.dart
+      - name: Run iOS Runner tests
+        run: |
+          cd ios
+          xcodebuild test -project Runner.xcodeproj -scheme RunnerTests \
+            -destination 'platform=iOS Simulator,name=iPhone 15' \
+            CODE_SIGNING_ALLOWED=NO
+      - name: Run macOS Runner tests
+        run: |
+          xcodebuild test -project macos/Runner.xcodeproj \
+            -scheme RunnerTests CODE_SIGNING_ALLOWED=NO
