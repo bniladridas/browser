@@ -38,7 +38,7 @@ jobs:
         run: |
           cd ios
           xcodebuild test -project Runner.xcodeproj -scheme Runner \
-            -destination 'platform=iOS Simulator,name=iPhone 15' \
+            -destination 'platform=iOS Simulator,name=iPhone 16' \
             CODE_SIGNING_ALLOWED=NO
       - name: Run macOS Runner tests
         run: |
