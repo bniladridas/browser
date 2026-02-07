@@ -621,8 +621,8 @@ class _BrowserPageState extends State<BrowserPage>
   Future<bool> _hasDownloadHeaders(String url) async {
     final uri = Uri.tryParse(url);
     if (uri == null) return false;
+    final stopwatch = Stopwatch()..start();
     try {
-      final stopwatch = Stopwatch()..start();
       final head = await http.head(uri);
       NetworkMonitor().logRequest(
         url: url,
@@ -642,7 +642,7 @@ class _BrowserPageState extends State<BrowserPage>
         url: url,
         method: 'HEAD',
         error: e as Exception,
-        duration: Duration.zero,
+        duration: stopwatch.elapsed,
       );
     }
 

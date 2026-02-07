@@ -5,6 +5,7 @@
 // found in the LICENSE file.
 
 import 'dart:async';
+import 'dart:collection';
 import 'package:flutter/material.dart';
 import '../logging/network_monitor.dart';
 
@@ -17,7 +18,7 @@ class NetworkDebugDialog extends StatefulWidget {
 
 class _NetworkDebugDialogState extends State<NetworkDebugDialog> {
   late final StreamSubscription<NetworkEvent> _subscription;
-  final List<NetworkEvent> _events = [];
+  final _events = ListQueue<NetworkEvent>();
 
   @override
   void initState() {
@@ -26,9 +27,9 @@ class _NetworkDebugDialogState extends State<NetworkDebugDialog> {
     _subscription = NetworkMonitor().events.listen((event) {
       if (mounted) {
         setState(() {
-          _events.insert(0, event);
+          _events.addLast(event);
           if (_events.length > 50) {
-            _events.removeLast();
+            _events.removeFirst();
           }
         });
       }
@@ -39,6 +40,13 @@ class _NetworkDebugDialogState extends State<NetworkDebugDialog> {
   void dispose() {
     _subscription.cancel();
     super.dispose();
+  }
+
+  static String _truncate(String text, int maxLength) {
+    if (text.length <= maxLength) return text;
+    const ellipsis = '...';
+    if (maxLength <= ellipsis.length) return text.substring(0, maxLength);
+    return '${text.substring(0, maxLength - ellipsis.length)}$ellipsis';
   }
 
   @override
@@ -78,12 +86,6 @@ class _NetworkDebugDialogState extends State<NetworkDebugDialog> {
                     const Icon(Icons.error, color: Colors.red, size: 16),
                     const SizedBox(width: 8),
                     Text('${failedEvents.length} failed requests'),
-                    const Spacer(),
-                    TextButton(
-                      onPressed: () => setState(
-                          () => _events.removeWhere((e) => !e.success)),
-                      child: const Text('Clear'),
-                    ),
                   ],
                 ),
               ),
@@ -95,7 +97,7 @@ class _NetworkDebugDialogState extends State<NetworkDebugDialog> {
                   : ListView.builder(
                       itemCount: _events.length,
                       itemBuilder: (context, index) {
-                        final event = _events[index];
+                        final event = _events.toList()[index];
                         return ListTile(
                           dense: true,
                           leading: Icon(
@@ -104,7 +106,7 @@ class _NetworkDebugDialogState extends State<NetworkDebugDialog> {
                             size: 18,
                           ),
                           title: Text(
-                            '${event.method} ${event.url.length > 50 ? '${event.url.substring(0, 50)}...' : event.url}',
+                            '${event.method} ${_truncate(event.url, 50)}',
                             style: TextStyle(
                               fontSize: 12,
                               color: event.success ? null : Colors.red,

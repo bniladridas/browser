@@ -5,6 +5,7 @@
 // found in the LICENSE file.
 
 import 'dart:async';
+import 'dart:collection';
 
 class NetworkEvent {
   final String url;
@@ -38,7 +39,15 @@ class NetworkEvent {
   String toString() {
     final statusStr = statusCode != null ? ' $statusCode' : '';
     final errorStr = error != null ? ' Error: ${error.toString()}' : '';
-    return '$method ${url.truncate(80)}$statusStr (${duration.inMilliseconds}ms)$errorStr';
+    final truncatedUrl = _truncate(url, 80);
+    return '$method $truncatedUrl$statusStr (${duration.inMilliseconds}ms)$errorStr';
+  }
+
+  static String _truncate(String text, int maxLength) {
+    if (text.length <= maxLength) return text;
+    const ellipsis = '...';
+    if (maxLength <= ellipsis.length) return text.substring(0, maxLength);
+    return '${text.substring(0, maxLength - ellipsis.length)}$ellipsis';
   }
 }
 
@@ -48,12 +57,12 @@ class NetworkMonitor {
   NetworkMonitor._internal();
 
   final _controller = StreamController<NetworkEvent>.broadcast();
-  final _events = <NetworkEvent>[];
+  final _events = ListQueue<NetworkEvent>();
   static const int _maxEvents = 100;
 
   Stream<NetworkEvent> get events => _controller.stream;
 
-  List<NetworkEvent> get recentEvents => List.unmodifiable(_events);
+  List<NetworkEvent> get recentEvents => List.unmodifiable(_events.toList());
 
   void logRequest({
     required String url,
@@ -105,9 +114,9 @@ class NetworkMonitor {
   }
 
   void _addEvent(NetworkEvent event) {
-    _events.add(event);
+    _events.addLast(event);
     if (_events.length > _maxEvents) {
-      _events.removeAt(0);
+      _events.removeFirst();
     }
     _controller.add(event);
   }
@@ -130,12 +139,5 @@ class NetworkMonitor {
 
   void clear() {
     _events.clear();
-  }
-}
-
-extension on String {
-  String truncate(int maxLength) {
-    if (length <= maxLength) return this;
-    return substring(0, maxLength);
   }
 }
