@@ -63,6 +63,8 @@ jobs:
           xcodebuild test-without-building -workspace Runner.xcworkspace -scheme Runner \
             -destination 'platform=iOS Simulator,name=iPhone 16' \
             CODE_SIGNING_ALLOWED=NO
+      - name: Build macOS project
+        run: flutter build macos --debug --no-codesign
       - name: Run macOS Runner tests
         run: |
           cd macos
