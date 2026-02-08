@@ -32,6 +32,32 @@ jobs:
             echo "FIREBASE_PROJECT_ID=dummy_project_id"
             echo "FIREBASE_STORAGE_BUCKET=dummy_storage_bucket"
           } > .env
+      - name: Create dummy GoogleService-Info.plist for macOS
+        run: |
+          cat > macos/Runner/GoogleService-Info.plist << 'EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>CLIENT_ID</key>
+            <string>dummy_client_id</string>
+            <key>REVERSED_CLIENT_ID</key>
+            <string>dummy_reversed_client_id</string>
+            <key>API_KEY</key>
+            <string>dummy_api_key</string>
+            <key>GCM_SENDER_ID</key>
+            <string>dummy_sender_id</string>
+            <key>PLIST_VERSION</key>
+            <string>1</string>
+            <key>BUNDLE_ID</key>
+            <string>com.example.browser</string>
+            <key>PROJECT_ID</key>
+            <string>dummy_project_id</string>
+            <key>STORAGE_BUCKET</key>
+            <string>dummy_storage_bucket</string>
+          </dict>
+          </plist>
+          EOF
       - name: Run widget tests
         run: flutter test test/widget_test.dart
       - name: Generate freezed files
