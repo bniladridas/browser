@@ -47,9 +47,6 @@ jobs:
           flutter clean
           flutter pub get
           flutter pub run build_runner build
-          cd ios
-          pod install
-          cd ..
           flutter build ios --debug --simulator --no-codesign
       - name: Build iOS for testing
         run: |
