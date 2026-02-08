@@ -65,7 +65,7 @@ jobs:
             CODE_SIGNING_ALLOWED=NO
       - name: Build macOS project
         run: |
-          flutter build macos --debug --no-codesign
+          flutter build macos --debug
           cd macos
           pod install
           cd ..
