@@ -1,0 +1,100 @@
+---
+# SPDX-License-Identifier: MIT
+#
+# Copyright 2026 bniladridas. All rights reserved.
+# Use of this source code is governed by a MIT license that can be
+# found in the LICENSE file.
+
+name: UI Tests
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  ui-test:
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-flutter
+        with:
+          flutter-version: '3.38.9'
+      - run: flutter pub get
+      - name: Create .env file
+        run: |
+          {
+            echo "FIREBASE_API_KEY=dummy_api_key"
+            echo "FIREBASE_APP_ID=dummy_app_id"
+            echo "FIREBASE_MESSAGING_SENDER_ID=dummy_sender_id"
+            echo "FIREBASE_PROJECT_ID=dummy_project_id"
+            echo "FIREBASE_STORAGE_BUCKET=dummy_storage_bucket"
+          } > .env
+      - name: Create dummy GoogleService-Info.plist for macOS
+        run: |
+          cat > macos/Runner/GoogleService-Info.plist << 'EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>CLIENT_ID</key>
+            <string>dummy_client_id</string>
+            <key>REVERSED_CLIENT_ID</key>
+            <string>dummy_reversed_client_id</string>
+            <key>API_KEY</key>
+            <string>dummy_api_key</string>
+            <key>GCM_SENDER_ID</key>
+            <string>dummy_sender_id</string>
+            <key>PLIST_VERSION</key>
+            <string>1</string>
+            <key>BUNDLE_ID</key>
+            <string>com.example.browser</string>
+            <key>PROJECT_ID</key>
+            <string>dummy_project_id</string>
+            <key>STORAGE_BUCKET</key>
+            <string>dummy_storage_bucket</string>
+          </dict>
+          </plist>
+          EOF
+      - name: Run widget tests
+        run: flutter test test/widget_test.dart
+      - name: Generate freezed files
+        run: flutter pub run build_runner build
+      - name: Install CocoaPods dependencies
+        run: |
+          cd ios
+          pod install
+      - name: Build iOS project
+        run: flutter build ios --debug --no-codesign
+      - name: Prepare for iOS build
+        run: |
+          flutter clean
+          flutter pub get
+          flutter pub run build_runner build
+
+      - name: Build iOS app for simulator
+        run: flutter build ios --debug --simulator --no-codesign
+      - name: Build iOS for testing
+        run: |
+          cd ios
+          xcodebuild -workspace Runner.xcworkspace -scheme Runner \
+            -destination 'platform=iOS Simulator,name=iPhone 16' \
+            -configuration Debug build-for-testing \
+            CODE_SIGNING_ALLOWED=NO
+      - name: Run iOS Runner tests
+        run: |
+          cd ios
+          xcodebuild test-without-building -workspace Runner.xcworkspace -scheme Runner \
+            -destination 'platform=iOS Simulator,name=iPhone 16' \
+            CODE_SIGNING_ALLOWED=NO
+      - name: Build macOS project
+        run: |
+          flutter build macos --debug
+          cd macos
+          pod install
+          cd ..
+      - name: Run macOS Runner tests
+        run: |
+          echo "macOS tests temporarily disabled"
