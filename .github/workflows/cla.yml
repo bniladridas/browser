@@ -1,0 +1,20 @@
+---
+# SPDX-License-Identifier: MIT
+#
+# Copyright 2026 bniladridas. All rights reserved.
+# Use of this source code is governed by a MIT license that can be
+# found in the LICENSE file.
+
+name: CLA
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  cla:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: bniladridas/cla-bot@v1.1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
