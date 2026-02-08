@@ -66,5 +66,6 @@ jobs:
       - name: Run macOS Runner tests
         run: |
           cd macos
+          pod install
           xcodebuild test -project Runner.xcodeproj \
             -scheme Runner CODE_SIGNING_ALLOWED=NO
