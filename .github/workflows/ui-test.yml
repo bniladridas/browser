@@ -55,7 +55,7 @@ jobs:
       - name: Build iOS for testing
         run: |
           cd ios
-          xcodebuild -project Runner.xcodeproj -scheme Runner \
+          xcodebuild -workspace Runner.xcworkspace -scheme Runner \
             -destination 'platform=iOS Simulator,name=iPhone 16' \
             -configuration Debug build-for-testing \
             CODE_SIGNING_ALLOWED=NO
