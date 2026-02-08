@@ -1,0 +1,15 @@
+{
+  "agents": {
+    "rules": [
+      {
+        "name": "fix-workflow-problems",
+        "description": "When working on CI/CD workflows, always fix problems rather than skipping tests or steps",
+        "when": {
+          "file_pattern": ".github/workflows/**"
+        },
+        "action": "enforce",
+        "severity": "error"
+      }
+    ]
+  }
+}
