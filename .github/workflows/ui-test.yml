@@ -42,6 +42,14 @@ jobs:
           pod install
       - name: Build iOS project
         run: flutter build ios --debug --no-codesign
+      - name: Clean and install CocoaPods
+        run: |
+          flutter clean
+          flutter pub get
+          cd ios
+          pod install
+      - name: Build iOS for simulator
+        run: flutter build ios --debug --simulator --no-codesign
       - name: Build iOS for testing
         run: |
           cd ios
