@@ -133,6 +133,8 @@ gh pr create \
 
 ## Related Items
 - Resolves issues: #[issue-number]
+- Closes PRs: #[pr-number]
+- Resources: [PRs tab](../../pulls), [Issues tab](../../issues)
 
 ## Notes for reviewers
 - Additional details or context
