@@ -11,6 +11,7 @@ on:
   push:
     tags:
       - 'desktop/app-*'
+  workflow_dispatch:
 
 permissions:
   contents: write
