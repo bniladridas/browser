@@ -10,5 +10,5 @@
 - The search input, buttons, and feature chips use the app’s color scheme and responsive layout to feel cohesive on desktops.
 
 ## Maintenance
-- The new `_torrySearchController` and `_torrySearchFocusNode` are disposed of with the rest of the page state to avoid leaks.
+- Torry search state is tracked per tab via `TabData.torrySearchController` and `TabData.torrySearchFocusNode`, and both are disposed when tabs are removed or the page is disposed to avoid leaks.
 - Torry-related UI lives in `_buildTorryHomeView` so future home-screen experiments can swap in updated panels without touching the browser core logic.
