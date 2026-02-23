@@ -112,3 +112,32 @@ Application Specific Information: abort() called
 ```
 
 This is because Firebase tries to initialize with invalid configuration.
+
+## Creating Pull Requests
+
+Use the `gh pr create` command with the full PR body in HEREDOC format:
+
+```bash
+gh pr create \
+  --base main \
+  --head <branch-name> \
+  --title "<pr-title>" \
+  --body "$(cat <<'EOF'
+## Summary
+- Bullet point descriptions of changes
+
+## Impact
+- [x] Build / CI
+- [x] Refactor / cleanup
+- [x] Documentation
+
+## Related Items
+- Resolves issues: #[issue-number]
+
+## Notes for reviewers
+- Additional details or context
+EOF
+)"
+```
+
+This ensures proper formatting with multiline body text.
