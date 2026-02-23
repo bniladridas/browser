@@ -1,10 +1,10 @@
----
 # SPDX-License-Identifier: MIT
 #
 # Copyright 2026 bniladridas. All rights reserved.
 # Use of this source code is governed by a MIT license that can be
 # found in the LICENSE file.
 
+---
 name: CLA
 
 on:
@@ -14,11 +14,30 @@ on:
 jobs:
   cla:
     runs-on: ubuntu-latest
+    if: github.repository_owner == 'bniladridas'
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           sparse-checkout: |
-            cla-signers.json
-      - uses: bniladridas/cla-bot@v1.1
+            signed.json
+
+      - name: Checkout private cla-bot
+        uses: actions/checkout@v6
+        with:
+          repository: bniladridas/cla-bot
+          token: ${{ secrets.CLA_BOT_TOKEN }}
+          path: cla-bot
+
+      - name: Copy signed.json to cla-signers.json
+        run: |
+          cp signed.json cla-signers.json
+          cp signed.json cla-bot/cla-signers.json
+
+      - name: Run CLA bot
+        uses: ./cla-bot/
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
