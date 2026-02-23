@@ -1186,10 +1186,10 @@ class _BrowserPageState extends State<BrowserPage>
     }
   }
 
-  void _performTorrySearch([String? text]) {
-    final query = (text ?? activeTab.torrySearchController.text).trim();
+  void _performTorrySearch(TabData tab, [String? text]) {
+    final query = (text ?? tab.torrySearchController.text).trim();
     if (query.isEmpty) {
-      activeTab.torrySearchFocusNode.requestFocus();
+      tab.torrySearchFocusNode.requestFocus();
       return;
     }
     final targetUrl =
@@ -1270,7 +1270,7 @@ class _BrowserPageState extends State<BrowserPage>
                     controller: tab.torrySearchController,
                     focusNode: tab.torrySearchFocusNode,
                     textInputAction: TextInputAction.search,
-                    onSubmitted: (_) => _performTorrySearch(),
+                    onSubmitted: (s) => _performTorrySearch(tab, s),
                     decoration: InputDecoration(
                       hintText: 'Search Torry',
                       border: InputBorder.none,
@@ -1279,7 +1279,7 @@ class _BrowserPageState extends State<BrowserPage>
                         color: colorScheme.primary,
                       ),
                       suffixIcon: IconButton(
-                        onPressed: _performTorrySearch,
+                        onPressed: () => _performTorrySearch(tab),
                         icon: Icon(
                           Icons.arrow_forward,
                           color: colorScheme.primary,
