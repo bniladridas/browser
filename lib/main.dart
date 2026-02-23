@@ -6,6 +6,7 @@
 
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'package:firebase_core/firebase_core.dart';
@@ -114,6 +115,12 @@ void main() async {
     }
     try {
       await windowManager.ensureInitialized();
+      if (defaultTargetPlatform == TargetPlatform.macOS) {
+        await windowManager.setTitleBarStyle(
+          TitleBarStyle.hidden,
+          windowButtonVisibility: true,
+        );
+      }
     } catch (e) {
       logger.w(
           'Warning: Window manager initialization failed on this platform: $e. Some desktop window features (minimize, maximize, etc.) may not be available.');

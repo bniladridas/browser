@@ -11,6 +11,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:window_manager/window_manager.dart';
 
 import 'dart:convert';
 import 'dart:io';
@@ -524,12 +525,21 @@ class _BrowserPageState extends State<BrowserPage>
     'mkv',
   };
   final Set<String> _pendingHeaderChecks = {};
+  double _titleBarHeight = 0;
 
   String _displayUrl(String url) => url == defaultHomepageUrl ? '' : url;
 
   @override
   void initState() {
     super.initState();
+    if (defaultTargetPlatform == TargetPlatform.macOS) {
+      windowManager.getTitleBarHeight().then((height) {
+        if (!mounted) return;
+        setState(() {
+          _titleBarHeight = height.toDouble();
+        });
+      });
+    }
     tabs.add(
         TabData(widget.initialUrl, displayUrl: _displayUrl(widget.initialUrl)));
     tabController = TabController(length: 1, vsync: this);
@@ -1542,6 +1552,210 @@ class _BrowserPageState extends State<BrowserPage>
 
   @override
   Widget build(BuildContext context) {
+    final double titleBarInset =
+        defaultTargetPlatform == TargetPlatform.macOS ? _titleBarHeight : 0.0;
+    final leadingInset =
+        defaultTargetPlatform == TargetPlatform.macOS ? 88.0 : 16.0;
+
+    final PreferredSizeWidget? appBarWidget = widget.hideAppBar
+        ? null
+        : AppBar(
+            actions: [
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceContainerHigh,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.arrow_back_ios, size: 18),
+                      onPressed: _goBack,
+                      tooltip: 'Back',
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.arrow_forward_ios, size: 18),
+                      onPressed: _goForward,
+                      tooltip: 'Forward',
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.add),
+                onPressed: _addNewTab,
+                tooltip: 'New Tab',
+              ),
+              PopupMenuButton<String>(
+                icon: const Icon(Icons.more_vert),
+                onSelected: (value) {
+                  switch (value) {
+                    case 'add_bookmark':
+                      _addBookmark();
+                      break;
+                    case 'view_bookmarks':
+                      _showBookmarks();
+                      break;
+                    case 'history':
+                      _showHistory();
+                      break;
+                    case 'ai_chat':
+                      _showAiChat();
+                      break;
+                    case 'settings':
+                      _showSettings();
+                      break;
+                    case 'git_fetch':
+                      _showGitFetchDialog();
+                      break;
+                    case 'network_debug':
+                      _showNetworkDebug();
+                      break;
+                  }
+                },
+                itemBuilder: (context) => [
+                  const PopupMenuItem(
+                    value: 'add_bookmark',
+                    child: Row(
+                      children: [
+                        Icon(Icons.bookmark_add),
+                        SizedBox(width: 12),
+                        Text('Add Bookmark'),
+                      ],
+                    ),
+                  ),
+                  const PopupMenuItem(
+                    value: 'view_bookmarks',
+                    child: Row(
+                      children: [
+                        Icon(Icons.bookmarks),
+                        SizedBox(width: 12),
+                        Text('Bookmarks'),
+                      ],
+                    ),
+                  ),
+                  const PopupMenuItem(
+                    value: 'history',
+                    child: Row(
+                      children: [
+                        Icon(Icons.history),
+                        SizedBox(width: 12),
+                        Text('History'),
+                      ],
+                    ),
+                  ),
+                  if (widget.enableGitFetch)
+                    const PopupMenuItem(
+                      value: 'git_fetch',
+                      child: Row(
+                        children: [
+                          Icon(Icons.code),
+                          SizedBox(width: 12),
+                          Text('Git Fetch'),
+                        ],
+                      ),
+                    ),
+                  if (widget.aiAvailable)
+                    const PopupMenuItem(
+                      value: 'ai_chat',
+                      child: Row(
+                        children: [
+                          Icon(Icons.smart_toy),
+                          SizedBox(width: 12),
+                          Text('AI Chat'),
+                        ],
+                      ),
+                    ),
+                  const PopupMenuItem(
+                    value: 'settings',
+                    child: Row(
+                      children: [
+                        Icon(Icons.settings),
+                        SizedBox(width: 12),
+                        Text('Settings'),
+                      ],
+                    ),
+                  ),
+                  PopupMenuItem(
+                    value: 'network_debug',
+                    child: Row(
+                      children: [
+                        Icon(Icons.network_check),
+                        SizedBox(width: 12),
+                        Text('Network Debug'),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ],
+            title: Container(
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: Row(
+                children: [
+                  SizedBox(width: leadingInset),
+                  Icon(
+                    Icons.search,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextField(
+                      controller: activeTab.urlController,
+                      focusNode: activeTab.urlFocusNode,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurface,
+                        fontSize: 14,
+                      ),
+                      decoration: InputDecoration(
+                        hintText: 'Search or enter URL',
+                        hintStyle: TextStyle(
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onSurfaceVariant,
+                          fontSize: 14,
+                        ),
+                        border: InputBorder.none,
+                        contentPadding:
+                            const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      onSubmitted: _loadUrl,
+                    ),
+                  ),
+                  if (activeTab.state is Loading)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 12),
+                      child: SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                      ),
+                    )
+                  else
+                    IconButton(
+                      icon: Icon(
+                        Icons.refresh,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        size: 20,
+                      ),
+                      onPressed: _refresh,
+                      padding: const EdgeInsets.all(8),
+                      constraints: const BoxConstraints(),
+                    ),
+                ],
+              ),
+            ),
+          );
+
     return Shortcuts(
       shortcuts: {
         SingleActivator(LogicalKeyboardKey.keyL,
@@ -1573,208 +1787,21 @@ class _BrowserPageState extends State<BrowserPage>
           ),
         },
         child: Scaffold(
-          appBar: widget.hideAppBar
-              ? null
-              : AppBar(
-                  actions: [
-                    Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 4),
-                      decoration: BoxDecoration(
-                        color:
-                            Theme.of(context).colorScheme.surfaceContainerHigh,
-                        borderRadius: BorderRadius.circular(20),
+          appBar: titleBarInset > 0 && appBarWidget != null
+              ? PreferredSize(
+                  preferredSize:
+                      Size.fromHeight(kToolbarHeight + titleBarInset),
+                  child: Column(
+                    children: [
+                      Container(
+                        height: titleBarInset,
+                        color: Theme.of(context).colorScheme.surface,
                       ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.arrow_back_ios, size: 18),
-                            onPressed: _goBack,
-                            tooltip: 'Back',
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.arrow_forward_ios, size: 18),
-                            onPressed: _goForward,
-                            tooltip: 'Forward',
-                          ),
-                        ],
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.add),
-                      onPressed: _addNewTab,
-                      tooltip: 'New Tab',
-                    ),
-                    PopupMenuButton<String>(
-                      icon: const Icon(Icons.more_vert),
-                      onSelected: (value) {
-                        switch (value) {
-                          case 'add_bookmark':
-                            _addBookmark();
-                            break;
-                          case 'view_bookmarks':
-                            _showBookmarks();
-                            break;
-                          case 'history':
-                            _showHistory();
-                            break;
-                          case 'ai_chat':
-                            _showAiChat();
-                            break;
-                          case 'settings':
-                            _showSettings();
-                            break;
-                          case 'git_fetch':
-                            _showGitFetchDialog();
-                            break;
-                          case 'network_debug':
-                            _showNetworkDebug();
-                            break;
-                        }
-                      },
-                      itemBuilder: (context) => [
-                        const PopupMenuItem(
-                          value: 'add_bookmark',
-                          child: Row(
-                            children: [
-                              Icon(Icons.bookmark_add),
-                              SizedBox(width: 12),
-                              Text('Add Bookmark'),
-                            ],
-                          ),
-                        ),
-                        const PopupMenuItem(
-                          value: 'view_bookmarks',
-                          child: Row(
-                            children: [
-                              Icon(Icons.bookmarks),
-                              SizedBox(width: 12),
-                              Text('Bookmarks'),
-                            ],
-                          ),
-                        ),
-                        const PopupMenuItem(
-                          value: 'history',
-                          child: Row(
-                            children: [
-                              Icon(Icons.history),
-                              SizedBox(width: 12),
-                              Text('History'),
-                            ],
-                          ),
-                        ),
-                        if (widget.enableGitFetch)
-                          const PopupMenuItem(
-                            value: 'git_fetch',
-                            child: Row(
-                              children: [
-                                Icon(Icons.code),
-                                SizedBox(width: 12),
-                                Text('Git Fetch'),
-                              ],
-                            ),
-                          ),
-                        if (widget.aiAvailable)
-                          const PopupMenuItem(
-                            value: 'ai_chat',
-                            child: Row(
-                              children: [
-                                Icon(Icons.smart_toy),
-                                SizedBox(width: 12),
-                                Text('AI Chat'),
-                              ],
-                            ),
-                          ),
-                        const PopupMenuItem(
-                          value: 'settings',
-                          child: Row(
-                            children: [
-                              Icon(Icons.settings),
-                              SizedBox(width: 12),
-                              Text('Settings'),
-                            ],
-                          ),
-                        ),
-                        PopupMenuItem(
-                          value: 'network_debug',
-                          child: Row(
-                            children: [
-                              Icon(Icons.network_check),
-                              SizedBox(width: 12),
-                              Text('Network Debug'),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                  title: Container(
-                    decoration: BoxDecoration(
-                      color:
-                          Theme.of(context).colorScheme.surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(24),
-                    ),
-                    child: Row(
-                      children: [
-                        const SizedBox(width: 16),
-                        Icon(
-                          Icons.search,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                          size: 20,
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: TextField(
-                            controller: activeTab.urlController,
-                            focusNode: activeTab.urlFocusNode,
-                            style: TextStyle(
-                              color: Theme.of(context).colorScheme.onSurface,
-                              fontSize: 14,
-                            ),
-                            decoration: InputDecoration(
-                              hintText: 'Search or enter URL',
-                              hintStyle: TextStyle(
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .onSurfaceVariant,
-                                fontSize: 14,
-                              ),
-                              border: InputBorder.none,
-                              contentPadding:
-                                  const EdgeInsets.symmetric(vertical: 12),
-                            ),
-                            onSubmitted: _loadUrl,
-                          ),
-                        ),
-                        if (activeTab.state is Loading)
-                          Padding(
-                            padding: const EdgeInsets.only(right: 12),
-                            child: SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Theme.of(context).colorScheme.primary,
-                              ),
-                            ),
-                          )
-                        else
-                          IconButton(
-                            icon: Icon(
-                              Icons.refresh,
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurfaceVariant,
-                              size: 20,
-                            ),
-                            onPressed: _refresh,
-                            padding: const EdgeInsets.all(8),
-                            constraints: const BoxConstraints(),
-                          ),
-                      ],
-                    ),
+                      appBarWidget,
+                    ],
                   ),
-                ),
+                )
+              : appBarWidget,
           body: Stack(
             children: [
               Column(
