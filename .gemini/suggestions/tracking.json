@@ -1,0 +1,49 @@
+{
+  "suggestions": [
+    {
+      "id": "suggestion-001",
+      "source": "PR #208",
+      "date": "2026-02-07",
+      "description": "Use ListQueue for O(1) queue operations instead of List.removeAt(0)",
+      "file": "lib/logging/network_monitor.dart",
+      "lines": "51-61",
+      "applied": true,
+      "applied_date": "2026-02-07"
+    },
+    {
+      "id": "suggestion-002",
+      "source": "PR #208",
+      "date": "2026-02-07",
+      "description": "Remove inconsistent Clear button that only clears local list",
+      "file": "lib/ux/network_debug_dialog.dart",
+      "lines": "78-89",
+      "applied": true,
+      "applied_date": "2026-02-07"
+    },
+    {
+      "id": "suggestion-003",
+      "source": "PR #208",
+      "date": "2026-02-07",
+      "description": "Use accurate duration on exception (declare Stopwatch before try block)",
+      "file": "lib/ux/browser_page.dart",
+      "lines": "621-646",
+      "applied": true,
+      "applied_date": "2026-02-07"
+    },
+    {
+      "id": "suggestion-004",
+      "source": "PR #208",
+      "date": "2026-02-07",
+      "description": "Consolidate duplicate truncate logic into shared StringTruncate extension",
+      "file": "lib/utils/string_utils.dart",
+      "lines": "1-17",
+      "applied": true,
+      "applied_date": "2026-02-07"
+    }
+  ],
+  "stats": {
+    "total": 4,
+    "applied": 4,
+    "pending": 0
+  }
+}

@@ -37,14 +37,11 @@ Use the format:
 
 This ensures consistent, structured PR descriptions for clear communication and easy tracking of related items.
 
-## PR Review Process
+## Review Process
 
-When reviewing PRs, use the following format in the PR description:
+When reviewing PRs, document the review process used (e.g., self-review, peer review, automated review).
 
-## Review
-Reviewed using Graphite Agent
-
-This documents the review tool used for transparency and tracking.
+This ensures transparency and proper tracking of review activities.
 
 ## Release Template
 

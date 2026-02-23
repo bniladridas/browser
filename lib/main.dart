@@ -30,7 +30,7 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   AppThemeMode themeMode = AppThemeMode.system;
-  String homepage = 'https://www.google.com';
+  String homepage = defaultHomepageUrl;
   bool hideAppBar = false;
   bool useModernUserAgent = true;
   bool enableGitFetch = false;
@@ -48,7 +48,10 @@ class _MyAppState extends State<MyApp> {
     final prefs = await SharedPreferences.getInstance();
     if (mounted) {
       setState(() {
-        homepage = prefs.getString(homepageKey) ?? 'https://www.google.com';
+        final storedHomepage = prefs.getString(homepageKey);
+        homepage = (storedHomepage == null || storedHomepage.isEmpty)
+            ? defaultHomepageUrl
+            : storedHomepage;
         hideAppBar = prefs.getBool(hideAppBarKey) ?? false;
         useModernUserAgent = prefs.getBool(useModernUserAgentKey) ?? true;
         enableGitFetch = prefs.getBool(enableGitFetchKey) ?? false;
