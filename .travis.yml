@@ -1,0 +1,57 @@
+---
+# SPDX-License-Identifier: MIT
+#
+# Copyright 2026 bniladridas. All rights reserved.
+# Use of this source code is governed by a MIT license that can be
+# found in the LICENSE file.
+
+language: minimal
+os: osx
+osx_image: xcode14.2
+
+branches:
+  only:
+    - main
+    - master
+
+cache:
+  directories:
+    - "$HOME/.pub-cache"
+    - "$HOME/flutter"
+    - ios/Pods
+
+before_install:
+  - |
+    if [ ! -d "$HOME/flutter/.git" ]; then
+      git clone --depth 1 -b v3.41.2 https://github.com/flutter/flutter.git "$HOME/flutter"
+    fi
+  - export PATH="$HOME/flutter/bin:$PATH"
+  - flutter --version
+
+install:
+  - flutter pub get
+  - |
+    {
+      echo "FIREBASE_API_KEY=dummy_api_key"
+      echo "FIREBASE_APP_ID=dummy_app_id"
+      echo "FIREBASE_MESSAGING_SENDER_ID=dummy_sender_id"
+      echo "FIREBASE_PROJECT_ID=dummy_project_id"
+      echo "FIREBASE_STORAGE_BUCKET=dummy_storage_bucket"
+    } > .env
+  - cd ios && pod install && cd ..
+
+script:
+  - flutter test
+  - |
+    cd ios && xcodebuild -workspace Runner.xcworkspace -scheme Runner \
+      -destination 'generic/platform=iOS Simulator' \
+      -configuration Debug build-for-testing CODE_SIGNING_ALLOWED=NO
+  - |
+    SIMULATOR_ID="$(xcrun simctl list devices available | awk -F '[()]' '/iPhone/ {print $2; exit}')"
+    if [ -z "$SIMULATOR_ID" ]; then
+      echo "No available iPhone simulator found." >&2
+      exit 1
+    fi
+    cd ios && xcodebuild test-without-building -workspace Runner.xcworkspace \
+      -scheme Runner -destination "id=$SIMULATOR_ID" \
+      CODE_SIGNING_ALLOWED=NO

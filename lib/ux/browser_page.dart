@@ -307,6 +307,8 @@ class TabData {
   String currentUrl;
   final TextEditingController urlController;
   final FocusNode urlFocusNode;
+  final TextEditingController torrySearchController;
+  final FocusNode torrySearchFocusNode;
   WebViewController? webViewController;
   BrowserState state = const BrowserState.idle();
   final List<String> history = [];
@@ -316,7 +318,9 @@ class TabData {
 
   TabData(this.currentUrl, {String? displayUrl})
       : urlController = TextEditingController(text: displayUrl ?? currentUrl),
-        urlFocusNode = FocusNode();
+        urlFocusNode = FocusNode(),
+        torrySearchController = TextEditingController(),
+        torrySearchFocusNode = FocusNode();
 }
 
 Future<Map<String, dynamic>> _fetchGitHubRepo(String url) async {
@@ -755,6 +759,8 @@ class _BrowserPageState extends State<BrowserPage>
         tabs[index].isClosed = true;
         tabs[index].urlController.dispose();
         tabs[index].urlFocusNode.dispose();
+        tabs[index].torrySearchController.dispose();
+        tabs[index].torrySearchFocusNode.dispose();
         tabs.removeAt(index);
 
         // Clear cache and cookies for private browsing
@@ -783,6 +789,8 @@ class _BrowserPageState extends State<BrowserPage>
     for (final tab in tabs) {
       tab.urlController.dispose();
       tab.urlFocusNode.dispose();
+      tab.torrySearchController.dispose();
+      tab.torrySearchFocusNode.dispose();
     }
     tabController.dispose();
     _saveBookmarks();
@@ -1178,72 +1186,170 @@ class _BrowserPageState extends State<BrowserPage>
     }
   }
 
-  Widget _buildBrandingView(TabData tab) {
+  void _performTorrySearch(TabData tab, [String? text]) {
+    final query = (text ?? tab.torrySearchController.text).trim();
+    if (query.isEmpty) {
+      tab.torrySearchFocusNode.requestFocus();
+      return;
+    }
+    final targetUrl =
+        'https://www.torry.io/search/?q=${Uri.encodeQueryComponent(query)}';
+    _loadUrl(targetUrl);
+  }
+
+  Widget _buildTorryHomeView(TabData tab) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+
+    const features = <({String label, IconData icon})>[
+      (label: 'Search via torry.io', icon: Icons.lock),
+      (label: 'Anonymous view links', icon: Icons.visibility_off),
+      (label: 'Onion directory', icon: Icons.cloud),
+    ];
+
     return Container(
       color: colorScheme.surface,
       child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: colorScheme.primaryContainer,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Icon(
-                Icons.language,
-                size: 54,
-                color: colorScheme.onPrimaryContainer,
-              ),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              'Browser',
-              style: theme.textTheme.titleLarge?.copyWith(
-                color: colorScheme.primary,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.6,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'A focused desktop browser experience.',
-              style: theme.textTheme.headlineSmall?.copyWith(
-                color: colorScheme.onSurface,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Enter a URL above, open Settings to choose a homepage, or download the latest build to get started.',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: colorScheme.onSurfaceVariant,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 24),
-            Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              alignment: WrapAlignment.center,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 640),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                FilledButton.icon(
-                  onPressed: () => _loadUrl(
-                      'https://github.com/bniladridas/browser/releases/latest'),
-                  icon: const Icon(Icons.download),
-                  label: const Text('View release'),
+                Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: colorScheme.primaryContainer,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Icon(
+                    Icons.security,
+                    size: 54,
+                    color: colorScheme.onPrimaryContainer,
+                  ),
                 ),
-                OutlinedButton.icon(
-                  onPressed: _showSettings,
-                  icon: const Icon(Icons.settings),
-                  label: const Text('Set homepage'),
+                const SizedBox(height: 16),
+                Text(
+                  'Search the Tor network with Torry',
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    color: colorScheme.primary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                  textAlign: TextAlign.center,
                 ),
+                const SizedBox(height: 8),
+                Text(
+                  'Torry routes queries over Tor, exposes an anonymous view layer, and highlights verified onion destinations.',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Your browser connects to torry.io over HTTPS; Tor routing is performed by torry.io\'s backend.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                    fontStyle: FontStyle.italic,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: colorScheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: colorScheme.outline.withValues(alpha: 0.6),
+                    ),
+                  ),
+                  child: TextField(
+                    controller: tab.torrySearchController,
+                    focusNode: tab.torrySearchFocusNode,
+                    textInputAction: TextInputAction.search,
+                    onSubmitted: (s) => _performTorrySearch(tab, s),
+                    decoration: InputDecoration(
+                      hintText: 'Search Torry',
+                      border: InputBorder.none,
+                      prefixIcon: Icon(
+                        Icons.search,
+                        color: colorScheme.primary,
+                      ),
+                      suffixIcon: IconButton(
+                        onPressed: () => _performTorrySearch(tab),
+                        icon: Icon(
+                          Icons.arrow_forward,
+                          color: colorScheme.primary,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  alignment: WrapAlignment.center,
+                  children: features.map((feature) {
+                    return Chip(
+                      avatar: Icon(
+                        feature.icon,
+                        size: 16,
+                        color: colorScheme.onPrimaryContainer,
+                      ),
+                      label: Text(feature.label),
+                      backgroundColor: colorScheme.primaryContainer,
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 18),
+                Text(
+                  'Use Torry knowing your browser connects to torry.io over HTTPS while Torry offers Tor-routed searches and anonymous directory views.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  alignment: WrapAlignment.center,
+                  children: [
+                    FilledButton.icon(
+                      onPressed: () => _loadUrl('https://www.torry.io/search/'),
+                      icon: const Icon(Icons.search),
+                      label: const Text('Open Torry search'),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: () =>
+                          _loadUrl('https://www.torry.io/learn/directory/'),
+                      icon: const Icon(Icons.list),
+                      label: const Text('Onion directory'),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: () =>
+                          _loadUrl('https://www.torry.io/anonymous-view/'),
+                      icon: const Icon(Icons.visibility),
+                      label: const Text('Anonymous view'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Need more context? Torry can help protect privacy in the browser, but it does not remove server-side tracking or guarantee anonymity.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
               ],
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -1330,7 +1436,7 @@ class _BrowserPageState extends State<BrowserPage>
 
   Widget _buildTabBody(TabData tab) {
     if (tab.currentUrl == defaultHomepageUrl) {
-      return _buildBrandingView(tab);
+      return _buildTorryHomeView(tab);
     }
     if (tab.state is BrowserError) {
       return _buildErrorView(tab);

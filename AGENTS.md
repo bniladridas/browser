@@ -89,3 +89,57 @@ When creating GitHub Actions workflows:
 - Add a new line at the end of the file.
 
 This ensures safe and valid workflow files.
+
+## Firebase Setup
+
+This project uses Firebase with environment variables. For local development:
+
+1. Copy `.env.example` to `.env`:
+   ```bash
+   cp .env.example .env
+   ```
+
+2. Update `.env` with valid Firebase credentials from your Firebase project.
+
+3. For macOS, create a dummy `GoogleService-Info.plist`:
+   - Run `flutterfire configure --platforms=macos` to generate real config
+   - Or create a dummy file at `macos/Runner/GoogleService-Info.plist`
+
+**Warning**: If `.env` is not provided with correct Firebase variables, the macOS app will crash with:
+```text
+Exception Type: EXC_CRASH (SIGABRT)
+Application Specific Information: abort() called
+```
+
+This is because Firebase tries to initialize with invalid configuration.
+
+## Creating Pull Requests
+
+Use the `gh pr create` command with the full PR body in HEREDOC format:
+
+```bash
+gh pr create \
+  --base main \
+  --head <branch-name> \
+  --title "<pr-title>" \
+  --body "$(cat <<'EOF'
+## Summary
+- Bullet point descriptions of changes
+
+## Impact
+- [x] Build / CI
+- [x] Refactor / cleanup
+- [x] Documentation
+
+## Related Items
+- Resolves issues: #[issue-number]
+- Closes PRs: #[pr-number]
+- Resources: [PRs tab](../../pulls), [Issues tab](../../issues)
+
+## Notes for reviewers
+- Additional details or context
+EOF
+)"
+```
+
+This ensures proper formatting with multiline body text.

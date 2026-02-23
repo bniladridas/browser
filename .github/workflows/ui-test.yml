@@ -16,12 +16,13 @@ on:
 jobs:
   ui-test:
     runs-on: macos-latest
+    if: github.repository_owner == 'bniladridas'
 
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-flutter
         with:
-          flutter-version: '3.38.9'
+          flutter-version: '3.41.2'
       - run: flutter pub get
       - name: Create .env file
         run: |
@@ -76,18 +77,35 @@ jobs:
 
       - name: Build iOS app for simulator
         run: flutter build ios --debug --simulator --no-codesign
+      - name: Prepare iOS simulator
+        run: |
+          xcrun simctl shutdown all || true
+          SIMULATOR_UDID="$(xcrun simctl list devices available | awk -F '[()]' '/iPhone 16/ {print $2; exit}')"
+          if [ -z "$SIMULATOR_UDID" ]; then
+            SIMULATOR_UDID="$(xcrun simctl list devices available | awk -F '[()]' '/iPhone/ {print $2; exit}')"
+          fi
+          if [ -z "$SIMULATOR_UDID" ]; then
+            echo "No available iPhone simulator found"
+            exit 1
+          fi
+          echo "SIMULATOR_UDID=$SIMULATOR_UDID" >> "$GITHUB_ENV"
+          xcrun simctl boot "$SIMULATOR_UDID" || true
+          xcrun simctl bootstatus "$SIMULATOR_UDID" -b
       - name: Build iOS for testing
         run: |
           cd ios
           xcodebuild -workspace Runner.xcworkspace -scheme Runner \
-            -destination 'platform=iOS Simulator,name=iPhone 16' \
+            -destination "id=$SIMULATOR_UDID" \
             -configuration Debug build-for-testing \
             CODE_SIGNING_ALLOWED=NO
       - name: Run iOS Runner tests
         run: |
           cd ios
           xcodebuild test-without-building -workspace Runner.xcworkspace -scheme Runner \
-            -destination 'platform=iOS Simulator,name=iPhone 16' \
+            -destination "id=$SIMULATOR_UDID" \
+            CODE_SIGNING_ALLOWED=NO || \
+          xcodebuild test-without-building -workspace Runner.xcworkspace -scheme Runner \
+            -destination "id=$SIMULATOR_UDID" \
             CODE_SIGNING_ALLOWED=NO
       - name: Build macOS project
         run: |

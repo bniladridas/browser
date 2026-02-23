@@ -8,6 +8,18 @@ import UIKit
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
     GeneratedPluginRegistrant.register(with: self)
-    return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+    let handled = super.application(application, didFinishLaunchingWithOptions: launchOptions)
+    if window == nil {
+      let windowScene = application.connectedScenes
+        .compactMap { $0 as? UIWindowScene }
+        .first {
+          $0.activationState == .foregroundActive || $0.activationState == .foregroundInactive
+        } ?? application.connectedScenes.compactMap { $0 as? UIWindowScene }.first
+      if let windowScene {
+        window = UIWindow(windowScene: windowScene)
+      }
+    }
+    window?.makeKeyAndVisible()
+    return handled
   }
 }

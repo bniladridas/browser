@@ -14,6 +14,7 @@ on:
 jobs:
   pr-title-check:
     runs-on: ubuntu-latest
+    if: github.repository_owner == 'bniladridas'
     steps:
       - name: Check PR title format
         env:

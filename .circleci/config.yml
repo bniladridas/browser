@@ -1,0 +1,40 @@
+---
+# SPDX-License-Identifier: MIT
+#
+# Copyright 2026 bniladridas. All rights reserved.
+# Use of this source code is governed by a MIT license that can be
+# found in the LICENSE file.
+
+version: 2.1
+
+jobs:
+  daily_maintenance:
+    docker:
+      - image: ghcr.io/cirruslabs/flutter:3.41.2
+    steps:
+      - checkout
+      - run:
+          name: Flutter Version
+          command: flutter --version
+      - run:
+          name: Get Dependencies
+          command: flutter pub get
+      - run:
+          name: Analyze
+          command: flutter analyze
+      - run:
+          name: Run Tests
+          command: flutter test
+
+workflows:
+  daily_maintenance:
+    triggers:
+      - schedule:
+          cron: "0 6 * * *"
+          filters:
+            branches:
+              only:
+                - main
+                - master
+    jobs:
+      - daily_maintenance

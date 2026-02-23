@@ -16,12 +16,13 @@ on:
 jobs:
   e2e:
     runs-on: macos-latest
+    if: github.repository_owner == 'bniladridas'
 
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-flutter
         with:
-          flutter-version: '3.38.9'
+          flutter-version: '3.41.2'
       - run: flutter pub get
       - name: Create .env file
         run: |
