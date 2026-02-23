@@ -1276,6 +1276,7 @@ class _BrowserPageState extends State<BrowserPage>
                 const SizedBox(height: 12),
                 Wrap(
                   spacing: 12,
+                  runSpacing: 8,
                   alignment: WrapAlignment.center,
                   children: [
                     TextButton.icon(
