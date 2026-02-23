@@ -1201,10 +1201,10 @@ class _BrowserPageState extends State<BrowserPage>
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    const features = [
-      {'label': 'Search via torry.io', 'icon': Icons.lock},
-      {'label': 'Anonymous view links', 'icon': Icons.visibility_off},
-      {'label': 'Onion directory', 'icon': Icons.cloud},
+    const features = <({String label, IconData icon})>[
+      (label: 'Search via torry.io', icon: Icons.lock),
+      (label: 'Anonymous view links', icon: Icons.visibility_off),
+      (label: 'Onion directory', icon: Icons.cloud),
     ];
 
     return Container(
@@ -1296,11 +1296,11 @@ class _BrowserPageState extends State<BrowserPage>
                   children: features.map((feature) {
                     return Chip(
                       avatar: Icon(
-                        feature['icon'] as IconData,
+                        feature.icon,
                         size: 16,
                         color: colorScheme.onPrimaryContainer,
                       ),
-                      label: Text(feature['label'] as String),
+                      label: Text(feature.label),
                       backgroundColor: colorScheme.primaryContainer,
                     );
                   }).toList(),
