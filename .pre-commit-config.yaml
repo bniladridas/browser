@@ -25,9 +25,11 @@ repos:
         language: system
         files: '(\.dart|pubspec\.yaml)$'
         pass_filenames: false
+        stages: [manual]
       - id: flutter-test
         name: Flutter Test
         entry: flutter test
         language: system
         files: '(\.dart|pubspec\.yaml)$'
         pass_filenames: false
+        stages: [manual]

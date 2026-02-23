@@ -1248,7 +1248,7 @@ class _BrowserPageState extends State<BrowserPage>
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                   decoration: BoxDecoration(
-                    color: colorScheme.surfaceVariant,
+                    color: colorScheme.surfaceContainerHighest,
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
                       color: colorScheme.outline.withValues(alpha: 0.6),
