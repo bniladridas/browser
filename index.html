@@ -11,41 +11,44 @@
       display: grid;
       place-content: center;
       font-family: system-ui, -apple-system, sans-serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
       color: #fff;
       text-align: center;
     }
     .card {
-      background: rgba(255, 255, 255, 0.1);
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      border-radius: 24px;
-      padding: 3rem 4rem;
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 16px;
+      padding: 2rem 3rem;
     }
     h1 {
-      font-size: 3rem;
-      font-weight: 300;
+      font-size: 2rem;
+      font-weight: 200;
       margin: 0;
-      letter-spacing: -0.02em;
+      letter-spacing: 0.1em;
+      text-transform: lowercase;
     }
     p {
-      margin: .5rem 0 2rem;
-      opacity: .7;
+      margin: .25rem 0 1.5rem;
+      opacity: .5;
+      font-size: .875rem;
       font-weight: 300;
     }
     a {
       color: inherit;
       text-decoration: none;
-      border: 1px solid rgba(255, 255, 255, 0.3);
-      padding: .75rem 2rem;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      padding: .5rem 1.5rem;
       border-radius: 100px;
+      font-size: .75rem;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
       transition: all .2s ease;
-      display: inline-block;
     }
     a:hover {
-      background: rgba(255, 255, 255, 0.15);
-      border-color: rgba(255, 255, 255, 0.5);
+      background: rgba(255, 255, 255, 0.1);
     }
   </style>
 </head>
