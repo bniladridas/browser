@@ -75,6 +75,7 @@ jobs:
           scripts/macos_release_dmg.sh
 
       - name: Upload release asset
+        if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
           files: build/macos/Build/Products/Release/browser.dmg
