@@ -20,6 +20,7 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
     test_status=${PIPESTATUS[0]}
     if [[ $test_status -eq 0 ]]; then
         echo "$test_target passed!"
+        rm -f "$log_file"
         exit 0
     else
         echo "$test_target failed. Check the output above for details."
