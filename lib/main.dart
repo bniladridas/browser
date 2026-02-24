@@ -223,7 +223,7 @@ void main() async {
           'Firebase initialization failed: $e. AI features will not be available.');
     }
     runApp(MyApp(aiAvailable: aiAvailable));
-    if (defaultTargetPlatform == TargetPlatform.macOS) {
+    if (defaultTargetPlatform == TargetPlatform.macOS && !isIntegrationTest) {
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         try {
           await windowManager.waitUntilReadyToShow(

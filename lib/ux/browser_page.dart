@@ -613,7 +613,7 @@ class _BrowserPageState extends State<BrowserPage>
   @override
   void initState() {
     super.initState();
-    if (defaultTargetPlatform == TargetPlatform.macOS) {
+    if (defaultTargetPlatform == TargetPlatform.macOS && !isIntegrationTest) {
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         try {
           final height = await windowManager.getTitleBarHeight();

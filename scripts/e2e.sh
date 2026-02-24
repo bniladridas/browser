@@ -20,7 +20,7 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
     }
     run_e2e() {
         E2E_LOG_FILE="$(mktemp -t flutter-e2e.XXXXXX.log)"
-        flutter test -d macos $test_target "$@" 2>&1 | tee "$E2E_LOG_FILE"
+        flutter test -d macos --dart-define=INTEGRATION_TEST=true $test_target "$@" 2>&1 | tee "$E2E_LOG_FILE"
         local status=${PIPESTATUS[0]}
         if [[ $status -eq 0 ]]; then
             echo "$test_target passed!"
