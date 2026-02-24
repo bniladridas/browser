@@ -15,7 +15,7 @@ on:
 
 jobs:
   e2e:
-    runs-on: macos-14
+    runs-on: macos-15
     if: github.repository_owner == 'bniladridas'
 
     steps:
