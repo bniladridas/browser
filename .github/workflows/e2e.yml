@@ -23,6 +23,10 @@ jobs:
       - uses: ./.github/actions/setup-flutter
         with:
           flutter-version: '3.41.2'
+      - name: Setup Xcode
+        uses: mxcl/setup-xcode@v1
+        with:
+          xcode-version: '26.2'
       - run: flutter pub get
       - name: Generate code
         run: flutter pub run build_runner build --delete-conflicting-outputs
@@ -59,14 +63,6 @@ jobs:
           </dict>
           </plist>
           EOF
-      - name: GUI diagnostics
-        run: |
-          echo "WindowServer:"
-          pgrep -x WindowServer || true
-          echo "open Finder result:"
-          /usr/bin/open -Ra "Finder" || true
-          echo "Login session info:"
-          /usr/bin/who | sed -n '1,20p'
       - name: Clean pods cache
         run: |
           rm -rf macos/Pods
