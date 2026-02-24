@@ -57,4 +57,12 @@ jobs:
           </dict>
           </plist>
           EOF
+      - name: GUI diagnostics
+        run: |
+          echo "WindowServer:"
+          pgrep -x WindowServer || true
+          echo "open Finder result:"
+          /usr/bin/open -Ra "Finder" || true
+          echo "Login session info:"
+          /usr/bin/who | sed -n '1,20p'
       - run: ./scripts/e2e.sh

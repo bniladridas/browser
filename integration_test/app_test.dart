@@ -234,5 +234,5 @@ void main() {
       // Should show saved snackbar
       expect(find.text('Settings saved'), findsOneWidget);
     }, timeout: testTimeout);
-  }, skip: Platform.isMacOS);
+  }, skip: Platform.isLinux || Platform.isWindows);
 }

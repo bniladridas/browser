@@ -210,9 +210,11 @@ void main() async {
     try {
       await windowManager.ensureInitialized();
       if (defaultTargetPlatform == TargetPlatform.macOS) {
-        await windowManager.setTitleBarStyle(
-          TitleBarStyle.hidden,
-          windowButtonVisibility: true,
+        await windowManager.waitUntilReadyToShow(
+          const WindowOptions(
+            titleBarStyle: TitleBarStyle.hidden,
+            windowButtonVisibility: true,
+          ),
         );
       }
     } catch (e) {

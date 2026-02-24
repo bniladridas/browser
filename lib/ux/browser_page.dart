@@ -614,11 +614,16 @@ class _BrowserPageState extends State<BrowserPage>
   void initState() {
     super.initState();
     if (defaultTargetPlatform == TargetPlatform.macOS) {
-      windowManager.getTitleBarHeight().then((height) {
-        if (!mounted) return;
-        setState(() {
-          _titleBarHeight = height.toDouble();
-        });
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        try {
+          final height = await windowManager.getTitleBarHeight();
+          if (!mounted) return;
+          setState(() {
+            _titleBarHeight = height.toDouble();
+          });
+        } catch (e) {
+          logger.w('Failed to read title bar height: $e');
+        }
       });
     }
     tabs.add(
