@@ -43,6 +43,7 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
             retry_status=${PIPESTATUS[0]}
             if [[ $retry_status -eq 0 ]]; then
                 echo "$test_target passed!"
+                rm -f "$log_file"
                 exit 0
             fi
             if log_contains_foreground_failure "$log_file"; then
