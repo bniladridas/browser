@@ -8,6 +8,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
@@ -31,6 +32,8 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   AppThemeMode themeMode = AppThemeMode.system;
+  ThemeMode adjustedThemeMode = ThemeMode.system;
+  Color adjustedSeedColor = Colors.blue;
   String homepage = defaultHomepageUrl;
   bool hideAppBar = false;
   bool useModernUserAgent = true;
@@ -66,26 +69,62 @@ class _MyAppState extends State<MyApp> {
             orElse: () => AppThemeMode.system,
           );
         }
+        if (themeMode != AppThemeMode.adjust) {
+          adjustedThemeMode = ThemeMode.system;
+          adjustedSeedColor = Colors.blue;
+        }
       });
+    }
+  }
+
+  void _setAdjustedThemeMode(ThemeMode mode, Color? seedColor) {
+    if (themeMode != AppThemeMode.adjust) return;
+    final resolvedSeed = seedColor ?? Colors.blue;
+    if (adjustedThemeMode == mode &&
+        adjustedSeedColor == resolvedSeed) {
+      return;
+    }
+    void applyUpdate() {
+      if (!mounted) return;
+      setState(() {
+        adjustedThemeMode = mode;
+        adjustedSeedColor = resolvedSeed;
+      });
+    }
+
+    final schedulerPhase = WidgetsBinding.instance.schedulerPhase;
+    if (schedulerPhase == SchedulerPhase.persistentCallbacks ||
+        schedulerPhase == SchedulerPhase.transientCallbacks ||
+        schedulerPhase == SchedulerPhase.midFrameMicrotasks) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => applyUpdate());
+    } else {
+      applyUpdate();
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final resolvedThemeMode = themeMode == AppThemeMode.adjust
+        ? adjustedThemeMode
+        : toThemeMode(themeMode);
+    final seedColor =
+        themeMode == AppThemeMode.adjust ? adjustedSeedColor : Colors.blue;
+    final useAdjustedTheme = themeMode == AppThemeMode.adjust;
     return ScaffoldMessenger(
       child: MaterialApp(
         title: 'Browser',
         debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-          useMaterial3: true,
+        theme: _buildThemeData(
+          brightness: Brightness.light,
+          seedColor: seedColor,
+          useAdjustedTheme: useAdjustedTheme,
         ),
-        darkTheme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(
-              seedColor: Colors.blue, brightness: Brightness.dark),
-          useMaterial3: true,
+        darkTheme: _buildThemeData(
+          brightness: Brightness.dark,
+          seedColor: seedColor,
+          useAdjustedTheme: useAdjustedTheme,
         ),
-        themeMode: toThemeMode(themeMode),
+        themeMode: resolvedThemeMode,
         home: BrowserPage(
           initialUrl: homepage,
           hideAppBar: hideAppBar,
@@ -96,11 +135,66 @@ class _MyAppState extends State<MyApp> {
           adBlocking: adBlocking,
           strictMode: strictMode,
           themeMode: themeMode,
+          onPageThemeChanged: _setAdjustedThemeMode,
           onSettingsChanged: _loadSettings,
         ),
       ),
     );
   }
+
+  ThemeData _buildThemeData({
+    required Brightness brightness,
+    required Color seedColor,
+    required bool useAdjustedTheme,
+  }) {
+    var scheme =
+        ColorScheme.fromSeed(seedColor: seedColor, brightness: brightness);
+    if (useAdjustedTheme) {
+      final base = seedColor;
+      final onBase =
+          base.computeLuminance() < 0.5 ? Colors.white : Colors.black;
+      scheme = scheme.copyWith(
+        primary: base,
+        onPrimary: onBase,
+        surface: base,
+        onSurface: onBase,
+        onSurfaceVariant: onBase.withValues(alpha: 0.7),
+        surfaceContainerHighest: _shiftSurface(base, 0.10),
+        surfaceContainerHigh: _shiftSurface(base, 0.08),
+        surfaceContainer: _shiftSurface(base, 0.06),
+        surfaceContainerLow: _shiftSurface(base, 0.04),
+        surfaceContainerLowest: _shiftSurface(base, 0.02),
+        surfaceDim: _shiftSurface(base, -0.06),
+        surfaceBright: _shiftSurface(base, 0.12),
+        outline: onBase.withValues(alpha: 0.18),
+      );
+    }
+    return ThemeData(
+      colorScheme: scheme,
+      useMaterial3: true,
+      scaffoldBackgroundColor: scheme.surface,
+      appBarTheme: AppBarTheme(
+        backgroundColor: scheme.surface,
+        foregroundColor: scheme.onSurface,
+        surfaceTintColor: Colors.transparent,
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: scheme.onSurface,
+        ),
+      ),
+    );
+  }
+
+  Color _shiftSurface(Color base, double amount) {
+    final target = base.computeLuminance() < 0.5 ? Colors.white : Colors.black;
+    final t = amount.abs().clamp(0.0, 1.0);
+    if (amount < 0) {
+      return Color.lerp(base, Colors.black, t) ?? base;
+    }
+    return Color.lerp(base, target, t) ?? base;
+  }
+
 }
 
 void main() async {

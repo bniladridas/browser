@@ -98,6 +98,19 @@ class SettingsDialog extends HookWidget {
   final AppThemeMode? currentTheme;
   final bool aiAvailable;
 
+  String _themeLabel(AppThemeMode mode) {
+    switch (mode) {
+      case AppThemeMode.system:
+        return 'system';
+      case AppThemeMode.light:
+        return 'light';
+      case AppThemeMode.dark:
+        return 'dark';
+      case AppThemeMode.adjust:
+        return 'adjust (page)';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final homepage = useState<String?>(null);
@@ -214,7 +227,7 @@ class SettingsDialog extends HookWidget {
                   .map<DropdownMenuItem<AppThemeMode>>((AppThemeMode mode) {
                 return DropdownMenuItem<AppThemeMode>(
                   value: mode,
-                  child: Text('Theme: ${mode.name}'),
+                  child: Text('Theme: ${_themeLabel(mode)}'),
                 );
               }).toList(),
             ),
@@ -320,12 +333,21 @@ class TabData {
   bool isClosed = false;
   String? lastErrorMessage;
   DateTime? lastErrorAt;
+  Brightness? detectedBrightness;
+  Color? detectedSeedColor;
 
   TabData(this.currentUrl, {String? displayUrl})
       : urlController = TextEditingController(text: displayUrl ?? currentUrl),
         urlFocusNode = FocusNode(),
         torrySearchController = TextEditingController(),
         torrySearchFocusNode = FocusNode();
+}
+
+class _ThemeTone {
+  final Brightness brightness;
+  final Color? seedColor;
+
+  const _ThemeTone({required this.brightness, this.seedColor});
 }
 
 Future<Map<String, dynamic>> _fetchGitHubRepo(String url) async {
@@ -455,7 +477,8 @@ class BrowserPage extends StatefulWidget {
       this.strictMode = false,
       this.themeMode = AppThemeMode.system,
       this.aiAvailable = true,
-      this.onSettingsChanged});
+      this.onSettingsChanged,
+      this.onPageThemeChanged});
 
   final String initialUrl;
   final bool hideAppBar;
@@ -467,6 +490,7 @@ class BrowserPage extends StatefulWidget {
   final AppThemeMode themeMode;
   final bool aiAvailable;
   final void Function()? onSettingsChanged;
+  final void Function(ThemeMode mode, Color? seedColor)? onPageThemeChanged;
 
   @override
   State<BrowserPage> createState() => _BrowserPageState();
@@ -532,6 +556,58 @@ class _BrowserPageState extends State<BrowserPage>
   double _titleBarHeight = 0;
   bool _dragging = false;
 
+  static const String _themeProbeScript = '''
+(() => {
+  const isTransparent = (color) => {
+    if (!color) return true;
+    const normalized = color.toLowerCase().replace(/\\s+/g, '');
+    return normalized === 'transparent' || normalized === 'rgba(0,0,0,0)';
+  };
+  const getBg = (el) => {
+    if (!el) return null;
+    const style = window.getComputedStyle(el);
+    return style ? style.backgroundColor : null;
+  };
+  const getEffectiveBg = (el) => {
+    let current = el;
+    let depth = 0;
+    while (current && depth < 20) {
+      const color = getBg(current);
+      if (color && !isTransparent(color)) return color;
+      current = current.parentElement;
+      depth += 1;
+    }
+    return null;
+  };
+  const centerEl = document.elementFromPoint(
+    window.innerWidth / 2,
+    window.innerHeight / 2
+  );
+  const sampleBg = getEffectiveBg(centerEl);
+  const bg = getEffectiveBg(document.documentElement) ||
+    getEffectiveBg(document.body) || null;
+  const themeColor = document.querySelector('meta[name="theme-color"]')
+    ?.getAttribute('content') || null;
+  const metaColorScheme = document.querySelector('meta[name="color-scheme"]')
+    ?.getAttribute('content') || null;
+  const colorScheme = window.getComputedStyle(document.documentElement)
+    .colorScheme || null;
+  const textColor = window.getComputedStyle(document.body || document.documentElement)
+    .color || null;
+  const prefersDark = window.matchMedia &&
+    window.matchMedia('(prefers-color-scheme: dark)').matches;
+  return JSON.stringify({
+    bg,
+    sampleBg,
+    themeColor,
+    metaColorScheme,
+    colorScheme,
+    textColor,
+    prefersDark
+  });
+})()
+''';
+
   String _displayUrl(String url) => url == defaultHomepageUrl ? '' : url;
 
   @override
@@ -554,6 +630,219 @@ class _BrowserPageState extends State<BrowserPage>
     if (widget.adBlocking) {
       loadAdBlockers();
     }
+  }
+
+  @override
+  void didUpdateWidget(covariant BrowserPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.themeMode != widget.themeMode) {
+      if (widget.themeMode == AppThemeMode.adjust) {
+        _applyThemeForTab(activeTab);
+      } else {
+        widget.onPageThemeChanged?.call(ThemeMode.system, null);
+      }
+    }
+  }
+
+  void _applyThemeForTab(TabData tab) {
+    if (widget.themeMode != AppThemeMode.adjust) return;
+    if (tab.currentUrl == defaultHomepageUrl || tab.state is BrowserError) {
+      widget.onPageThemeChanged?.call(ThemeMode.system, null);
+      return;
+    }
+    if (tab.detectedBrightness != null) {
+      widget.onPageThemeChanged?.call(
+        tab.detectedBrightness == Brightness.dark
+            ? ThemeMode.dark
+            : ThemeMode.light,
+        tab.detectedSeedColor,
+      );
+      return;
+    }
+    _updateThemeFromTab(tab);
+  }
+
+  Future<void> _updateThemeFromTab(TabData tab) async {
+    if (widget.themeMode != AppThemeMode.adjust) return;
+    if (widget.strictMode) {
+      widget.onPageThemeChanged?.call(ThemeMode.system, null);
+      return;
+    }
+    final controller = tab.webViewController;
+    if (controller == null) return;
+    try {
+      final result =
+          await controller.runJavaScriptReturningResult(_themeProbeScript);
+      final probe = _parseThemeProbe(result);
+      final tone = probe == null ? null : _toneFromProbe(probe);
+      if (tone != null) {
+        tab.detectedBrightness = tone.brightness;
+        tab.detectedSeedColor = tone.seedColor;
+        widget.onPageThemeChanged?.call(
+          tone.brightness == Brightness.dark ? ThemeMode.dark : ThemeMode.light,
+          tone.seedColor,
+        );
+      } else {
+        tab.detectedBrightness = null;
+        tab.detectedSeedColor = null;
+        widget.onPageThemeChanged?.call(ThemeMode.system, null);
+      }
+    } catch (_) {
+      tab.detectedBrightness = null;
+      tab.detectedSeedColor = null;
+      widget.onPageThemeChanged?.call(ThemeMode.system, null);
+    }
+  }
+
+  Map<String, dynamic>? _parseThemeProbe(dynamic result) {
+    if (result is Map<String, dynamic>) return result;
+    final raw = _normalizeJsResult(result);
+    if (raw.isEmpty) return null;
+    final decoded = _tryDecodeProbe(raw);
+    if (decoded != null) return decoded;
+    final unescaped = _unescapeWrappedJson(raw);
+    if (unescaped != raw) {
+      final decodedUnescaped = _tryDecodeProbe(unescaped);
+      if (decodedUnescaped != null) return decodedUnescaped;
+    }
+    return null;
+  }
+
+  Map<String, dynamic>? _tryDecodeProbe(String raw) {
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is String) {
+        final nested = jsonDecode(decoded);
+        if (nested is Map<String, dynamic>) return nested;
+      }
+      if (decoded is Map<String, dynamic>) return decoded;
+    } catch (_) {}
+    return null;
+  }
+
+  String _normalizeJsResult(dynamic result) {
+    if (result == null) return '';
+    if (result is String) return result.trim();
+    return result.toString().trim();
+  }
+
+  String _unescapeWrappedJson(String raw) {
+    var text = raw.trim();
+    if (text.length >= 2 &&
+        ((text.startsWith('"') && text.endsWith('"')) ||
+            (text.startsWith("'") && text.endsWith("'")))) {
+      text = text.substring(1, text.length - 1);
+    }
+    return text
+        .replaceAll(r'\"', '"')
+        .replaceAll(r"\'", "'")
+        .replaceAll(r'\\', '\\');
+  }
+
+  _ThemeTone? _toneFromProbe(Map<String, dynamic> probe) {
+    final sampleBg =
+        probe['sampleBg'] is String ? probe['sampleBg'] as String : null;
+    final bg = probe['bg'] is String ? probe['bg'] as String : null;
+    final themeColor =
+        probe['themeColor'] is String ? probe['themeColor'] as String : null;
+    final metaColorScheme =
+        probe['metaColorScheme'] is String ? probe['metaColorScheme'] as String : null;
+    final colorScheme =
+        probe['colorScheme'] is String ? probe['colorScheme'] as String : null;
+    final textColor =
+        probe['textColor'] is String ? probe['textColor'] as String : null;
+    final scheme = (metaColorScheme ?? colorScheme ?? '').toLowerCase();
+    if (scheme.contains('dark') && !scheme.contains('light')) {
+      return _ThemeTone(brightness: Brightness.dark);
+    }
+    if (scheme.contains('light') && !scheme.contains('dark')) {
+      return _ThemeTone(brightness: Brightness.light);
+    }
+    final color = _parseCssColor(sampleBg) ??
+        _parseCssColor(bg) ??
+        _parseCssColor(themeColor);
+    if (color != null) {
+      final brightness = color.computeLuminance() < 0.5
+          ? Brightness.dark
+          : Brightness.light;
+      return _ThemeTone(brightness: brightness, seedColor: color);
+    }
+    final text = _parseCssColor(textColor);
+    if (text != null) {
+      final brightness = text.computeLuminance() < 0.5
+          ? Brightness.light
+          : Brightness.dark;
+      return _ThemeTone(brightness: brightness);
+    }
+    return null;
+  }
+
+  Color? _parseCssColor(String? value) {
+    if (value == null) return null;
+    final normalized = value.trim().toLowerCase();
+    if (normalized.isEmpty || normalized == 'transparent') return null;
+    if (normalized.startsWith('rgb')) {
+      return _parseRgbColor(normalized);
+    }
+    if (normalized.startsWith('#')) {
+      return _parseHexColor(normalized);
+    }
+    return null;
+  }
+
+  Color? _parseRgbColor(String value) {
+    final match = RegExp(r'rgba?\\(([^)]+)\\)').firstMatch(value);
+    if (match == null) return null;
+    final parts = match.group(1)!.split(',').map((e) => e.trim()).toList();
+    if (parts.length < 3) return null;
+    final r = double.tryParse(parts[0]);
+    final g = double.tryParse(parts[1]);
+    final b = double.tryParse(parts[2]);
+    if (r == null || g == null || b == null) return null;
+    double alpha = 1.0;
+    if (parts.length >= 4) {
+      alpha = double.tryParse(parts[3]) ?? 1.0;
+    }
+    alpha = alpha.clamp(0.0, 1.0);
+    if (alpha <= 0.05) return null;
+    return Color.fromARGB(
+      (alpha * 255).round(),
+      _clampChannel(r),
+      _clampChannel(g),
+      _clampChannel(b),
+    );
+  }
+
+  Color? _parseHexColor(String value) {
+    var hex = value.substring(1);
+    if (hex.length == 3) {
+      hex = '${hex[0]}${hex[0]}${hex[1]}${hex[1]}${hex[2]}${hex[2]}';
+    }
+    if (hex.length == 6) {
+      final rgb = int.tryParse(hex, radix: 16);
+      if (rgb == null) return null;
+      return Color.fromARGB(
+        255,
+        (rgb >> 16) & 0xFF,
+        (rgb >> 8) & 0xFF,
+        rgb & 0xFF,
+      );
+    }
+    if (hex.length == 8) {
+      final argb = int.tryParse(hex, radix: 16);
+      if (argb == null) return null;
+      return Color.fromARGB(
+        (argb >> 24) & 0xFF,
+        (argb >> 16) & 0xFF,
+        (argb >> 8) & 0xFF,
+        argb & 0xFF,
+      );
+    }
+    return null;
+  }
+
+  int _clampChannel(double value) {
+    return value.round().clamp(0, 255).toInt();
   }
 
   Future<void> loadAdBlockers() async {
@@ -581,6 +870,7 @@ class _BrowserPageState extends State<BrowserPage>
       }
     }
     previousTabIndex = tabController.index;
+    _applyThemeForTab(tabs[tabController.index]);
     if (mounted) {
       setState(() {});
     }
@@ -849,6 +1139,9 @@ class _BrowserPageState extends State<BrowserPage>
       setState(() {
         tab.state = BrowserState.error(newErrorMessage);
       });
+    }
+    if (widget.themeMode == AppThemeMode.adjust && tab == activeTab) {
+      widget.onPageThemeChanged?.call(ThemeMode.system, null);
     }
   }
 
@@ -1438,6 +1731,7 @@ class _BrowserPageState extends State<BrowserPage>
             tab.urlController.text = url;
           });
         }
+        _updateThemeFromTab(tab);
       });
       tab.webViewController!.setNavigationDelegate(NavigationDelegate(
         onPageStarted: (url) {
@@ -1447,6 +1741,8 @@ class _BrowserPageState extends State<BrowserPage>
                 tab.currentUrl = url;
                 tab.urlController.text = tab.currentUrl;
                 tab.state = const BrowserState.loading();
+                tab.detectedBrightness = null;
+                tab.detectedSeedColor = null;
                 if (!widget.privateBrowsing &&
                     (tab.history.isEmpty ||
                         tab.history.last != tab.currentUrl)) {
@@ -1489,6 +1785,15 @@ class _BrowserPageState extends State<BrowserPage>
             }
           ''');
           }
+          _updateThemeFromTab(tab);
+          Future.delayed(const Duration(milliseconds: 400), () {
+            if (!mounted) return;
+            _updateThemeFromTab(tab);
+          });
+          Future.delayed(const Duration(milliseconds: 1200), () {
+            if (!mounted) return;
+            _updateThemeFromTab(tab);
+          });
         },
         onNavigationRequest: (request) {
           if (_isDownloadUrl(request.url)) {
@@ -1834,10 +2139,12 @@ class _BrowserPageState extends State<BrowserPage>
                         color: Theme.of(context).colorScheme.surface,
                         border: Border(
                           bottom: BorderSide(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .outline
-                                .withValues(alpha: 0.2),
+                            color: widget.themeMode == AppThemeMode.adjust
+                                ? Colors.transparent
+                                : Theme.of(context)
+                                    .colorScheme
+                                    .outline
+                                    .withValues(alpha: 0.2),
                             width: 1,
                           ),
                         ),
@@ -1845,7 +2152,15 @@ class _BrowserPageState extends State<BrowserPage>
                       child: TabBar(
                         controller: tabController,
                         isScrollable: true,
-                        indicatorColor: Theme.of(context).colorScheme.primary,
+                        indicatorColor: widget.themeMode == AppThemeMode.adjust
+                            ? Colors.transparent
+                            : Theme.of(context).colorScheme.primary,
+                        dividerColor: widget.themeMode == AppThemeMode.adjust
+                            ? Colors.transparent
+                            : Theme.of(context)
+                                .colorScheme
+                                .outline
+                                .withValues(alpha: 0.2),
                         labelColor: Theme.of(context).colorScheme.onSurface,
                         unselectedLabelColor: Theme.of(context)
                             .colorScheme
