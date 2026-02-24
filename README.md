@@ -2,6 +2,10 @@
 
 Flutter desktop web browser with tabs, bookmarks, history.
 
+<img src=".gemini/image.png" width="600">
+
+## Install
+
 ## Install
 
 ```bash

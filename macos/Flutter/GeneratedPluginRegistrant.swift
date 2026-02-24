@@ -5,6 +5,7 @@
 import FlutterMacOS
 import Foundation
 
+import desktop_drop
 import file_selector_macos
 import firebase_app_check
 import firebase_auth
@@ -15,6 +16,7 @@ import webview_flutter_wkwebview
 import window_manager
 
 func RegisterGeneratedPlugins(registry: FlutterPluginRegistry) {
+  DesktopDropPlugin.register(with: registry.registrar(forPlugin: "DesktopDropPlugin"))
   FileSelectorPlugin.register(with: registry.registrar(forPlugin: "FileSelectorPlugin"))
   FLTFirebaseAppCheckPlugin.register(with: registry.registrar(forPlugin: "FLTFirebaseAppCheckPlugin"))
   FLTFirebaseAuthPlugin.register(with: registry.registrar(forPlugin: "FLTFirebaseAuthPlugin"))

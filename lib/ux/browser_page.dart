@@ -18,6 +18,7 @@ import 'dart:io';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:file_selector/file_selector.dart';
+import 'package:desktop_drop/desktop_drop.dart';
 
 import '../constants.dart';
 import '../features/theme_utils.dart';
@@ -61,6 +62,9 @@ String _getUserAgent(bool modern) {
 
 class UrlUtils {
   static String processUrl(String url) {
+    if (url.startsWith('file://')) {
+      return url;
+    }
     if (!url.contains('://')) {
       if (url.contains(' ') ||
           (!url.contains('.') &&
@@ -76,7 +80,7 @@ class UrlUtils {
 
   static bool isValidUrl(String url) {
     final uri = Uri.tryParse(url);
-    return uri != null && const {'http', 'https'}.contains(uri.scheme);
+    return uri != null && const {'http', 'https', 'file'}.contains(uri.scheme);
   }
 }
 
@@ -344,7 +348,7 @@ Future<Map<String, dynamic>> _fetchGitHubRepo(String url) async {
     NetworkMonitor().onRequestFailed(
       url: url,
       method: 'GET',
-      error: e as Exception,
+      error: e is Exception ? e : Exception(e.toString()),
       duration: stopwatch.elapsed,
     );
     rethrow;
@@ -526,6 +530,7 @@ class _BrowserPageState extends State<BrowserPage>
   };
   final Set<String> _pendingHeaderChecks = {};
   double _titleBarHeight = 0;
+  bool _dragging = false;
 
   String _displayUrl(String url) => url == defaultHomepageUrl ? '' : url;
 
@@ -649,7 +654,7 @@ class _BrowserPageState extends State<BrowserPage>
       NetworkMonitor().onRequestFailed(
         url: url,
         method: 'HEAD',
-        error: e as Exception,
+        error: e is Exception ? e : Exception(e.toString()),
         duration: stopwatch.elapsed,
       );
     }
@@ -679,7 +684,7 @@ class _BrowserPageState extends State<BrowserPage>
       NetworkMonitor().onRequestFailed(
         url: url,
         method: 'GET',
-        error: e as Exception,
+        error: e is Exception ? e : Exception(e.toString()),
         duration: Duration.zero,
       );
       return false;
@@ -1170,7 +1175,7 @@ class _BrowserPageState extends State<BrowserPage>
     );
   }
 
-  void _loadUrl(String url) {
+  Future<void> _loadUrl(String url) async {
     final processedUrl = UrlUtils.processUrl(url);
     if (!UrlUtils.isValidUrl(processedUrl)) {
       logger.w('Invalid or unsafe URL: $processedUrl');
@@ -1190,7 +1195,13 @@ class _BrowserPageState extends State<BrowserPage>
       setState(() {});
     }
     try {
-      activeTab.webViewController?.loadRequest(Uri.parse(processedUrl));
+      if (processedUrl.startsWith('file:///') ||
+          processedUrl.startsWith('file://')) {
+        final path = processedUrl.replaceFirst('file://', '');
+        await activeTab.webViewController?.loadFile(path);
+      } else {
+        activeTab.webViewController?.loadRequest(Uri.parse(processedUrl));
+      }
     } on PlatformException {
       // Ignore MissingPluginException on macOS
     }
@@ -1716,9 +1727,7 @@ class _BrowserPageState extends State<BrowserPage>
                       decoration: InputDecoration(
                         hintText: 'Search or enter URL',
                         hintStyle: TextStyle(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .onSurfaceVariant,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                           fontSize: 14,
                         ),
                         border: InputBorder.none,
@@ -1786,146 +1795,189 @@ class _BrowserPageState extends State<BrowserPage>
             onInvoke: (intent) => _goForward(),
           ),
         },
-        child: Scaffold(
-          appBar: titleBarInset > 0 && appBarWidget != null
-              ? PreferredSize(
-                  preferredSize:
-                      Size.fromHeight(kToolbarHeight + titleBarInset),
-                  child: Column(
-                    children: [
-                      Container(
-                        height: titleBarInset,
-                        color: Theme.of(context).colorScheme.surface,
-                      ),
-                      appBarWidget,
-                    ],
-                  ),
-                )
-              : appBarWidget,
-          body: Stack(
-            children: [
-              Column(
-                children: [
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surface,
-                      border: Border(
-                        bottom: BorderSide(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .outline
-                              .withValues(alpha: 0.2),
-                          width: 1,
-                        ),
-                      ),
-                    ),
-                    child: TabBar(
-                      controller: tabController,
-                      isScrollable: true,
-                      indicatorColor: Theme.of(context).colorScheme.primary,
-                      labelColor: Theme.of(context).colorScheme.onSurface,
-                      unselectedLabelColor: Theme.of(context)
-                          .colorScheme
-                          .onSurface
-                          .withValues(alpha: 0.6),
-                      tabs: tabs.asMap().entries.map((entry) {
-                        final index = entry.key;
-                        final tab = entry.value;
-                        return Tab(
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.public,
-                                size: 16,
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .onSurface
-                                    .withValues(alpha: 0.7),
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                (Uri.tryParse(tab.currentUrl)?.host ??
-                                        tab.currentUrl)
-                                    .truncate(15),
-                              ),
-                              if (tabs.length > 1) ...[
-                                const SizedBox(width: 8),
-                                GestureDetector(
-                                  onTap: () => _closeTab(index),
-                                  child: Icon(
-                                    Icons.close,
-                                    size: 16,
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .onSurface
-                                        .withValues(alpha: 0.7),
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  ),
-                  Expanded(
-                    child: TabBarView(
-                      controller: tabController,
-                      children: tabs.map((tab) => _buildTabBody(tab)).toList(),
-                    ),
-                  ),
-                ],
-              ),
-              if (widget.hideAppBar)
-                Positioned(
-                  top: 16,
-                  right: 16,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surfaceContainer,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.1),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
+        child: DropTarget(
+          onDragEntered: (details) => setState(() => _dragging = true),
+          onDragExited: (details) => setState(() => _dragging = false),
+          onDragDone: (details) async {
+            setState(() => _dragging = false);
+            if (details.files.isNotEmpty) {
+              final file = details.files.first;
+              final path = 'file://${file.path}';
+              if (tabs.isEmpty) {
+                _addNewTab();
+              }
+              _loadUrl(path);
+            }
+          },
+          child: Scaffold(
+            appBar: titleBarInset > 0 && appBarWidget != null
+                ? PreferredSize(
+                    preferredSize:
+                        Size.fromHeight(kToolbarHeight + titleBarInset),
+                    child: Column(
                       children: [
-                        IconButton(
-                          icon: const Icon(Icons.arrow_back_ios, size: 18),
-                          onPressed: _goBack,
-                          tooltip: 'Back',
+                        Container(
+                          height: titleBarInset,
+                          color: Theme.of(context).colorScheme.surface,
                         ),
-                        IconButton(
-                          icon: const Icon(Icons.arrow_forward_ios, size: 18),
-                          onPressed: _goForward,
-                          tooltip: 'Forward',
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.refresh, size: 18),
-                          onPressed: _refresh,
-                          tooltip: 'Refresh',
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.add, size: 18),
-                          onPressed: _addNewTab,
-                          tooltip: 'New Tab',
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.settings, size: 18),
-                          onPressed: _showSettings,
-                          tooltip: 'Settings',
-                        ),
+                        appBarWidget,
                       ],
                     ),
-                  ),
+                  )
+                : appBarWidget,
+            body: Stack(
+              children: [
+                Column(
+                  children: [
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surface,
+                        border: Border(
+                          bottom: BorderSide(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .outline
+                                .withValues(alpha: 0.2),
+                            width: 1,
+                          ),
+                        ),
+                      ),
+                      child: TabBar(
+                        controller: tabController,
+                        isScrollable: true,
+                        indicatorColor: Theme.of(context).colorScheme.primary,
+                        labelColor: Theme.of(context).colorScheme.onSurface,
+                        unselectedLabelColor: Theme.of(context)
+                            .colorScheme
+                            .onSurface
+                            .withValues(alpha: 0.6),
+                        tabs: tabs.asMap().entries.map((entry) {
+                          final index = entry.key;
+                          final tab = entry.value;
+                          return Tab(
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.public,
+                                  size: 16,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurface
+                                      .withValues(alpha: 0.7),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  (Uri.tryParse(tab.currentUrl)?.host ??
+                                          tab.currentUrl)
+                                      .truncate(15),
+                                ),
+                                if (tabs.length > 1) ...[
+                                  const SizedBox(width: 8),
+                                  GestureDetector(
+                                    onTap: () => _closeTab(index),
+                                    child: Icon(
+                                      Icons.close,
+                                      size: 16,
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurface
+                                          .withValues(alpha: 0.7),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                    Expanded(
+                      child: TabBarView(
+                        controller: tabController,
+                        children:
+                            tabs.map((tab) => _buildTabBody(tab)).toList(),
+                      ),
+                    ),
+                  ],
                 ),
-            ],
+                if (widget.hideAppBar)
+                  Positioned(
+                    top: 16,
+                    right: 16,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surfaceContainer,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.1),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.arrow_back_ios, size: 18),
+                            onPressed: _goBack,
+                            tooltip: 'Back',
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.arrow_forward_ios, size: 18),
+                            onPressed: _goForward,
+                            tooltip: 'Forward',
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.refresh, size: 18),
+                            onPressed: _refresh,
+                            tooltip: 'Refresh',
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.add, size: 18),
+                            onPressed: _addNewTab,
+                            tooltip: 'New Tab',
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.settings, size: 18),
+                            onPressed: _showSettings,
+                            tooltip: 'Settings',
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                if (_dragging)
+                  Container(
+                    color: Theme.of(context)
+                        .colorScheme
+                        .primary
+                        .withValues(alpha: 0.1),
+                    child: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.file_open,
+                            size: 64,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'Drop file to open',
+                            style: TextStyle(
+                              fontSize: 18,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            ),
           ),
         ),
       ),
