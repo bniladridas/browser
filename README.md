@@ -6,8 +6,6 @@ Flutter desktop web browser with tabs, bookmarks, history.
 
 ## Install
 
-## Install
-
 ```bash
 git clone https://github.com/bniladridas/browser.git
 cd browser
