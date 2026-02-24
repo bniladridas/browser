@@ -231,6 +231,10 @@ void main() async {
               titleBarStyle: TitleBarStyle.hidden,
               windowButtonVisibility: true,
             ),
+            () {
+              windowManager.show();
+              windowManager.focus();
+            },
           );
         } catch (e) {
           logger.w('Window ready callback failed: $e');
