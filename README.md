@@ -2,8 +2,6 @@
 
 Flutter desktop web browser with tabs, bookmarks, history.
 
-<img src=".gemini/image.png" width="600">
-
 ## Install
 
 ```bash
@@ -62,8 +60,8 @@ To unmark a specific file, add `-linguist-generated` in `.gitattributes`.
 
 ## Contribute
 
-Fork, branch, edit, commit, run `pre-commit run --all-files`, PR with labels for version bump.
+Fork, branch, edit, commit, PR.
 
 ## License
 
-MIT.
+Proprietary - All Rights Reserved.
