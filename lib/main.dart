@@ -22,9 +22,11 @@ import 'package:pkg/ai_service.dart';
 import 'constants.dart';
 
 class MyApp extends StatefulWidget {
-  const MyApp({super.key, required this.aiAvailable});
+  const MyApp(
+      {super.key, required this.aiAvailable, this.enableGitFetch = false});
 
   final bool aiAvailable;
+  final bool enableGitFetch;
 
   @override
   State<MyApp> createState() => _MyAppState();
@@ -80,8 +82,7 @@ class _MyAppState extends State<MyApp> {
   void _setAdjustedThemeMode(ThemeMode mode, Color? seedColor) {
     if (themeMode != AppThemeMode.adjust) return;
     final resolvedSeed = seedColor ?? Colors.blue;
-    if (adjustedThemeMode == mode &&
-        adjustedSeedColor == resolvedSeed) {
+    if (adjustedThemeMode == mode && adjustedSeedColor == resolvedSeed) {
       return;
     }
     void applyUpdate() {
@@ -129,7 +130,7 @@ class _MyAppState extends State<MyApp> {
           initialUrl: homepage,
           hideAppBar: hideAppBar,
           useModernUserAgent: useModernUserAgent,
-          enableGitFetch: enableGitFetch,
+          enableGitFetch: widget.enableGitFetch || enableGitFetch,
           aiAvailable: widget.aiAvailable,
           privateBrowsing: privateBrowsing,
           adBlocking: adBlocking,
@@ -194,7 +195,6 @@ class _MyAppState extends State<MyApp> {
     }
     return Color.lerp(base, target, t) ?? base;
   }
-
 }
 
 void main() async {
@@ -209,12 +209,6 @@ void main() async {
     }
     try {
       await windowManager.ensureInitialized();
-      if (defaultTargetPlatform == TargetPlatform.macOS) {
-        await windowManager.setTitleBarStyle(
-          TitleBarStyle.hidden,
-          windowButtonVisibility: true,
-        );
-      }
     } catch (e) {
       logger.w(
           'Warning: Window manager initialization failed on this platform: $e. Some desktop window features (minimize, maximize, etc.) may not be available.');
@@ -229,6 +223,24 @@ void main() async {
           'Firebase initialization failed: $e. AI features will not be available.');
     }
     runApp(MyApp(aiAvailable: aiAvailable));
+    if (defaultTargetPlatform == TargetPlatform.macOS && !isIntegrationTest) {
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        try {
+          await windowManager.waitUntilReadyToShow(
+            const WindowOptions(
+              titleBarStyle: TitleBarStyle.hidden,
+              windowButtonVisibility: true,
+            ),
+            () {
+              windowManager.show();
+              windowManager.focus();
+            },
+          );
+        } catch (e) {
+          logger.w('Window ready callback failed: $e');
+        }
+      });
+    }
   }, (error, stack) {
     logger.e('Uncaught error: $error', error: error, stackTrace: stack);
   });

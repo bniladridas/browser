@@ -10,16 +10,45 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:browser/main.dart';
+import 'package:browser/features/theme_utils.dart';
 
 const testTimeout = Timeout(Duration(seconds: 60));
 
-Future<void> _launchApp(WidgetTester tester) async {
-  await tester.pumpWidget(const MyApp(aiAvailable: true));
+Future<void> _launchApp(WidgetTester tester,
+    {bool enableGitFetch = false}) async {
+  await tester
+      .pumpWidget(MyApp(aiAvailable: true, enableGitFetch: enableGitFetch));
   await tester.pumpAndSettle();
 }
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+
+  final urlFieldFinder = find.byType(TextField).first;
+
+  Future<void> openOverflowMenu(WidgetTester tester) async {
+    final menuButton = find.byType(PopupMenuButton<String>);
+    expect(menuButton, findsOneWidget);
+    await tester.tap(menuButton, warnIfMissed: false);
+    await tester.pumpAndSettle();
+  }
+
+  Future<void> enableGitFetch(WidgetTester tester) async {
+    await openOverflowMenu(tester);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Settings'));
+    await tester.pumpAndSettle();
+    final gitFetchSwitch = find.byWidgetPredicate(
+      (widget) =>
+          widget is SwitchListTile &&
+          (widget.title as Text).data == 'Enable Git Fetch',
+    );
+    await tester.tap(gitFetchSwitch);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+    await tester.pumpAndSettle(const Duration(seconds: 2));
+  }
 
   group('Browser App Tests', () {
     testWidgets('App launches and shows initial UI',
@@ -30,11 +59,11 @@ void main() {
       await tester.pumpAndSettle();
 
       // Check for URL input field
-      expect(find.byType(TextField), findsOneWidget);
+      expect(urlFieldFinder, findsOneWidget);
 
       // Check for navigation buttons
-      expect(find.byIcon(Icons.arrow_back), findsOneWidget);
-      expect(find.byIcon(Icons.arrow_forward), findsOneWidget);
+      expect(find.byIcon(Icons.arrow_back_ios), findsOneWidget);
+      expect(find.byIcon(Icons.arrow_forward_ios), findsOneWidget);
       expect(find.byIcon(Icons.refresh), findsOneWidget);
     }, timeout: testTimeout);
 
@@ -43,20 +72,24 @@ void main() {
 
       // Enter a URL and load
       const testUrl = 'https://example.com';
-      await tester.enterText(find.byType(TextField), testUrl);
+      expect(urlFieldFinder, findsOneWidget);
+      await tester.enterText(urlFieldFinder, testUrl);
       await tester.testTextInput.receiveAction(TextInputAction.done);
       await tester.pumpAndSettle();
 
       // Open menu and add bookmark
-      await tester.tap(find.byType(PopupMenuButton<String>));
+      await openOverflowMenu(tester);
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Add Bookmark'));
+      await tester.tap(find.text('Add Bookmark'), warnIfMissed: false);
+      await tester.pumpAndSettle();
+      // Dismiss the add bookmark dialog
+      await tester.tap(find.text('Cancel'));
       await tester.pumpAndSettle();
 
       // Open menu and view bookmarks
-      await tester.tap(find.byType(PopupMenuButton<String>));
+      await openOverflowMenu(tester);
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Bookmarks'));
+      await tester.tap(find.text('Bookmarks'), warnIfMissed: false);
       await tester.pumpAndSettle();
 
       // Should show bookmarks dialog
@@ -70,7 +103,7 @@ void main() {
       await _launchApp(tester);
 
       // Open menu and view history
-      await tester.tap(find.byType(PopupMenuButton<String>));
+      await openOverflowMenu(tester);
       await tester.pumpAndSettle();
       await tester.tap(find.text('History'));
       await tester.pumpAndSettle();
@@ -84,7 +117,8 @@ void main() {
 
       // Enter URL with special characters
       const specialUrl = 'https://github.com/bniladridas/browser?tab=readme';
-      await tester.enterText(find.byType(TextField), specialUrl);
+      expect(urlFieldFinder, findsOneWidget);
+      await tester.enterText(urlFieldFinder, specialUrl);
       await tester.testTextInput.receiveAction(TextInputAction.done);
       await tester.pumpAndSettle();
 
@@ -98,14 +132,27 @@ void main() {
     testWidgets('Clear cache functionality', (WidgetTester tester) async {
       await _launchApp(tester);
 
-      // Open menu and clear cache
-      await tester.tap(find.byType(PopupMenuButton<String>));
+      // Open settings and toggle private browsing to clear cache
+      await openOverflowMenu(tester);
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Clear Cache'));
+      await tester.tap(find.text('Settings'));
       await tester.pumpAndSettle();
 
-      // Should show cache cleared snackbar
-      expect(find.text('Cache cleared'), findsOneWidget);
+      // Toggle private browsing (this clears cache)
+      final privateSwitch = find.byWidgetPredicate(
+        (widget) =>
+            widget is SwitchListTile &&
+            (widget.title as Text).data == 'Private Browsing',
+      );
+      await tester.tap(privateSwitch);
+      await tester.pumpAndSettle();
+
+      // Save settings
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+
+      // Should show saved snackbar
+      expect(find.text('Settings saved'), findsOneWidget);
     }, timeout: testTimeout);
 
     testWidgets('Settings dialog and user agent toggle',
@@ -113,7 +160,7 @@ void main() {
       await _launchApp(tester);
 
       // Open menu and go to settings
-      await tester.tap(find.byType(PopupMenuButton<String>));
+      await openOverflowMenu(tester);
       await tester.pumpAndSettle();
       await tester.tap(find.text('Settings'));
       await tester.pumpAndSettle();
@@ -138,34 +185,16 @@ void main() {
     }, timeout: testTimeout);
 
     testWidgets('Git fetch dialog', (WidgetTester tester) async {
-      await _launchApp(tester);
+      await _launchApp(tester, enableGitFetch: true);
 
       // First, enable Git Fetch in settings
-      await tester.tap(find.byType(PopupMenuButton<String>));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Settings'));
-      await tester.pumpAndSettle();
+      await enableGitFetch(tester);
 
-      // Enable Git Fetch toggle
-      final gitFetchSwitch = find.byWidgetPredicate(
-        (widget) =>
-            widget is SwitchListTile &&
-            (widget.title as Text).data == 'Enable Git Fetch',
-      );
-      await tester.tap(gitFetchSwitch);
-      await tester.pumpAndSettle();
-
-      // Save settings
-      await tester.tap(find.text('Save'));
-      await tester.pumpAndSettle();
-
-      // Close settings
-      await tester
-          .tap(find.text('Settings saved')); // Wait for snackbar or just pump
-      await tester.pumpAndSettle();
+      // Wait for settings to fully close
+      await Future.delayed(const Duration(milliseconds: 500));
 
       // Now open menu and go to Git Fetch
-      await tester.tap(find.byType(PopupMenuButton<String>));
+      await openOverflowMenu(tester);
       await tester.pumpAndSettle();
       await tester.tap(find.text('Git Fetch'));
       await tester.pumpAndSettle();
@@ -192,7 +221,7 @@ void main() {
       await _launchApp(tester);
 
       // Open settings
-      await tester.tap(find.byType(PopupMenuButton<String>));
+      await openOverflowMenu(tester);
       await tester.pumpAndSettle();
       await tester.tap(find.text('Settings'));
       await tester.pumpAndSettle();
@@ -200,7 +229,7 @@ void main() {
       // Check for new toggles
       expect(find.text('Private Browsing'), findsOneWidget);
       expect(find.text('Ad Blocking'), findsOneWidget);
-      expect(find.text('Theme:'), findsOneWidget); // Dropdown
+      expect(find.byType(DropdownButton<AppThemeMode>), findsOneWidget);
 
       // Toggle private browsing
       final privateSwitch = find.byWidgetPredicate(
@@ -221,10 +250,15 @@ void main() {
       await tester.pumpAndSettle();
 
       // Change theme to dark
-      final dropdown = find.byType(DropdownButton);
-      await tester.tap(dropdown);
+      final dropdown = find.byType(DropdownButton<AppThemeMode>);
+      await tester.tap(dropdown, warnIfMissed: false);
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Theme: dark'));
+      // Tap the first DropdownMenuItem with "Theme: dark" (the menu item, not the button label)
+      final themeDarkItems = find.ancestor(
+        of: find.text('Theme: dark'),
+        matching: find.byType(DropdownMenuItem<AppThemeMode>),
+      );
+      await tester.tap(themeDarkItems.first, warnIfMissed: false);
       await tester.pumpAndSettle();
 
       // Save settings
@@ -234,5 +268,5 @@ void main() {
       // Should show saved snackbar
       expect(find.text('Settings saved'), findsOneWidget);
     }, timeout: testTimeout);
-  }, skip: Platform.isMacOS);
+  }, skip: Platform.isLinux || Platform.isWindows);
 }

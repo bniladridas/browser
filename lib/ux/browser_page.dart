@@ -613,12 +613,17 @@ class _BrowserPageState extends State<BrowserPage>
   @override
   void initState() {
     super.initState();
-    if (defaultTargetPlatform == TargetPlatform.macOS) {
-      windowManager.getTitleBarHeight().then((height) {
-        if (!mounted) return;
-        setState(() {
-          _titleBarHeight = height.toDouble();
-        });
+    if (defaultTargetPlatform == TargetPlatform.macOS && !isIntegrationTest) {
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        try {
+          final height = await windowManager.getTitleBarHeight();
+          if (!mounted) return;
+          setState(() {
+            _titleBarHeight = height.toDouble();
+          });
+        } catch (e) {
+          logger.w('Failed to read title bar height: $e');
+        }
       });
     }
     tabs.add(
@@ -1342,6 +1347,117 @@ class _BrowserPageState extends State<BrowserPage>
     );
   }
 
+  void _handleMenuSelection(String value) {
+    switch (value) {
+      case 'add_bookmark':
+        _addBookmark();
+        break;
+      case 'view_bookmarks':
+        _showBookmarks();
+        break;
+      case 'history':
+        _showHistory();
+        break;
+      case 'ai_chat':
+        _showAiChat();
+        break;
+      case 'settings':
+        _showSettings();
+        break;
+      case 'git_fetch':
+        _showGitFetchDialog();
+        break;
+      case 'network_debug':
+        _showNetworkDebug();
+        break;
+    }
+  }
+
+  List<PopupMenuEntry<String>> _buildMenuEntries() {
+    return [
+      const PopupMenuItem(
+        value: 'add_bookmark',
+        child: Row(
+          children: [
+            Icon(Icons.bookmark_add),
+            SizedBox(width: 12),
+            Text('Add Bookmark'),
+          ],
+        ),
+      ),
+      const PopupMenuItem(
+        value: 'view_bookmarks',
+        child: Row(
+          children: [
+            Icon(Icons.bookmarks),
+            SizedBox(width: 12),
+            Text('Bookmarks'),
+          ],
+        ),
+      ),
+      const PopupMenuItem(
+        value: 'history',
+        child: Row(
+          children: [
+            Icon(Icons.history),
+            SizedBox(width: 12),
+            Text('History'),
+          ],
+        ),
+      ),
+      if (widget.enableGitFetch)
+        const PopupMenuItem(
+          value: 'git_fetch',
+          child: Row(
+            children: [
+              Icon(Icons.code),
+              SizedBox(width: 12),
+              Text('Git Fetch'),
+            ],
+          ),
+        ),
+      if (widget.aiAvailable)
+        const PopupMenuItem(
+          value: 'ai_chat',
+          child: Row(
+            children: [
+              Icon(Icons.smart_toy),
+              SizedBox(width: 12),
+              Text('AI Chat'),
+            ],
+          ),
+        ),
+      const PopupMenuItem(
+        value: 'settings',
+        child: Row(
+          children: [
+            Icon(Icons.settings),
+            SizedBox(width: 12),
+            Text('Settings'),
+          ],
+        ),
+      ),
+      PopupMenuItem(
+        value: 'network_debug',
+        child: Row(
+          children: [
+            Icon(Icons.network_check),
+            SizedBox(width: 12),
+            Text('Network Debug'),
+          ],
+        ),
+      ),
+    ];
+  }
+
+  PopupMenuButton<String> _buildMenuButton({double iconSize = 24}) {
+    return PopupMenuButton<String>(
+      icon: Icon(Icons.more_vert, size: iconSize),
+      onSelected: _handleMenuSelection,
+      itemBuilder: (context) => _buildMenuEntries(),
+    );
+  }
+
   void _showGitFetchDialog() {
     showDialog(
       context: context,
@@ -1702,6 +1818,11 @@ class _BrowserPageState extends State<BrowserPage>
     if (tab.state is BrowserError) {
       return _buildErrorView(tab);
     }
+    if (defaultTargetPlatform == TargetPlatform.macOS && isIntegrationTest) {
+      return const Center(
+        child: Text('WebView disabled in integration tests.'),
+      );
+    }
 
     if (tab.webViewController == null) {
       tab.webViewController = WebViewController();
@@ -1904,108 +2025,7 @@ class _BrowserPageState extends State<BrowserPage>
                 onPressed: _addNewTab,
                 tooltip: 'New Tab',
               ),
-              PopupMenuButton<String>(
-                icon: const Icon(Icons.more_vert),
-                onSelected: (value) {
-                  switch (value) {
-                    case 'add_bookmark':
-                      _addBookmark();
-                      break;
-                    case 'view_bookmarks':
-                      _showBookmarks();
-                      break;
-                    case 'history':
-                      _showHistory();
-                      break;
-                    case 'ai_chat':
-                      _showAiChat();
-                      break;
-                    case 'settings':
-                      _showSettings();
-                      break;
-                    case 'git_fetch':
-                      _showGitFetchDialog();
-                      break;
-                    case 'network_debug':
-                      _showNetworkDebug();
-                      break;
-                  }
-                },
-                itemBuilder: (context) => [
-                  const PopupMenuItem(
-                    value: 'add_bookmark',
-                    child: Row(
-                      children: [
-                        Icon(Icons.bookmark_add),
-                        SizedBox(width: 12),
-                        Text('Add Bookmark'),
-                      ],
-                    ),
-                  ),
-                  const PopupMenuItem(
-                    value: 'view_bookmarks',
-                    child: Row(
-                      children: [
-                        Icon(Icons.bookmarks),
-                        SizedBox(width: 12),
-                        Text('Bookmarks'),
-                      ],
-                    ),
-                  ),
-                  const PopupMenuItem(
-                    value: 'history',
-                    child: Row(
-                      children: [
-                        Icon(Icons.history),
-                        SizedBox(width: 12),
-                        Text('History'),
-                      ],
-                    ),
-                  ),
-                  if (widget.enableGitFetch)
-                    const PopupMenuItem(
-                      value: 'git_fetch',
-                      child: Row(
-                        children: [
-                          Icon(Icons.code),
-                          SizedBox(width: 12),
-                          Text('Git Fetch'),
-                        ],
-                      ),
-                    ),
-                  if (widget.aiAvailable)
-                    const PopupMenuItem(
-                      value: 'ai_chat',
-                      child: Row(
-                        children: [
-                          Icon(Icons.smart_toy),
-                          SizedBox(width: 12),
-                          Text('AI Chat'),
-                        ],
-                      ),
-                    ),
-                  const PopupMenuItem(
-                    value: 'settings',
-                    child: Row(
-                      children: [
-                        Icon(Icons.settings),
-                        SizedBox(width: 12),
-                        Text('Settings'),
-                      ],
-                    ),
-                  ),
-                  PopupMenuItem(
-                    value: 'network_debug',
-                    child: Row(
-                      children: [
-                        Icon(Icons.network_check),
-                        SizedBox(width: 12),
-                        Text('Network Debug'),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+              _buildMenuButton(),
             ],
             title: Container(
               decoration: BoxDecoration(
@@ -2260,6 +2280,7 @@ class _BrowserPageState extends State<BrowserPage>
                             onPressed: _showSettings,
                             tooltip: 'Settings',
                           ),
+                          _buildMenuButton(iconSize: 18),
                         ],
                       ),
                     ),

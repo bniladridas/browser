@@ -14,3 +14,6 @@ const String strictModeKey = 'strictMode';
 const String themeModeKey = 'themeMode';
 
 const String defaultHomepageUrl = 'about:browser-home';
+
+const bool isIntegrationTest =
+    bool.fromEnvironment('INTEGRATION_TEST', defaultValue: false);
