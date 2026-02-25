@@ -1,8 +1,8 @@
-<!-- SPDX-License-Identifier: MIT
-
-Copyright 2026 bniladridas. All rights reserved.
-Use of this source code is governed by a MIT license that can be
-found in the LICENSE file. -->
+<!--
+Copyright 2026 Niladri Das (bniladridas). All rights reserved.
+This source code is proprietary. Unauthorized use, modification, or
+distribution is strictly prohibited. See LICENSE for full terms.
+-->
 
 ## Summary
 - Bullet point descriptions of changes
@@ -15,7 +15,7 @@ found in the LICENSE file. -->
 ## Related Items
 - Resolves issues: #[issue-number]
 - Closes PRs: #[pr-number]
-- Resources: [PRs tab](../../pulls), [Issues tab](../../issues)
+- Resources: [PRs tab](__../../pulls__), [Issues tab](__../../issues__)
 
 ## Notes for reviewers
 - Additional details or context
