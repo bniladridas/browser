@@ -1,17 +1,14 @@
 #!/bin/bash
-# SPDX-License-Identifier: MIT
 #
-# Copyright 2026 bniladridas. All rights reserved.
-# Use of this source code is governed by a MIT license that can be
-# found in the LICENSE file.
+# Copyright 2026 Niladri Das (bniladridas). All rights reserved.
+# This source code is proprietary. Unauthorized use, modification, or
+# distribution is strictly prohibited. See LICENSE for full terms.
 
 # Add SPDX header to generated .mocks.dart files
 
-HEADER="// SPDX-License-Identifier: MIT
-//
-// Copyright 2026 bniladridas. All rights reserved.
-// Use of this source code is governed by a MIT license that can be
-// found in the LICENSE file.
+HEADER="// Copyright 2026 Niladri Das (bniladridas). All rights reserved.
+// This source code is proprietary. Unauthorized use, modification, or
+// distribution is strictly prohibited. See LICENSE for full terms.
 
 "
 
