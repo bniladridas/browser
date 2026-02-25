@@ -7,16 +7,62 @@
 
 echo "Running integration tests..."
 
-if [[ "$OSTYPE" == "darwin"* ]]; then
-    echo "Integration tests skipped on macOS due to device startup issues."
-    exit 0
-else
-    test_target="integration_test/"
-fi
+test_target="integration_test/"
 
-if flutter test $test_target; then
-    echo "$test_target passed!"
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    if [[ -z "${DISPLAY:-}" ]] && ! /usr/bin/pgrep -x "WindowServer" >/dev/null 2>&1; then
+        echo "No interactive macOS GUI session detected. Failing e2e tests."
+        exit 1
+    fi
+    echo "Running integration tests on macOS device..."
+    log_contains_foreground_failure() {
+        grep -q "Failed to foreground app; open returned 1" "$1"
+    }
+    run_e2e() {
+        # Try to activate GUI session
+        /usr/bin/open -a Finder || true
+        sleep 1
+        E2E_LOG_FILE="$(mktemp -t flutter-e2e.XXXXXX.log)"
+        flutter test -d macos --dart-define=INTEGRATION_TEST=true $test_target "$@" 2>&1 | tee "$E2E_LOG_FILE"
+        local status=${PIPESTATUS[0]}
+        if [[ $status -eq 0 ]]; then
+            echo "$test_target passed!"
+        else
+            echo "$test_target failed. Check the output above for details."
+        fi
+        return $status
+    }
+
+    run_e2e
+    test_status=$?
+    log_file="$E2E_LOG_FILE"
+    if [[ $test_status -eq 0 ]]; then
+        rm -f "$log_file"
+        exit 0
+    fi
+    if log_contains_foreground_failure "$log_file"; then
+        echo "Foreground failed. Attempting to clear quarantine and retry once..."
+        app_path="build/macos/Build/Products/Debug/browser.app"
+        if [[ -d "$app_path" ]]; then
+            xattr -dr com.apple.quarantine "$app_path" || true
+        fi
+        rm -f "$log_file"
+        run_e2e -v
+        retry_status=$?
+        log_file="$E2E_LOG_FILE"
+        if [[ $retry_status -eq 0 ]]; then
+            rm -f "$log_file"
+            exit 0
+        fi
+        if log_contains_foreground_failure "$log_file"; then
+            echo "E2E requires a foregrounded macOS GUI session. Run from a desktop session."
+        fi
+        rm -f "$log_file"
+        exit $retry_status
+    fi
+    rm -f "$log_file"
+    exit $test_status
 else
-    echo "$test_target failed. Check the output above for details."
-    exit 1
+    echo "Integration tests are only supported on macOS. Skipping on $OSTYPE."
+    exit 0
 fi

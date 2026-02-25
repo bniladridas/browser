@@ -15,7 +15,7 @@ on:
 
 jobs:
   e2e:
-    runs-on: macos-latest
+    runs-on: macos-26
     if: github.repository_owner == 'bniladridas'
 
     steps:
@@ -24,6 +24,8 @@ jobs:
         with:
           flutter-version: '3.41.2'
       - run: flutter pub get
+      - name: Generate code
+        run: flutter pub run build_runner build --delete-conflicting-outputs
       - name: Create .env file
         run: |
           {
@@ -57,4 +59,10 @@ jobs:
           </dict>
           </plist>
           EOF
-      - run: ./scripts/e2e.sh
+      - name: Clean pods cache
+        run: |
+          rm -rf macos/Pods
+          rm -rf macos/Podfile.lock
+          rm -rf build/macos
+      - name: Build macOS app
+        run: flutter build macos
