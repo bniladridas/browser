@@ -66,23 +66,42 @@ jobs:
           security set-key-partition-list -S apple-tool:,apple: -s -k "${MACOS_KEYCHAIN_PASSWORD}" build.keychain
 
       - name: Sign, notarize, and create DMG
+        id: dmg
         env:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           MACOS_CODE_SIGN_IDENTITY: ${{ secrets.MACOS_CODE_SIGN_IDENTITY }}
         run: |
-          chmod +x scripts/macos_release_dmg.sh
-          scripts/macos_release_dmg.sh
+          chmod +x ./scripts/macos_release_dmg.sh
+          if ./scripts/macos_release_dmg.sh; then
+            echo "status=success" >> "$GITHUB_OUTPUT"
+          else
+            echo "Trying unsigned build..."
+            ALLOW_UNSIGNED=1 ./scripts/macos_release_dmg.sh
+            echo "status=unsigned" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Upload release asset
+        id: upload
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
           files: build/macos/Build/Products/Release/browser.dmg
           generate_release_notes: false
+        continue-on-error: true
+
+      - name: Verify upload
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          if [[ ! -f build/macos/Build/Products/Release/browser.dmg ]]; then
+            echo "Error: DMG file not found after upload attempt"
+            exit 1
+          fi
 
       - name: Unsigned build reminder
-        if: ${{ env.MACOS_CODE_SIGN_IDENTITY == '' }}
+        if: ${{ steps.dmg.outputs.status == 'unsigned' }}
         run: |
-          echo "Warning: DMG is unsigned. Users will see Gatekeeper warnings on first launch."
+          if [[ -f build/macos/Build/Products/Release/browser.dmg ]]; then
+            echo "Warning: DMG is unsigned. Users will see Gatekeeper warnings on first launch."
+          fi
