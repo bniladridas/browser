@@ -2,6 +2,8 @@
 
 Flutter desktop web browser with tabs, bookmarks, history.
 
+![Screenshot](assets/screenshot.png)
+
 ## Install
 
 ```bash
