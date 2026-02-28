@@ -519,11 +519,19 @@ class _KeepAliveWrapperState extends State<KeepAliveWrapper>
 
 class _BrowserPageState extends State<BrowserPage>
     with TickerProviderStateMixin {
+  // WebKit cancellation signal seen on Apple platforms.
+  static const int _wkErrorCancelled = -999;
+  // Chromium aborted navigation code (net::ERR_ABORTED). On Android WebView
+  // this may represent real failures (e.g. unsupported auth scheme), so we do
+  // not blanket-ignore it.
+  static const int _chromiumErrorAborted = -3;
+
   static const Set<String> _allowedNavigationSchemes = {
     'http',
     'https',
-    'file',
     'about',
+    'blob',
+    'data',
   };
 
   late TabController tabController;
@@ -895,12 +903,43 @@ class _BrowserPageState extends State<BrowserPage>
     return _allowedNavigationSchemes.contains(uri.scheme.toLowerCase());
   }
 
+  String _sanitizeUrlForLog(String? rawUrl) {
+    if (rawUrl == null || rawUrl.isEmpty) {
+      return '';
+    }
+    try {
+      final uri = Uri.parse(rawUrl);
+      final hasQuery = uri.hasQuery;
+      final hasFragment = uri.fragment.isNotEmpty;
+      if (!hasQuery && !hasFragment) {
+        return rawUrl;
+      }
+      return uri
+          .replace(
+            query: hasQuery ? '<REDACTED>' : null,
+            fragment: hasFragment ? '<REDACTED>' : null,
+          )
+          .toString();
+    } catch (_) {
+      var sanitized = rawUrl;
+      final queryIndex = sanitized.indexOf('?');
+      if (queryIndex != -1) {
+        sanitized = '${sanitized.substring(0, queryIndex)}?<REDACTED>';
+      }
+      final fragmentIndex = sanitized.indexOf('#');
+      if (fragmentIndex != -1) {
+        sanitized = '${sanitized.substring(0, fragmentIndex)}#<REDACTED>';
+      }
+      return sanitized;
+    }
+  }
+
   void _logBlockedNavigation(TabData tab, String requestedUrl) {
     final currentTabIndex = tabs.indexOf(tab);
     logger.w(jsonEncode({
       'event': 'blocked_scheme',
-      'requested_url': requestedUrl,
-      'current_url': tab.currentUrl,
+      'requested_url': _sanitizeUrlForLog(requestedUrl),
+      'current_url': _sanitizeUrlForLog(tab.currentUrl),
       'tab_index': currentTabIndex,
       'timestamp': DateTime.now().toIso8601String(),
     }));
@@ -911,10 +950,11 @@ class _BrowserPageState extends State<BrowserPage>
     if (error.isForMainFrame == false) {
       return true;
     }
-    // These codes/messages commonly occur for interrupted provisional
-    // navigations during back/forward/reload and are not user-visible failures.
-    if (error.errorCode == -999 || error.errorCode == -3) {
+    if (error.errorCode == _wkErrorCancelled) {
       return true;
+    }
+    if (error.errorCode == _chromiumErrorAborted) {
+      return false;
     }
     final description = error.description.toLowerCase();
     return description.contains('cancelled') ||
