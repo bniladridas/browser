@@ -70,13 +70,25 @@ This ensures consistent, informative release notes.
 
 Follow the repository's pre-commit hooks for commit messages:
 
-- Use conventional commit format: `type(scope): description` or `type[scope]: description`
+- Use conventional commit format without scope punctuation: `type: description`
 - Keep the first line lowercase
+- Keep the first line concise (max 40 characters) to satisfy hook checks
 - Examples:
-  - `feat(firebase): add crashlytics integration`
-  - `fix[ui]: resolve button alignment`
+  - `feat: add crashlytics integration`
+  - `fix: resolve button alignment`
 
 Agents must adhere to these rules to pass CI checks. Do not use --no-verify or bypass hooks; fix issues to ensure code quality.
+
+## Issue Tracking During PR Work
+
+When a PR addresses multiple distinct findings/fixes, create separate tracking issues and reference them in the PR description.
+
+1. Create issue(s) using `gh issue create` (use clear tracking title + summary/body).
+2. Update PR description with `gh pr edit` and include all issue numbers under:
+   - `Resolves issues: #<issue1>, #<issue2>, ...`
+3. Keep the PR summary aligned with the issue list so reviewers can trace each fix.
+
+This keeps changes auditable and links each user-facing fix to an issue.
 
 ## Version Bump PR Template
 
