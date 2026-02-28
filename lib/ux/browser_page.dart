@@ -15,6 +15,7 @@ import 'package:window_manager/window_manager.dart';
 
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math' as math;
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:file_selector/file_selector.dart';
@@ -514,6 +515,102 @@ class _KeepAliveWrapperState extends State<KeepAliveWrapper>
   Widget build(BuildContext context) {
     super.build(context);
     return widget.child;
+  }
+}
+
+class _TelescopeLoader extends StatefulWidget {
+  const _TelescopeLoader();
+
+  @override
+  State<_TelescopeLoader> createState() => _TelescopeLoaderState();
+}
+
+class _TelescopeLoaderState extends State<_TelescopeLoader>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1700),
+  )..repeat();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final color = Theme.of(context).colorScheme.primary;
+    final faint = color.withValues(alpha: 0.28);
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) {
+        final t = _controller.value;
+        final sway = math.sin(t * 2 * math.pi) * 0.18;
+        return SizedBox(
+          width: 78,
+          height: 78,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              CustomPaint(
+                size: const Size.square(78),
+                painter: _ScanRingPainter(progress: t, color: faint),
+              ),
+              Transform.rotate(
+                angle: -0.55 + sway,
+                child: Icon(
+                  Icons.travel_explore,
+                  size: 42,
+                  color: color,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _ScanRingPainter extends CustomPainter {
+  const _ScanRingPainter({
+    required this.progress,
+    required this.color,
+  });
+
+  final double progress;
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = size.center(Offset.zero);
+    final radius = size.width * 0.42;
+    final basePaint = Paint()
+      ..color = color.withValues(alpha: 0.35)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.2;
+    canvas.drawCircle(center, radius, basePaint);
+
+    final sweepPaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3
+      ..strokeCap = StrokeCap.round;
+    final startAngle = (progress * 2 * math.pi) - (math.pi / 5);
+    const sweepAngle = math.pi / 2.8;
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      startAngle,
+      sweepAngle,
+      false,
+      sweepPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _ScanRingPainter oldDelegate) {
+    return oldDelegate.progress != progress || oldDelegate.color != color;
   }
 }
 
@@ -2055,12 +2152,10 @@ class _BrowserPageState extends State<BrowserPage>
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      CircularProgressIndicator(
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
+                      const _TelescopeLoader(),
                       const SizedBox(height: 16),
                       Text(
-                        'Loading...',
+                        'Searching...',
                         style: TextStyle(
                           color: Theme.of(context).colorScheme.onSurface,
                           fontSize: 16,
