@@ -21,6 +21,13 @@ import 'ux/browser_page.dart';
 import 'package:pkg/ai_service.dart';
 import 'constants.dart';
 
+bool _isDuplicateKeyDownAssertion(FlutterErrorDetails details) {
+  final message = details.exceptionAsString();
+  return message.contains('A KeyDownEvent is dispatched') &&
+      message.contains('physical key is already pressed') &&
+      message.contains('hardware_keyboard.dart');
+}
+
 class MyApp extends StatefulWidget {
   const MyApp(
       {super.key, required this.aiAvailable, this.enableGitFetch = false});
@@ -200,6 +207,22 @@ class _MyAppState extends State<MyApp> {
 void main() async {
   runZonedGuarded(() async {
     WidgetsFlutterBinding.ensureInitialized();
+    final previousOnError = FlutterError.onError;
+    FlutterError.onError = (FlutterErrorDetails details) {
+      if (kDebugMode &&
+          defaultTargetPlatform == TargetPlatform.macOS &&
+          _isDuplicateKeyDownAssertion(details)) {
+        logger.w(
+          'Ignoring known Flutter macOS duplicate KeyDown assertion: ${details.exceptionAsString()}',
+        );
+        return;
+      }
+      if (previousOnError != null) {
+        previousOnError(details);
+      } else {
+        FlutterError.presentError(details);
+      }
+    };
     bool aiAvailable = false;
     try {
       await dotenv.load();

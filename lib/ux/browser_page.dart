@@ -519,6 +519,21 @@ class _KeepAliveWrapperState extends State<KeepAliveWrapper>
 
 class _BrowserPageState extends State<BrowserPage>
     with TickerProviderStateMixin {
+  // WebKit cancellation signal seen on Apple platforms.
+  static const int _wkErrorCancelled = -999;
+  // Chromium aborted navigation code (net::ERR_ABORTED). On Android WebView
+  // this may represent real failures (e.g. unsupported auth scheme), so we do
+  // not blanket-ignore it.
+  static const int _chromiumErrorAborted = -3;
+
+  static const Set<String> _allowedNavigationSchemes = {
+    'http',
+    'https',
+    'about',
+    'blob',
+    'data',
+  };
+
   late TabController tabController;
   final List<TabData> tabs = [];
   final bookmarkManager = BookmarkManager();
@@ -750,8 +765,9 @@ class _BrowserPageState extends State<BrowserPage>
     final bg = probe['bg'] is String ? probe['bg'] as String : null;
     final themeColor =
         probe['themeColor'] is String ? probe['themeColor'] as String : null;
-    final metaColorScheme =
-        probe['metaColorScheme'] is String ? probe['metaColorScheme'] as String : null;
+    final metaColorScheme = probe['metaColorScheme'] is String
+        ? probe['metaColorScheme'] as String
+        : null;
     final colorScheme =
         probe['colorScheme'] is String ? probe['colorScheme'] as String : null;
     final textColor =
@@ -767,16 +783,14 @@ class _BrowserPageState extends State<BrowserPage>
         _parseCssColor(bg) ??
         _parseCssColor(themeColor);
     if (color != null) {
-      final brightness = color.computeLuminance() < 0.5
-          ? Brightness.dark
-          : Brightness.light;
+      final brightness =
+          color.computeLuminance() < 0.5 ? Brightness.dark : Brightness.light;
       return _ThemeTone(brightness: brightness, seedColor: color);
     }
     final text = _parseCssColor(textColor);
     if (text != null) {
-      final brightness = text.computeLuminance() < 0.5
-          ? Brightness.light
-          : Brightness.dark;
+      final brightness =
+          text.computeLuminance() < 0.5 ? Brightness.light : Brightness.dark;
       return _ThemeTone(brightness: brightness);
     }
     return null;
@@ -882,6 +896,71 @@ class _BrowserPageState extends State<BrowserPage>
   }
 
   TabData get activeTab => tabs[tabController.index];
+
+  bool _isAllowedNavigationUrl(String url) {
+    final uri = Uri.tryParse(url);
+    if (uri == null) return false;
+    return _allowedNavigationSchemes.contains(uri.scheme.toLowerCase());
+  }
+
+  String _sanitizeUrlForLog(String? rawUrl) {
+    if (rawUrl == null || rawUrl.isEmpty) {
+      return '';
+    }
+    try {
+      final uri = Uri.parse(rawUrl);
+      final hasQuery = uri.hasQuery;
+      final hasFragment = uri.fragment.isNotEmpty;
+      if (!hasQuery && !hasFragment) {
+        return rawUrl;
+      }
+      return uri
+          .replace(
+            query: hasQuery ? '<REDACTED>' : null,
+            fragment: hasFragment ? '<REDACTED>' : null,
+          )
+          .toString();
+    } catch (_) {
+      var sanitized = rawUrl;
+      final queryIndex = sanitized.indexOf('?');
+      if (queryIndex != -1) {
+        sanitized = '${sanitized.substring(0, queryIndex)}?<REDACTED>';
+      }
+      final fragmentIndex = sanitized.indexOf('#');
+      if (fragmentIndex != -1) {
+        sanitized = '${sanitized.substring(0, fragmentIndex)}#<REDACTED>';
+      }
+      return sanitized;
+    }
+  }
+
+  void _logBlockedNavigation(TabData tab, String requestedUrl) {
+    final currentTabIndex = tabs.indexOf(tab);
+    logger.w(jsonEncode({
+      'event': 'blocked_scheme',
+      'requested_url': _sanitizeUrlForLog(requestedUrl),
+      'current_url': _sanitizeUrlForLog(tab.currentUrl),
+      'tab_index': currentTabIndex,
+      'timestamp': DateTime.now().toIso8601String(),
+    }));
+  }
+
+  bool _shouldIgnoreWebResourceError(WebResourceError error) {
+    // Subresource failures should not replace the full page with an error view.
+    if (error.isForMainFrame == false) {
+      return true;
+    }
+    if (error.errorCode == _wkErrorCancelled) {
+      return true;
+    }
+    if (error.errorCode == _chromiumErrorAborted) {
+      return false;
+    }
+    final description = error.description.toLowerCase();
+    return description.contains('cancelled') ||
+        description.contains('canceled') ||
+        description.contains('interrupted');
+  }
 
   bool _isDownloadUrl(String url) {
     final uri = Uri.tryParse(url);
@@ -1917,6 +1996,10 @@ class _BrowserPageState extends State<BrowserPage>
           });
         },
         onNavigationRequest: (request) {
+          if (!_isAllowedNavigationUrl(request.url)) {
+            _logBlockedNavigation(tab, request.url);
+            return NavigationDecision.prevent;
+          }
           if (_isDownloadUrl(request.url)) {
             _downloadFile(request.url);
             return NavigationDecision.prevent;
@@ -1930,6 +2013,17 @@ class _BrowserPageState extends State<BrowserPage>
           return NavigationDecision.navigate;
         },
         onWebResourceError: (error) {
+          if (_shouldIgnoreWebResourceError(error)) {
+            quietLogger.w(
+              'Ignoring benign web resource error: ${error.errorCode} ${error.description}',
+            );
+            if (mounted && tab.state is Loading) {
+              setState(() {
+                tab.state = BrowserState.success(tab.currentUrl);
+              });
+            }
+            return;
+          }
           _handleLoadError(tab, error.description);
         },
         onHttpError: (error) {
