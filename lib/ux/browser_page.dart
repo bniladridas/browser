@@ -519,6 +519,13 @@ class _KeepAliveWrapperState extends State<KeepAliveWrapper>
 
 class _BrowserPageState extends State<BrowserPage>
     with TickerProviderStateMixin {
+  static const Set<String> _allowedNavigationSchemes = {
+    'http',
+    'https',
+    'file',
+    'about',
+  };
+
   late TabController tabController;
   final List<TabData> tabs = [];
   final bookmarkManager = BookmarkManager();
@@ -750,8 +757,9 @@ class _BrowserPageState extends State<BrowserPage>
     final bg = probe['bg'] is String ? probe['bg'] as String : null;
     final themeColor =
         probe['themeColor'] is String ? probe['themeColor'] as String : null;
-    final metaColorScheme =
-        probe['metaColorScheme'] is String ? probe['metaColorScheme'] as String : null;
+    final metaColorScheme = probe['metaColorScheme'] is String
+        ? probe['metaColorScheme'] as String
+        : null;
     final colorScheme =
         probe['colorScheme'] is String ? probe['colorScheme'] as String : null;
     final textColor =
@@ -767,16 +775,14 @@ class _BrowserPageState extends State<BrowserPage>
         _parseCssColor(bg) ??
         _parseCssColor(themeColor);
     if (color != null) {
-      final brightness = color.computeLuminance() < 0.5
-          ? Brightness.dark
-          : Brightness.light;
+      final brightness =
+          color.computeLuminance() < 0.5 ? Brightness.dark : Brightness.light;
       return _ThemeTone(brightness: brightness, seedColor: color);
     }
     final text = _parseCssColor(textColor);
     if (text != null) {
-      final brightness = text.computeLuminance() < 0.5
-          ? Brightness.light
-          : Brightness.dark;
+      final brightness =
+          text.computeLuminance() < 0.5 ? Brightness.light : Brightness.dark;
       return _ThemeTone(brightness: brightness);
     }
     return null;
@@ -882,6 +888,39 @@ class _BrowserPageState extends State<BrowserPage>
   }
 
   TabData get activeTab => tabs[tabController.index];
+
+  bool _isAllowedNavigationUrl(String url) {
+    final uri = Uri.tryParse(url);
+    if (uri == null) return false;
+    return _allowedNavigationSchemes.contains(uri.scheme.toLowerCase());
+  }
+
+  void _logBlockedNavigation(TabData tab, String requestedUrl) {
+    final currentTabIndex = tabs.indexOf(tab);
+    logger.w(jsonEncode({
+      'event': 'blocked_scheme',
+      'requested_url': requestedUrl,
+      'current_url': tab.currentUrl,
+      'tab_index': currentTabIndex,
+      'timestamp': DateTime.now().toIso8601String(),
+    }));
+  }
+
+  bool _shouldIgnoreWebResourceError(WebResourceError error) {
+    // Subresource failures should not replace the full page with an error view.
+    if (error.isForMainFrame == false) {
+      return true;
+    }
+    // These codes/messages commonly occur for interrupted provisional
+    // navigations during back/forward/reload and are not user-visible failures.
+    if (error.errorCode == -999 || error.errorCode == -3) {
+      return true;
+    }
+    final description = error.description.toLowerCase();
+    return description.contains('cancelled') ||
+        description.contains('canceled') ||
+        description.contains('interrupted');
+  }
 
   bool _isDownloadUrl(String url) {
     final uri = Uri.tryParse(url);
@@ -1917,6 +1956,10 @@ class _BrowserPageState extends State<BrowserPage>
           });
         },
         onNavigationRequest: (request) {
+          if (!_isAllowedNavigationUrl(request.url)) {
+            _logBlockedNavigation(tab, request.url);
+            return NavigationDecision.prevent;
+          }
           if (_isDownloadUrl(request.url)) {
             _downloadFile(request.url);
             return NavigationDecision.prevent;
@@ -1930,6 +1973,12 @@ class _BrowserPageState extends State<BrowserPage>
           return NavigationDecision.navigate;
         },
         onWebResourceError: (error) {
+          if (_shouldIgnoreWebResourceError(error)) {
+            quietLogger.w(
+              'Ignoring benign web resource error: ${error.errorCode} ${error.description}',
+            );
+            return;
+          }
           _handleLoadError(tab, error.description);
         },
         onHttpError: (error) {
