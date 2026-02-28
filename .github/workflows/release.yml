@@ -83,8 +83,17 @@ jobs:
           APP_BUNDLE_ID: ${{ secrets.MACOS_APP_BUNDLE_ID }}
         run: flutter build macos --release 2>&1 | grep -v -E "(firebase_core|firebase_auth|firebase_app_check).*warning"
 
+      - name: Check if certificate is available
+        id: check-cert
+        run: |
+          if [ -n "${{ secrets.MACOS_CERTIFICATE }}" ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Import signing certificate
-        if: secrets.MACOS_CERTIFICATE != ''
+        if: steps.check-cert.outputs.available == 'true'
         env:
           MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
           MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
@@ -107,7 +116,7 @@ jobs:
           MACOS_CODE_SIGN_IDENTITY: ${{ secrets.MACOS_CODE_SIGN_IDENTITY }}
         run: |
           chmod +x ./scripts/macos_release_dmg.sh
-          if [ "${{ secrets.MACOS_CERTIFICATE }}" != "" ] && ./scripts/macos_release_dmg.sh; then
+          if [ "${{ steps.check-cert.outputs.available }}" == "true" ] && ./scripts/macos_release_dmg.sh; then
             echo "status=success" >> "$GITHUB_OUTPUT"
           else
             echo "Trying unsigned build..."
