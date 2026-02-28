@@ -12,6 +12,10 @@ on:
     tags:
       - 'desktop/app-*'
   workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to release (e.g., desktop/app-1.2.2)'
+        required: true
 
 permissions:
   contents: write
@@ -42,6 +46,32 @@ jobs:
             echo "FIREBASE_PROJECT_ID=dummy_project_id"
             echo "FIREBASE_STORAGE_BUCKET=dummy_bucket"
           } > .env
+
+      - name: Create dummy GoogleService-Info.plist
+        run: |
+          mkdir -p macos/Runner
+          cat > macos/Runner/GoogleService-Info.plist << 'EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>CLIENT_ID</key><string>dummy</string>
+            <key>REVERSED_CLIENT_ID</key><string>com.google.ReverseClientId</string>
+            <key>API_KEY</key><string>dummy</string>
+            <key>GCM_SENDER_ID</key><string>123456789</string>
+            <key>PLIST_VERSION</key><string>1</string>
+            <key>BUNDLE_ID</key><string>com.example.browser</string>
+            <key>PROJECT_ID</key><string>dummy-project</string>
+            <key>STORAGE_BUCKET</key><string>dummy-project.appspot.com</string>
+            <key>IS_ADS_ENABLED</key><false/>
+            <key>IS_ANALYTICS_ENABLED</key><false/>
+            <key>IS_APPINVITE_ENABLED</key><true/>
+            <key>IS_GCM_ENABLED</key><true/>
+            <key>IS_SIGNIN_ENABLED</key><true/>
+            <key>GOOGLE_APP_ID</key><string>1:123456789:ios:abcdef</string>
+          </dict>
+          </plist>
+          EOF
 
       - name: Build generated files
         run: flutter pub run build_runner build
@@ -84,15 +114,16 @@ jobs:
 
       - name: Upload release asset
         id: upload
-        if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/') || inputs.tag != ''
         uses: softprops/action-gh-release@v2
         with:
           files: build/macos/Build/Products/Release/browser.dmg
           generate_release_notes: false
+          tag_name: ${{ github.event.inputs.tag || github.ref }}
         continue-on-error: true
 
       - name: Verify upload
-        if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/') || inputs.tag != ''
         run: |
           if [[ ! -f build/macos/Build/Products/Release/browser.dmg ]]; then
             echo "Error: DMG file not found after upload attempt"
