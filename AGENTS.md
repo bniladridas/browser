@@ -78,6 +78,58 @@ Follow the repository's pre-commit hooks for commit messages:
 
 Agents must adhere to these rules to pass CI checks. Do not use --no-verify or bypass hooks; fix issues to ensure code quality.
 
+## Version Bump PR Template
+
+When creating version bump PRs (e.g., `version-bump-X.Y.Z` branch):
+
+1. Get the PR number from the branch name or the automated version bump:
+   ```bash
+   gh pr list --head <branch-name> --json number,title
+   ```
+
+2. Find all PRs merged since the last version by checking `git log --oneline main` to identify PRs merged after the previous version tag.
+
+3. Categorize changes using the release template format:
+   - **What's New**: New features (feat PRs)
+   - **Bug Fixes**: Fix PRs
+   - **Documentation**: Docs and readme PRs
+   - **Maintenance**: Chore PRs (licenses, cleanup)
+
+4. Update the PR description:
+   ```bash
+   gh pr edit <pr-number> --body "$(cat <<'EOF'
+   ## Summary
+   - Automated version bump to X.Y.Z after merging PR #<previous-pr>
+
+   ## What's New
+   - #<pr-number> - <type>[<scope>]: <description>
+
+   ## Bug Fixes
+   - #<pr-number> - <type>[<scope>]: <description>
+
+   ## Documentation
+   - #<pr-number> - <type>[<scope>]: <description>
+
+   ## Maintenance
+   - #<pr-number> - <type>[<scope>]: <description>
+
+   ## Impact
+   - [x] Build / CI
+   - [x] Refactor / cleanup
+   - [x] Documentation
+
+   ## Related Items
+   - Resolves issues: #<pr-number>
+   - Merged PRs: #<pr1>, #<pr2>, ...
+
+   ## Notes for reviewers
+   - This is an automated version bump PR following the release template format.
+   EOF
+   )"
+   ```
+
+This ensures version bump PRs have high-quality descriptions that track all changes since the last release.
+
 ## Workflow Creation
 
 When creating GitHub Actions workflows:
