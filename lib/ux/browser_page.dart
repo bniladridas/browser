@@ -2087,6 +2087,11 @@ class _BrowserPageState extends State<BrowserPage>
           final data = jsonDecode(message.message) as Map<String, dynamic>;
           final credentials = LoginCredentials.fromJson(data);
 
+          // Verify origin matches current tab URL to prevent spoofing
+          final tabUri = Uri.parse(tab.currentUrl);
+          final credentialUri = Uri.parse(credentials.origin);
+          if (tabUri.origin != credentialUri.origin) return;
+
           final policy = SitePasswordPolicy(prefs: prefs);
           if (await policy.isNeverSave(credentials.origin)) return;
 

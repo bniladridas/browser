@@ -55,5 +55,9 @@ void main() {
     test('should use MutationObserver for dynamic forms', () {
       expect(loginDetectionScript.contains('MutationObserver'), true);
     });
+
+    test('should send origin from window.location.origin', () {
+      expect(loginDetectionScript.contains('window.location.origin'), true);
+    });
   });
 }
