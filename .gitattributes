@@ -14,6 +14,9 @@ linux/** linguist-generated
 macos/** linguist-generated
 windows/** linguist-generated
 
+# Screenshot assets (binary)
+assets/screenshots/** binary
+
 # Dependency lock files (optional, to reduce noise)
 pubspec.lock linguist-generated
 
