@@ -224,7 +224,7 @@ class SettingsDialog extends HookWidget {
             ),
             SwitchListTile(
               title: const Text('Password Manager'),
-              subtitle: const Text('Save and autofill passwords'),
+              subtitle: const Text('Save passwords'),
               value: passwordManagerEnabled.value,
               onChanged: (value) => passwordManagerEnabled.value = value,
             ),

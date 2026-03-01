@@ -45,19 +45,19 @@ class SavePasswordPrompt extends StatelessWidget {
               style: Theme.of(context).textTheme.bodyMedium,
             ),
             const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
+            Wrap(
+              alignment: WrapAlignment.end,
+              spacing: 8,
+              runSpacing: 8,
               children: [
                 TextButton(
                   onPressed: () => onAction(SavePasswordAction.neverForSite),
                   child: const Text('Never for this site'),
                 ),
-                const SizedBox(width: 8),
                 TextButton(
                   onPressed: () => onAction(SavePasswordAction.notNow),
                   child: const Text('Not now'),
                 ),
-                const SizedBox(width: 8),
                 FilledButton(
                   onPressed: () => onAction(SavePasswordAction.save),
                   child: const Text('Save'),

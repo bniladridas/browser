@@ -42,6 +42,14 @@ void main() {
       expect(await policy.isNeverSave('https://test.com'), true);
       expect(await policy.isNeverSave('https://other.com'), false);
     });
+
+    test('should canonicalize origins with paths and trailing slashes',
+        () async {
+      await policy.setNeverSave('https://example.com/login');
+      expect(await policy.isNeverSave('https://example.com'), true);
+      expect(await policy.isNeverSave('https://example.com/'), true);
+      expect(await policy.isNeverSave('https://example.com/other'), true);
+    });
   });
 
   group('SavePasswordPromptData', () {

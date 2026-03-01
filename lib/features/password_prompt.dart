@@ -14,16 +14,24 @@ class SitePasswordPolicy {
   static const String _neverSavePrefix = 'password_never_save:';
   final SharedPreferences _prefs;
 
+  String _canonicalOrigin(String origin) {
+    final uri = Uri.parse(origin);
+    return uri.origin;
+  }
+
   Future<void> setNeverSave(String origin) async {
-    await _prefs.setBool('$_neverSavePrefix$origin', true);
+    final canonical = _canonicalOrigin(origin);
+    await _prefs.setBool('$_neverSavePrefix$canonical', true);
   }
 
   Future<bool> isNeverSave(String origin) async {
-    return _prefs.getBool('$_neverSavePrefix$origin') ?? false;
+    final canonical = _canonicalOrigin(origin);
+    return _prefs.getBool('$_neverSavePrefix$canonical') ?? false;
   }
 
   Future<void> clearNeverSave(String origin) async {
-    await _prefs.remove('$_neverSavePrefix$origin');
+    final canonical = _canonicalOrigin(origin);
+    await _prefs.remove('$_neverSavePrefix$canonical');
   }
 }
 
