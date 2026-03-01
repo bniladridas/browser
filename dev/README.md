@@ -6,15 +6,15 @@ This directory contains tools and configurations for development.
 
 1. Install Flutter: https://flutter.dev/docs/get-started/install
 2. Clone the repo
-3. Run `./scripts/e2e.sh` for e2e tests
-4. Run `./scripts/test.sh` for unit tests
+3. Run `./check.sh` for the full suite (codegen, analyze, unit test, macOS build, workflow lint)
+4. Use the scripts listed below when you need a smaller scope
 
 ## Scripts
 
 - `scripts/version.sh`: Bump version
 - `scripts/pubspec.sh`: Update pubspec
 - `scripts/e2e.sh`: Run e2e tests
-- `scripts/test.sh`: Run version tests
+- `scripts/test.sh`: Run unit tests
 
 ## Workflows
 
