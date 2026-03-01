@@ -43,6 +43,14 @@ jobs:
           name: Get Dependencies
           command: flutter pub get
 
+      - run:
+          name: Create .env file
+          command: |
+            echo "FIREBASE_API_KEY=test" > .env
+            echo "FIREBASE_PROJECT_ID=test" >> .env
+            echo "FIREBASE_APP_ID=test" >> .env
+            echo "FIREBASE_MESSAGING_SENDER_ID=test" >> .env
+
       - save_flutter_cache
 
       - run:
