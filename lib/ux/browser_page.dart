@@ -122,6 +122,7 @@ class SettingsDialog extends HookWidget {
     final originalPrivateBrowsing = useRef<bool?>(null);
     final adBlocking = useState(false);
     final strictMode = useState(false);
+    final passwordManagerEnabled = useState(false);
     final selectedTheme =
         useState<AppThemeMode>(currentTheme ?? AppThemeMode.system);
     final homepageController = useTextEditingController();
@@ -144,6 +145,8 @@ class SettingsDialog extends HookWidget {
         originalPrivateBrowsing.value = privateBrowsing.value;
         adBlocking.value = prefs.getBool(adBlockingKey) ?? false;
         strictMode.value = prefs.getBool(strictModeKey) ?? false;
+        passwordManagerEnabled.value =
+            prefs.getBool(passwordManagerEnabledKey) ?? false;
         if (prefs.getString(themeModeKey) != null) {
           selectedTheme.value = AppThemeMode.values.firstWhere(
               (m) => m.name == prefs.getString(themeModeKey),
@@ -218,6 +221,12 @@ class SettingsDialog extends HookWidget {
                   const Text('Disable JavaScript and third-party cookies'),
               value: strictMode.value,
               onChanged: (value) => strictMode.value = value,
+            ),
+            SwitchListTile(
+              title: const Text('Password Manager'),
+              subtitle: const Text('Save and autofill passwords'),
+              value: passwordManagerEnabled.value,
+              onChanged: (value) => passwordManagerEnabled.value = value,
             ),
             DropdownButton<AppThemeMode>(
               value: selectedTheme.value,
@@ -296,6 +305,8 @@ class SettingsDialog extends HookWidget {
             await prefs.setBool(privateBrowsingKey, privateBrowsing.value);
             await prefs.setBool(adBlockingKey, adBlocking.value);
             await prefs.setBool(strictModeKey, strictMode.value);
+            await prefs.setBool(
+                passwordManagerEnabledKey, passwordManagerEnabled.value);
             await prefs.setString(themeModeKey, selectedTheme.value.name);
 
             onSettingsChanged?.call();
