@@ -5,6 +5,7 @@
 // found in the LICENSE file.
 
 import 'package:flutter/material.dart';
+import '../utils/string_utils.dart';
 
 enum SavePasswordAction {
   save,
@@ -40,7 +41,7 @@ class SavePasswordPrompt extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Save password for $username on $origin?',
+              'Save password for ${username.truncate(30)} on ${origin.truncate(40)}?',
               style: Theme.of(context).textTheme.bodyMedium,
             ),
             const SizedBox(height: 16),
