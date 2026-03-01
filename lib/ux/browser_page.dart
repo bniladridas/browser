@@ -2436,7 +2436,7 @@ class _BrowserPageState extends State<BrowserPage>
         if (event is KeyDownEvent) {
           final isCommandOrControl = (defaultTargetPlatform == TargetPlatform.macOS && HardwareKeyboard.instance.isMetaPressed) ||
               (defaultTargetPlatform != TargetPlatform.macOS && HardwareKeyboard.instance.isControlPressed);
-          
+
           if (isCommandOrControl) {
             if (event.logicalKey == LogicalKeyboardKey.keyT) {
               _addNewTab();
