@@ -46,6 +46,10 @@ jobs:
       - save_flutter_cache
 
       - run:
+          name: Generate Code
+          command: flutter pub run build_runner build --delete-conflicting-outputs
+
+      - run:
           name: Static Analysis
           command: flutter analyze --fatal-infos
 
