@@ -53,7 +53,8 @@ PODS:
     - FirebaseCore (~> 12.8.0)
   - FirebaseCoreInternal (12.8.0):
     - "GoogleUtilities/NSData+zlib (~> 8.1)"
-  - flutter_secure_storage_macos (6.1.3):
+  - flutter_secure_storage_darwin (10.0.0):
+    - Flutter
     - FlutterMacOS
   - FlutterMacOS (1.0.0)
   - GoogleUtilities/AppDelegateSwizzler (8.1.0):
@@ -99,7 +100,7 @@ DEPENDENCIES:
   - firebase_app_check (from `Flutter/ephemeral/.symlinks/plugins/firebase_app_check/macos`)
   - firebase_auth (from `Flutter/ephemeral/.symlinks/plugins/firebase_auth/macos`)
   - firebase_core (from `Flutter/ephemeral/.symlinks/plugins/firebase_core/macos`)
-  - flutter_secure_storage_macos (from `Flutter/ephemeral/.symlinks/plugins/flutter_secure_storage_macos/macos`)
+  - flutter_secure_storage_darwin (from `Flutter/ephemeral/.symlinks/plugins/flutter_secure_storage_darwin/darwin`)
   - FlutterMacOS (from `Flutter/ephemeral`)
   - screen_retriever_macos (from `Flutter/ephemeral/.symlinks/plugins/screen_retriever_macos/macos`)
   - shared_preferences_foundation (from `Flutter/ephemeral/.symlinks/plugins/shared_preferences_foundation/darwin`)
@@ -132,8 +133,8 @@ EXTERNAL SOURCES:
     :path: Flutter/ephemeral/.symlinks/plugins/firebase_auth/macos
   firebase_core:
     :path: Flutter/ephemeral/.symlinks/plugins/firebase_core/macos
-  flutter_secure_storage_macos:
-    :path: Flutter/ephemeral/.symlinks/plugins/flutter_secure_storage_macos/macos
+  flutter_secure_storage_darwin:
+    :path: Flutter/ephemeral/.symlinks/plugins/flutter_secure_storage_darwin/darwin
   FlutterMacOS:
     :path: Flutter/ephemeral
   screen_retriever_macos:
@@ -147,7 +148,7 @@ EXTERNAL SOURCES:
 
 SPEC CHECKSUMS:
   AppCheckCore: cc8fd0a3a230ddd401f326489c99990b013f0c4f
-  desktop_drop: e0b672a7d84c0a6cbc378595e82cdb15f2970a43
+  desktop_drop: 10a3e6a7fa9dbe350541f2574092fecfa345a07b
   file_selector_macos: 9e9e068e90ebee155097d00e89ae91edb2374db7
   Firebase: 9a58fdbc9d8655ed7b79a19cf9690bb007d3d46d
   firebase_app_check: daf97f2d7044e28b68d23bc90e16751acee09732
@@ -160,7 +161,7 @@ SPEC CHECKSUMS:
   FirebaseCore: 0dbad74bda10b8fb9ca34ad8f375fb9dd3ebef7c
   FirebaseCoreExtension: 6605938d51f765d8b18bfcafd2085276a252bee2
   FirebaseCoreInternal: fe5fa466aeb314787093a7dce9f0beeaad5a2a21
-  flutter_secure_storage_macos: 7f45e30f838cf2659862a4e4e3ee1c347c2b3b54
+  flutter_secure_storage_darwin: acdb3f316ed05a3e68f856e0353b133eec373a23
   FlutterMacOS: d0db08ddef1a9af05a5ec4b724367152bb0500b1
   GoogleUtilities: 00c88b9a86066ef77f0da2fab05f65d7768ed8e1
   GTMSessionFetcher: b8ab00db932816e14b0a0664a08cb73dda6d164b
