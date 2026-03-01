@@ -17,6 +17,14 @@ Keep entries short and dated when useful.
 - Do not bypass hooks (no `--no-verify`).
 - Keep docs concise and action-oriented.
 
+## Search Suggestions
+
+- When a search or keystroke yields no results, show a nearest-match hint so users know what to try next.
+
+## Command Guidance
+
+- Prefer `apply_patch` for file edits, especially when patching is the only change; `exec_command` caused the warning that prompted this update.
+
 ## Do / Don't
 
 Do:
