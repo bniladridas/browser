@@ -99,7 +99,7 @@ When creating version bump PRs (e.g., `version-bump-X.Y.Z` branch):
    gh pr list --head <branch-name> --json number,title
    ```
 
-2. Find all PRs merged since the last version by checking `git log --oneline main` to identify PRs merged after the previous version tag.
+2. Find all PRs merged since the last version bump PR by checking `git log --oneline main` to identify PRs merged after the previous version bump PR (e.g., #240 for version-bump-1.2.4 -> #261).
 
 3. Categorize changes using the release template format:
    - **What's New**: New features (feat PRs)
