@@ -193,6 +193,28 @@
         "completeUnimported": true
       },
       "request_timeout_secs": 60
+    },
+    "dart": {
+      "name": "dart_language_server",
+      "command": "dart_language_server",
+      "args": [
+        "--lsp"
+      ],
+      "file_extensions": [
+        "dart"
+      ],
+      "project_patterns": [
+        "pubspec.yaml"
+      ],
+      "exclude_patterns": [
+        "**/.dart_tool/**",
+        "**/build/**"
+      ],
+      "multi_workspace": false,
+      "initialization_options": {
+        "closingLabels": true
+      },
+      "request_timeout_secs": 60
     }
   }
 }
