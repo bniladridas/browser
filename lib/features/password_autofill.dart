@@ -48,16 +48,16 @@ class PasswordAutofillService {
     if (!passwordField) return;
 
     const usernameField = form.querySelector('input[type="email"], input[type="text"], input[name*="user"], input[name*="email"], input[id*="user"], input[id*="email"]');
-    
+
     if (usernameField && passwordField) {
       usernameField.value = '$escapedUsername';
       passwordField.value = '$escapedPassword';
-      
+
       usernameField.dispatchEvent(new Event('input', { bubbles: true }));
       usernameField.dispatchEvent(new Event('change', { bubbles: true }));
       passwordField.dispatchEvent(new Event('input', { bubbles: true }));
       passwordField.dispatchEvent(new Event('change', { bubbles: true }));
-      
+
       filled = true;
     }
   });
@@ -67,4 +67,3 @@ class PasswordAutofillService {
 ''';
   }
 }
-
