@@ -2104,8 +2104,9 @@ class _BrowserPageState extends State<BrowserPage>
               );
             });
           }
-        } catch (e) {
-          // Ignore malformed messages
+        } catch (e, s) {
+          logger.w('Failed to parse login credentials from JS',
+              error: e, stackTrace: s);
         }
       });
       tab.webViewController!.setNavigationDelegate(NavigationDelegate(
