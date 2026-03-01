@@ -2456,7 +2456,11 @@ class _BrowserPageState extends State<BrowserPage>
         const SingleActivator(LogicalKeyboardKey.arrowRight, alt: true):
             GoForwardIntent(),
       },
-      child: Actions(
+      child: FocusableActionDetector(
+        autofocus: true,
+        shortcuts: const {},
+        actions: const {},
+        child: Actions(
         actions: {
           FocusUrlIntent: CallbackAction<FocusUrlIntent>(
             onInvoke: (intent) => activeTab.urlFocusNode.requestFocus(),
@@ -2680,6 +2684,7 @@ class _BrowserPageState extends State<BrowserPage>
           ),
         ),
       ),
+    ),
     );
   }
 }
