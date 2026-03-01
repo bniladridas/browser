@@ -2429,7 +2429,34 @@ class _BrowserPageState extends State<BrowserPage>
             ),
           );
 
-    return Shortcuts(
+    return KeyboardListener(
+      focusNode: FocusNode(),
+      autofocus: true,
+      onKeyEvent: (event) {
+        if (event is KeyDownEvent) {
+          final isCommandOrControl = (defaultTargetPlatform == TargetPlatform.macOS && HardwareKeyboard.instance.isMetaPressed) ||
+              (defaultTargetPlatform != TargetPlatform.macOS && HardwareKeyboard.instance.isControlPressed);
+          
+          if (isCommandOrControl) {
+            if (event.logicalKey == LogicalKeyboardKey.keyT) {
+              _addNewTab();
+            } else if (event.logicalKey == LogicalKeyboardKey.keyW) {
+              _closeTab(tabController.index);
+            } else if (event.logicalKey == LogicalKeyboardKey.keyL) {
+              activeTab.urlFocusNode.requestFocus();
+            } else if (event.logicalKey == LogicalKeyboardKey.keyR) {
+              _refresh();
+            }
+          } else if (HardwareKeyboard.instance.isAltPressed) {
+            if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
+              _goBack();
+            } else if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
+              _goForward();
+            }
+          }
+        }
+      },
+      child: Shortcuts(
       shortcuts: {
         SingleActivator(LogicalKeyboardKey.keyL,
                 control: defaultTargetPlatform != TargetPlatform.macOS,
@@ -2684,6 +2711,7 @@ class _BrowserPageState extends State<BrowserPage>
           ),
         ),
       ),
+    ),
     ),
     );
   }
