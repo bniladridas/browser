@@ -37,6 +37,7 @@ import '../utils/string_utils.dart';
 import 'package:pkg/ai_chat_widget.dart';
 import 'network_debug_dialog.dart';
 import 'save_password_prompt.dart';
+import 'password_vault_screen.dart';
 
 const _userAgents = {
   TargetPlatform.macOS: {
@@ -233,6 +234,21 @@ class SettingsDialog extends HookWidget {
               value: passwordManagerEnabled.value,
               onChanged: (value) => passwordManagerEnabled.value = value,
             ),
+            if (passwordManagerEnabled.value)
+              ListTile(
+                leading: const Icon(Icons.lock),
+                title: const Text('Manage Passwords'),
+                subtitle: const Text('View and delete saved passwords'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => const PasswordVaultScreen(),
+                    ),
+                  );
+                },
+              ),
             DropdownButton<AppThemeMode>(
               value: selectedTheme.value,
               onChanged: (AppThemeMode? value) {
