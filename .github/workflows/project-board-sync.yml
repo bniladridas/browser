@@ -1,0 +1,29 @@
+---
+# SPDX-License-Identifier: MIT
+#
+# Copyright 2026 bniladridas. All rights reserved.
+# Use of this source code is governed by a MIT license that can be
+# found in the LICENSE file.
+
+name: Add Items To Project
+
+on:
+  issues:
+    types: [opened, reopened]
+  pull_request:
+    types: [opened, reopened]
+
+jobs:
+  add-to-project:
+    runs-on: ubuntu-latest
+    if: github.repository_owner == 'bniladridas'
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+    steps:
+      - name: Add issue or PR to project
+        uses: actions/add-to-project@v1
+        with:
+          project-url: https://github.com/users/bniladridas/projects/10
+          github-token: ${{ secrets.ADD_TO_PROJECT_PAT }}
