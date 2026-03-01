@@ -26,6 +26,7 @@ import '../features/theme_utils.dart';
 import '../features/bookmark_manager.dart';
 import '../features/password_prompt.dart';
 import '../features/password_storage.dart';
+import '../features/password_autofill.dart';
 import '../features/login_detection.dart';
 import '../browser_state.dart';
 
@@ -1037,6 +1038,38 @@ class _BrowserPageState extends State<BrowserPage>
       case SavePasswordAction.notNow:
         // Do nothing, just dismiss
         break;
+    }
+  }
+
+  Future<void> _attemptAutofill(TabData tab) async {
+    if (widget.privateBrowsing) return;
+
+    final prefs = await SharedPreferences.getInstance();
+    final passwordManagerEnabled =
+        prefs.getBool(passwordManagerEnabledKey) ?? false;
+    if (!passwordManagerEnabled) return;
+
+    try {
+      // Get actual URL from WebView controller, not tab.currentUrl (can be spoofed)
+      if (tab.webViewController == null || tab.isClosed) return;
+      final actualUrl = await tab.webViewController!.currentUrl();
+      if (actualUrl == null) return;
+
+      final autofillService = PasswordAutofillService();
+      final matches = await autofillService.getMatchingCredentials(actualUrl);
+
+      if (matches.isEmpty) return;
+
+      // Use the most recently updated credential
+      final credential = matches.first;
+      final script = autofillService.generateAutofillScript(
+        credential.username,
+        credential.password,
+      );
+
+      await tab.webViewController!.runJavaScript(script);
+    } catch (e, s) {
+      logger.w('Failed to autofill credentials', error: e, stackTrace: s);
     }
   }
 
@@ -2162,6 +2195,8 @@ class _BrowserPageState extends State<BrowserPage>
           ''');
             // Inject login detection script
             tab.webViewController!.runJavaScript(loginDetectionScript);
+            // Attempt autofill if credentials available
+            _attemptAutofill(tab);
           }
           _updateThemeFromTab(tab);
           Future.delayed(const Duration(milliseconds: 400), () {
