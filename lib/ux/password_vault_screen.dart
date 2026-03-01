@@ -6,25 +6,40 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'dart:async';
 import '../features/password_storage.dart';
+import '../logging/logger.dart';
 
 class PasswordVaultScreen extends StatefulWidget {
-  const PasswordVaultScreen({super.key});
+  const PasswordVaultScreen({
+    super.key,
+    PasswordStorageRepository? repository,
+  }) : _repository = repository;
+
+  final PasswordStorageRepository? _repository;
 
   @override
   State<PasswordVaultScreen> createState() => _PasswordVaultScreenState();
 }
 
 class _PasswordVaultScreenState extends State<PasswordVaultScreen> {
-  final _repository = PasswordStorageRepository();
+  late final PasswordStorageRepository _repository;
   List<PasswordCredential> _credentials = [];
   bool _loading = true;
   String _searchQuery = '';
+  Timer? _debounce;
 
   @override
   void initState() {
     super.initState();
+    _repository = widget._repository ?? PasswordStorageRepository();
     _loadCredentials();
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadCredentials() async {
@@ -37,7 +52,8 @@ class _PasswordVaultScreenState extends State<PasswordVaultScreen> {
           _loading = false;
         });
       }
-    } catch (e) {
+    } catch (e, s) {
+      logger.e('Failed to load credentials', error: e, stackTrace: s);
       if (mounted) {
         setState(() => _loading = false);
       }
@@ -148,7 +164,12 @@ class _PasswordVaultScreenState extends State<PasswordVaultScreen> {
                 prefixIcon: Icon(Icons.search),
                 border: OutlineInputBorder(),
               ),
-              onChanged: (value) => setState(() => _searchQuery = value),
+              onChanged: (value) {
+                if (_debounce?.isActive ?? false) _debounce!.cancel();
+                _debounce = Timer(const Duration(milliseconds: 300), () {
+                  setState(() => _searchQuery = value);
+                });
+              },
             ),
           ),
           Expanded(
