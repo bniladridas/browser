@@ -121,10 +121,10 @@ a:hover { color: #444; }
 
 @media (max-width: 768px) {
   .sidebar { display: none !important; }
-  .sidebar-toggle { 
-    display: flex !important; 
-    left: 0.75rem !important; 
-    top: 0.75rem !important; 
+  .sidebar-toggle {
+    display: flex !important;
+    left: 0.75rem !important;
+    top: 0.75rem !important;
   }
   body:not(.sidebar-hidden) .sidebar-toggle {
     left: 0.75rem !important;
