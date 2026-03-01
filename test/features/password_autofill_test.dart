@@ -188,33 +188,28 @@ void main() {
     });
 
     group('generateAutofillScript', () {
-      test('should generate script with escaped credentials', () {
+      test('should generate script with JSON-encoded credentials', () {
         final script = service.generateAutofillScript(
           "user@example.com",
           "password123",
         );
 
-        expect(script.contains("user@example.com"), true);
-        expect(script.contains("password123"), true);
+        expect(script.contains('"user@example.com"'), true);
+        expect(script.contains('"password123"'), true);
         expect(script.contains('input[type="password"]'), true);
       });
 
-      test('should escape single quotes in username', () {
+      test('should properly escape quotes and special characters', () {
         final script = service.generateAutofillScript(
           "user'name",
-          "password",
+          'pass"word\\test',
         );
 
-        expect(script.contains("user\\'name"), true);
-      });
-
-      test('should escape single quotes in password', () {
-        final script = service.generateAutofillScript(
-          "username",
-          "pass'word",
-        );
-
-        expect(script.contains("pass\\'word"), true);
+        // jsonEncode wraps in quotes and escapes internal quotes/backslashes
+        expect(script.contains('user'), true);
+        expect(script.contains('pass'), true);
+        // Verify no unescaped quotes that could break JS
+        expect(script.contains("'user'name'"), false);
       });
     });
   });

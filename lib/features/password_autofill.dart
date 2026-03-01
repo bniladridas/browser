@@ -4,6 +4,7 @@
 // Use of this source code is governed by a MIT license that can be
 // found in the LICENSE file.
 
+import 'dart:convert';
 import 'password_storage.dart';
 
 class PasswordAutofillService {
@@ -33,8 +34,9 @@ class PasswordAutofillService {
   }
 
   String generateAutofillScript(String username, String password) {
-    final escapedUsername = username.replaceAll("'", "\\'");
-    final escapedPassword = password.replaceAll("'", "\\'");
+    // Use jsonEncode for proper escaping of all special characters
+    final escapedUsername = jsonEncode(username);
+    final escapedPassword = jsonEncode(password);
 
     return '''
 (function() {
@@ -50,8 +52,8 @@ class PasswordAutofillService {
     const usernameField = form.querySelector('input[type="email"], input[type="text"], input[name*="user"], input[name*="email"], input[id*="user"], input[id*="email"]');
 
     if (usernameField && passwordField) {
-      usernameField.value = '$escapedUsername';
-      passwordField.value = '$escapedPassword';
+      usernameField.value = $escapedUsername;
+      passwordField.value = $escapedPassword;
 
       usernameField.dispatchEvent(new Event('input', { bubbles: true }));
       usernameField.dispatchEvent(new Event('change', { bubbles: true }));

@@ -1050,10 +1050,13 @@ class _BrowserPageState extends State<BrowserPage>
     if (!passwordManagerEnabled) return;
 
     try {
+      // Get actual URL from WebView controller, not tab.currentUrl (can be spoofed)
+      if (tab.webViewController == null || tab.isClosed) return;
+      final actualUrl = await tab.webViewController!.currentUrl();
+      if (actualUrl == null) return;
+
       final autofillService = PasswordAutofillService();
-      final matches = await autofillService.getMatchingCredentials(
-        tab.currentUrl,
-      );
+      final matches = await autofillService.getMatchingCredentials(actualUrl);
 
       if (matches.isEmpty) return;
 
@@ -1064,9 +1067,7 @@ class _BrowserPageState extends State<BrowserPage>
         credential.password,
       );
 
-      if (tab.webViewController != null && !tab.isClosed) {
-        await tab.webViewController!.runJavaScript(script);
-      }
+      await tab.webViewController!.runJavaScript(script);
     } catch (e, s) {
       logger.w('Failed to autofill credentials', error: e, stackTrace: s);
     }
