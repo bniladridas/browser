@@ -1,3 +1,9 @@
+# SPDX-License-Identifier: MIT
+#
+# Copyright 2026 bniladridas.
+# Use of this source code is governed by a MIT license
+# found in the LICENSE file.
+
 version: 2.1
 
 executors:
@@ -48,6 +54,12 @@ jobs:
           command: flutter test --no-pub --coverage
 
 workflows:
+  # Runs on every push
+  on_push:
+    jobs:
+      - daily_maintenance
+
+  # Runs daily on schedule
   daily_maintenance:
     triggers:
       - schedule:
