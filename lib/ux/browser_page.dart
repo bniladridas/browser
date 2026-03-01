@@ -34,6 +34,7 @@ import '../features/video_manager.dart';
 import '../logging/logger.dart';
 import '../logging/network_monitor.dart';
 import '../utils/string_utils.dart';
+import '../utils/platform_utils.dart';
 import 'package:pkg/ai_chat_widget.dart';
 import 'network_debug_dialog.dart';
 import 'save_password_prompt.dart';
@@ -353,6 +354,12 @@ class RefreshIntent extends Intent {}
 class GoBackIntent extends Intent {}
 
 class GoForwardIntent extends Intent {}
+
+class NewTabIntent extends Intent {}
+
+class CloseTabIntent extends Intent {}
+
+class NewWindowIntent extends Intent {}
 
 class TabData {
   String currentUrl;
@@ -700,6 +707,7 @@ class _BrowserPageState extends State<BrowserPage>
   final Set<String> _pendingHeaderChecks = {};
   double _titleBarHeight = 0;
   bool _dragging = false;
+  final FocusNode _keyboardFocusNode = FocusNode();
 
   static const String _themeProbeScript = '''
 (() => {
@@ -1367,6 +1375,7 @@ class _BrowserPageState extends State<BrowserPage>
 
   @override
   void dispose() {
+    _keyboardFocusNode.dispose();
     for (final tab in tabs) {
       tab.urlController.dispose();
       tab.urlFocusNode.dispose();
@@ -2423,28 +2432,88 @@ class _BrowserPageState extends State<BrowserPage>
             ),
           );
 
-    return Shortcuts(
+    return KeyboardListener(
+      focusNode: _keyboardFocusNode,
+      autofocus: true,
+      onKeyEvent: (event) {
+        if (event is KeyDownEvent) {
+          final isCommandOrControl = (isCommandKey && HardwareKeyboard.instance.isMetaPressed) ||
+              (isControlKey && HardwareKeyboard.instance.isControlPressed);
+
+          if (isCommandOrControl) {
+            if (event.logicalKey == LogicalKeyboardKey.keyT) {
+              _addNewTab();
+            } else if (event.logicalKey == LogicalKeyboardKey.keyW) {
+              _closeTab(tabController.index);
+            } else if (event.logicalKey == LogicalKeyboardKey.keyL) {
+              activeTab.urlFocusNode.requestFocus();
+            } else if (event.logicalKey == LogicalKeyboardKey.keyR) {
+              _refresh();
+            }
+          } else if (HardwareKeyboard.instance.isAltPressed) {
+            if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
+              _goBack();
+            } else if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
+              _goForward();
+            }
+          }
+        }
+      },
+      child: Shortcuts(
       shortcuts: {
         SingleActivator(LogicalKeyboardKey.keyL,
-                control: defaultTargetPlatform != TargetPlatform.macOS,
-                meta: defaultTargetPlatform == TargetPlatform.macOS):
+                control: isControlKey,
+                meta: isCommandKey):
             FocusUrlIntent(),
         SingleActivator(LogicalKeyboardKey.keyR,
-                control: defaultTargetPlatform != TargetPlatform.macOS,
-                meta: defaultTargetPlatform == TargetPlatform.macOS):
+                control: isControlKey,
+                meta: isCommandKey):
             RefreshIntent(),
+        SingleActivator(LogicalKeyboardKey.keyT,
+                control: isControlKey,
+                meta: isCommandKey):
+            NewTabIntent(),
+        SingleActivator(LogicalKeyboardKey.keyW,
+                control: isControlKey,
+                meta: isCommandKey):
+            CloseTabIntent(),
+        SingleActivator(LogicalKeyboardKey.keyN,
+                control: isControlKey,
+                meta: isCommandKey):
+            NewWindowIntent(),
         const SingleActivator(LogicalKeyboardKey.arrowLeft, alt: true):
             GoBackIntent(),
         const SingleActivator(LogicalKeyboardKey.arrowRight, alt: true):
             GoForwardIntent(),
       },
-      child: Actions(
+      child: FocusableActionDetector(
+        autofocus: true,
+        shortcuts: const {},
+        actions: const {},
+        child: Actions(
         actions: {
           FocusUrlIntent: CallbackAction<FocusUrlIntent>(
             onInvoke: (intent) => activeTab.urlFocusNode.requestFocus(),
           ),
           RefreshIntent: CallbackAction<RefreshIntent>(
             onInvoke: (intent) => _refresh(),
+          ),
+          NewTabIntent: CallbackAction<NewTabIntent>(
+            onInvoke: (intent) => _addNewTab(),
+          ),
+          CloseTabIntent: CallbackAction<CloseTabIntent>(
+            onInvoke: (intent) => _closeTab(tabController.index),
+          ),
+          NewWindowIntent: CallbackAction<NewWindowIntent>(
+            onInvoke: (intent) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('New window not supported in desktop app'),
+                  duration: Duration(seconds: 2),
+                ),
+              );
+              return null;
+            },
           ),
           GoBackIntent: CallbackAction<GoBackIntent>(
             onInvoke: (intent) => _goBack(),
@@ -2650,6 +2719,8 @@ class _BrowserPageState extends State<BrowserPage>
           ),
         ),
       ),
+    ),
+    ),
     );
   }
 }
