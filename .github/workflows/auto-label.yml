@@ -21,24 +21,75 @@ jobs:
       - uses: actions/checkout@v4
       - name: Label PR based on changes
         run: |
-          # Get commit messages from the PR
-          COMMITS=$(gh pr view ${{ github.event.number }} --json commits -q '.commits[].message')
+          PR_NUMBER="${{ github.event.number }}"
+          PR_JSON=$(gh pr view "$PR_NUMBER" --json commits,labels,files,additions,deletions)
+          REPO_LABELS=$(gh label list --limit 200 --json name -q '.[].name')
 
-          # Determine label
+          COMMITS=$(echo "$PR_JSON" | jq -r '.commits[].messageHeadline')
+          FILES=$(echo "$PR_JSON" | jq -r '.files[].path')
+          CURRENT_LABELS=$(echo "$PR_JSON" | jq -r '.labels[].name')
+          ADDITIONS=$(echo "$PR_JSON" | jq -r '.additions // 0')
+          DELETIONS=$(echo "$PR_JSON" | jq -r '.deletions // 0')
+          CHANGED_LINES=$((ADDITIONS + DELETIONS))
+
+          has_repo_label() {
+            local label="$1"
+            echo "$REPO_LABELS" | grep -Fxq "$label"
+          }
+
+          has_pr_label() {
+            local label="$1"
+            echo "$CURRENT_LABELS" | grep -Fxq "$label"
+          }
+
+          add_label_if_available() {
+            local label="$1"
+            if has_repo_label "$label" && ! has_pr_label "$label"; then
+              gh pr edit "$PR_NUMBER" --add-label "$label"
+            fi
+          }
+
+          remove_label_if_present() {
+            local label="$1"
+            if has_repo_label "$label" && has_pr_label "$label"; then
+              gh pr edit "$PR_NUMBER" --remove-label "$label"
+            fi
+          }
+
+          # Determine semantic bump label.
+          BUMP_LABEL="patch"
           if echo "$COMMITS" | grep -q "BREAKING CHANGE"; then
-            LABEL="major"
-          elif echo "$COMMITS" | grep -q "^feat:"; then
-            LABEL="minor"
-          elif echo "$COMMITS" | grep -q "^fix:"; then
-            LABEL="patch"
-          else
-            LABEL="patch"  # default
+            BUMP_LABEL="major"
+          elif echo "$COMMITS" | grep -Eq "^feat(\(|\[|:)"; then
+            BUMP_LABEL="minor"
+          elif echo "$COMMITS" | grep -Eq "^fix(\(|\[|:)"; then
+            BUMP_LABEL="patch"
+          fi
+          add_label_if_available "$BUMP_LABEL"
+
+          # Add area labels based on changed paths.
+          if echo "$FILES" | grep -Eq '^(\.github/workflows/|\.github/actions/)'; then
+            add_label_if_available "ci"
+          fi
+          if echo "$FILES" | grep -Eq '(^docs/|\.md$|AGENTS\.md$)'; then
+            add_label_if_available "docs"
+          fi
+          if echo "$FILES" | grep -Eq '(^test/|_test\.dart$)'; then
+            add_label_if_available "test"
           fi
 
-          # Add label if not already present
-          if ! gh pr view ${{ github.event.number }} \
-            --json labels -q '.labels[].name' | grep -q "^${LABEL}$"; then
-            gh pr edit ${{ github.event.number }} --add-label "$LABEL"
+          # Update size label by total changed lines.
+          for size_label in size/s size/m size/l size/xl; do
+            remove_label_if_present "$size_label"
+          done
+          if [ "$CHANGED_LINES" -le 49 ]; then
+            add_label_if_available "size/s"
+          elif [ "$CHANGED_LINES" -le 199 ]; then
+            add_label_if_available "size/m"
+          elif [ "$CHANGED_LINES" -le 499 ]; then
+            add_label_if_available "size/l"
+          else
+            add_label_if_available "size/xl"
           fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
