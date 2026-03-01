@@ -1,0 +1,62 @@
+---
+# SPDX-License-Identifier: MIT
+#
+# Copyright 2026 bniladridas. All rights reserved.
+# Use of this source code is governed by a MIT license that can be
+# found in the LICENSE file.
+
+- name: major
+  color: B60205
+  description: Major version bump
+
+- name: minor
+  color: FBCA04
+  description: Minor version bump
+
+- name: patch
+  color: FEF2C0
+  description: Patch version bump
+
+- name: ci
+  color: 1D76DB
+  description: Continuous integration and workflow related changes
+
+- name: docs
+  color: 0075CA
+  description: Documentation updates
+
+- name: test
+  color: 0E8A16
+  description: Tests or test infrastructure changes
+
+- name: size/s
+  color: C2E0C6
+  description: Small change set
+
+- name: size/m
+  color: FEF2C0
+  description: Medium change set
+
+- name: size/l
+  color: F9D0C4
+  description: Large change set
+
+- name: size/xl
+  color: D93F0B
+  description: Extra large change set
+
+- name: bug
+  color: D73A4A
+  description: Something is not working
+
+- name: enhancement
+  color: A2EEEF
+  description: New feature or requested improvement
+
+- name: chore
+  color: 6A737D
+  description: Maintenance and housekeeping changes
+
+- name: security
+  color: B60205
+  description: Security-sensitive changes
