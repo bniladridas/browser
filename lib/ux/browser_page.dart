@@ -12,6 +12,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:window_manager/window_manager.dart';
+import 'package:passkeys/types.dart';
 
 import 'dart:convert';
 import 'dart:io';
@@ -28,6 +29,8 @@ import '../features/password_prompt.dart';
 import '../features/password_storage.dart';
 import '../features/password_autofill.dart';
 import '../features/login_detection.dart';
+import '../features/webauthn_script.dart';
+import '../features/webauthn_service.dart';
 import '../browser_state.dart';
 
 import '../features/video_manager.dart';
@@ -1109,10 +1112,244 @@ class _BrowserPageState extends State<BrowserPage>
     }
   }
 
+  Future<void> _handleWebAuthnMessage(TabData tab, String message) async {
+    String? type;
+    int? requestId;
+    try {
+      // Check if it's a status message (not JSON)
+      if (!message.startsWith('{')) {
+        logger.i('WebAuthn status: $message');
+        return;
+      }
+
+      final data = jsonDecode(message) as Map<String, dynamic>;
+      type = data['type'] as String;
+      requestId = data['requestId'] as int;
+      final options = data['options'] as Map<String, dynamic>;
+
+      logger.i('WebAuthn request: $type (ID: $requestId)');
+
+      final webAuthnService = WebAuthnService();
+
+      if (type == 'create') {
+        await _handleWebAuthnCreate(tab, requestId, options, webAuthnService);
+      } else if (type == 'get') {
+        await _handleWebAuthnGet(tab, requestId, options, webAuthnService);
+      } else {
+        // Unknown type - reject to prevent hanging
+        throw Exception('Unknown WebAuthn request type: $type');
+      }
+    } catch (e, s) {
+      logger.e('Failed to handle WebAuthn message', error: e, stackTrace: s);
+
+      if (requestId != null && tab.webViewController != null) {
+        final errorMsg = jsonEncode(e.toString());
+        await tab.webViewController!.runJavaScript('''
+          if (window.resolveWebAuthnRequest) {
+            window.resolveWebAuthnRequest($requestId, false, $errorMsg);
+          }
+        ''');
+      }
+    }
+  }
+
+  Future<void> _handleWebAuthnCreate(
+    TabData tab,
+    int requestId,
+    Map<String, dynamic> options,
+    WebAuthnService service,
+  ) async {
+    try {
+      // Validate RP ID against page origin
+      final pageUrl = await tab.webViewController?.currentUrl();
+      if (pageUrl == null) {
+        throw Exception('Cannot determine page origin');
+      }
+      final pageOrigin = Uri.parse(pageUrl);
+      final rpId = options['rp']['id'] as String;
+
+      if (!_isValidRpId(rpId, pageOrigin.host)) {
+        throw Exception('RP ID validation failed: $rpId does not match origin ${pageOrigin.host}');
+      }
+
+      final challenge = _base64UrlEncode(List<int>.from(options['challenge']));
+      final rp = options['rp'] as Map<String, dynamic>;
+      final user = options['user'] as Map<String, dynamic>;
+      final userId = _base64UrlEncode(List<int>.from(user['id']));
+
+      final request = RegisterRequestType(
+        challenge: challenge,
+        relyingParty: RelyingPartyType(
+          name: rp['name'] as String,
+          id: rp['id'] as String,
+        ),
+        user: UserType(
+          name: user['name'] as String,
+          id: userId,
+          displayName: user['displayName'] as String,
+        ),
+        excludeCredentials: const [],
+      );
+
+      final response = await service.register(request);
+
+      if (response != null && tab.webViewController != null) {
+        // Decode base64url strings to bytes
+        final rawIdBytes = base64Url.decode(response.rawId.padRight(
+          response.rawId.length + (4 - response.rawId.length % 4) % 4, '='));
+        final clientDataBytes = base64Url.decode(response.clientDataJSON.padRight(
+          response.clientDataJSON.length + (4 - response.clientDataJSON.length % 4) % 4, '='));
+        final attestationBytes = base64Url.decode(response.attestationObject.padRight(
+          response.attestationObject.length + (4 - response.attestationObject.length % 4) % 4, '='));
+
+        final jsResponse = '''
+          {
+            id: '${response.id}',
+            rawId: new Uint8Array([${rawIdBytes.join(',')}]),
+            response: {
+              clientDataJSON: new Uint8Array([${clientDataBytes.join(',')}]),
+              attestationObject: new Uint8Array([${attestationBytes.join(',')}])
+            },
+            type: 'public-key'
+          }
+        ''';
+
+        await tab.webViewController!.runJavaScript('''
+          if (window.resolveWebAuthnRequest) {
+            window.resolveWebAuthnRequest($requestId, true, $jsResponse);
+          }
+        ''');
+      } else {
+        await _rejectWebAuthnRequest(tab, requestId, 'User cancelled or error occurred');
+      }
+    } catch (e, s) {
+      logger.e('WebAuthn create failed', error: e, stackTrace: s);
+      await _rejectWebAuthnRequest(tab, requestId, e.toString());
+    }
+  }
+
+  Future<void> _handleWebAuthnGet(
+    TabData tab,
+    int requestId,
+    Map<String, dynamic> options,
+    WebAuthnService service,
+  ) async {
+    try {
+      // Validate RP ID against page origin
+      final pageUrl = await tab.webViewController?.currentUrl();
+      if (pageUrl == null) {
+        throw Exception('Cannot determine page origin');
+      }
+      final pageOrigin = Uri.parse(pageUrl);
+      final rpId = options['rpId'] as String;
+
+      if (!_isValidRpId(rpId, pageOrigin.host)) {
+        throw Exception('RP ID validation failed: $rpId does not match origin ${pageOrigin.host}');
+      }
+
+      final challenge = _base64UrlEncode(List<int>.from(options['challenge']));
+
+      final allowCredentials = options['allowCredentials'] as List<dynamic>?;
+      final credentials = allowCredentials?.map((c) {
+        final id = List<int>.from(c['id']);
+        return CredentialType(
+          id: _base64UrlEncode(id),
+          type: c['type'] as String? ?? 'public-key',
+          transports: const [],
+        );
+      }).toList();
+
+      final request = AuthenticateRequestType(
+        challenge: challenge,
+        relyingPartyId: rpId,
+        mediation: MediationType.Optional,
+        preferImmediatelyAvailableCredentials: true,
+        allowCredentials: credentials,
+      );
+
+      final response = await service.authenticate(request);
+
+      if (response != null && tab.webViewController != null) {
+        // Decode base64url strings to bytes
+        final rawIdBytes = base64Url.decode(response.rawId.padRight(
+          response.rawId.length + (4 - response.rawId.length % 4) % 4, '='));
+        final clientDataBytes = base64Url.decode(response.clientDataJSON.padRight(
+          response.clientDataJSON.length + (4 - response.clientDataJSON.length % 4) % 4, '='));
+        final authDataBytes = base64Url.decode(response.authenticatorData.padRight(
+          response.authenticatorData.length + (4 - response.authenticatorData.length % 4) % 4, '='));
+        final signatureBytes = base64Url.decode(response.signature.padRight(
+          response.signature.length + (4 - response.signature.length % 4) % 4, '='));
+
+        final userHandleBytes = response.userHandle.isNotEmpty
+          ? base64Url.decode(response.userHandle.padRight(
+              response.userHandle.length + (4 - response.userHandle.length % 4) % 4, '='))
+          : null;
+
+        final jsResponse = '''
+          {
+            id: '${response.id}',
+            rawId: new Uint8Array([${rawIdBytes.join(',')}]),
+            response: {
+              clientDataJSON: new Uint8Array([${clientDataBytes.join(',')}]),
+              authenticatorData: new Uint8Array([${authDataBytes.join(',')}]),
+              signature: new Uint8Array([${signatureBytes.join(',')}]),
+              userHandle: ${userHandleBytes != null ? "new Uint8Array([${userHandleBytes.join(',')}])" : 'null'}
+            },
+            type: 'public-key'
+          }
+        ''';
+
+        await tab.webViewController!.runJavaScript('''
+          if (window.resolveWebAuthnRequest) {
+            window.resolveWebAuthnRequest($requestId, true, $jsResponse);
+          }
+        ''');
+      } else {
+        await _rejectWebAuthnRequest(tab, requestId, 'User cancelled or error occurred');
+      }
+    } catch (e, s) {
+      logger.e('WebAuthn get failed', error: e, stackTrace: s);
+      await _rejectWebAuthnRequest(tab, requestId, e.toString());
+    }
+  }
+
+  Future<void> _rejectWebAuthnRequest(TabData tab, int requestId, String error) async {
+    if (tab.webViewController == null) return;
+
+    final errorMsg = jsonEncode(error);
+    await tab.webViewController!.runJavaScript('''
+      if (window.resolveWebAuthnRequest) {
+        window.resolveWebAuthnRequest($requestId, false, $errorMsg);
+      }
+    ''');
+  }
+
+  String _base64UrlEncode(List<int> bytes) {
+    return base64Url.encode(bytes).replaceAll('=', '');
+  }
+
   bool _isAllowedNavigationUrl(String url) {
     final uri = Uri.tryParse(url);
     if (uri == null) return false;
     return _allowedNavigationSchemes.contains(uri.scheme.toLowerCase());
+  }
+
+  bool _isValidRpId(String rpId, String originHost) {
+    // RP ID must be exactly the origin host or a registrable domain suffix
+    if (rpId == originHost) {
+      return true;
+    }
+
+    // Check if rpId is a valid suffix of originHost
+    if (originHost.endsWith('.$rpId')) {
+      // Prevent public suffix attacks (basic check)
+      final parts = rpId.split('.');
+      if (parts.length >= 2) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   String _sanitizeUrlForLog(String? rawUrl) {
@@ -2250,6 +2487,11 @@ class _BrowserPageState extends State<BrowserPage>
               error: e, stackTrace: s);
         }
       });
+      tab.webViewController!.addJavaScriptChannel('WebAuthnChannel',
+          onMessageReceived: (JavaScriptMessage message) async {
+        logger.i('WebAuthn message received');
+        _handleWebAuthnMessage(tab, message.message);
+      });
       tab.webViewController!.setNavigationDelegate(NavigationDelegate(
         onPageStarted: (url) {
           if (!tab.isClosed) {
@@ -2303,6 +2545,8 @@ class _BrowserPageState extends State<BrowserPage>
           ''');
             // Inject login detection script
             tab.webViewController!.runJavaScript(loginDetectionScript);
+            // Inject WebAuthn script
+            tab.webViewController!.runJavaScript(webAuthnScript);
             // Attempt autofill if credentials available
             _attemptAutofill(tab);
           }
