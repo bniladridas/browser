@@ -3,7 +3,6 @@
 Flutter desktop web browser with tabs, bookmarks, history.
 
 ![Screenshot](assets/screenshot.png)
-[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fbniladridas%2Fbrowser.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fbniladridas%2Fbrowser?ref=badge_shield)
 
 ## Install
 
@@ -70,4 +69,4 @@ This project is proprietary software. See [LICENSE](LICENSE) for full terms.
 Copyright (c) 2026 Niladri Das (bniladridas). All Rights Reserved.
 
 
-[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fbniladridas%2Fbrowser.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2Fbniladridas%2Fbrowser?ref=badge_large)
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fbniladridas%2Fbrowser.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2Fbniladridas%2Fbrowser?ref=badge_large) [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fbniladridas%2Fbrowser.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fbniladridas%2Fbrowser?ref=badge_shield)
