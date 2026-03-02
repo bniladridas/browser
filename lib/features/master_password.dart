@@ -28,18 +28,26 @@ class MasterPasswordService {
 
   Future<bool> canUseBiometrics() async {
     try {
-      return await _localAuth.canCheckBiometrics && await _localAuth.isDeviceSupported();
+      final canCheck = await _localAuth.canCheckBiometrics;
+      final isSupported = await _localAuth.isDeviceSupported();
+      print('canCheckBiometrics: $canCheck, isDeviceSupported: $isSupported');
+      return canCheck && isSupported;
     } catch (e) {
+      print('Error checking biometrics: $e');
       return false;
     }
   }
 
   Future<bool> authenticateWithBiometrics() async {
     try {
-      return await _localAuth.authenticate(
+      print('Attempting biometric authentication...');
+      final result = await _localAuth.authenticate(
         localizedReason: 'Authenticate to access your passwords',
       );
+      print('Biometric authentication result: $result');
+      return result;
     } catch (e) {
+      print('Error during biometric authentication: $e');
       return false;
     }
   }
