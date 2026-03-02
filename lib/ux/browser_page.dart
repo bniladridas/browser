@@ -1402,6 +1402,47 @@ class _BrowserPageState extends State<BrowserPage>
     });
   }
 
+  Widget _buildTabItem(TabData tab, int index, bool isSelected, {bool showDragHandle = false}) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (showDragHandle) ...[
+          Icon(
+            Icons.drag_indicator,
+            size: 16,
+            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+          ),
+          const SizedBox(width: 4),
+        ],
+        Icon(
+          Icons.public,
+          size: 16,
+          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          (Uri.tryParse(tab.currentUrl)?.host ?? tab.currentUrl).truncate(15),
+          style: TextStyle(
+            color: isSelected
+                ? Theme.of(context).colorScheme.onSurface
+                : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+          ),
+        ),
+        if (tabs.length > 1) ...[
+          const SizedBox(width: 8),
+          GestureDetector(
+            onTap: () => _closeTab(index),
+            child: Icon(
+              Icons.close,
+              size: 16,
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
   Future<void> _loadReorderableTabs() async {
     final prefs = await SharedPreferences.getInstance();
     if (!mounted) return;
@@ -2639,56 +2680,12 @@ class _BrowserPageState extends State<BrowserPage>
                                           ),
                                         ),
                                       ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Icon(
-                                            Icons.drag_indicator,
-                                            size: 16,
-                                            color: Theme.of(context)
-                                                .colorScheme
-                                                .onSurface
-                                                .withValues(alpha: 0.5),
-                                          ),
-                                          const SizedBox(width: 4),
-                                          Icon(
-                                            Icons.public,
-                                      size: 16,
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .onSurface
-                                          .withValues(alpha: 0.7),
+                                      child: _buildTabItem(tab, index, isSelected, showDragHandle: true),
                                     ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      (Uri.tryParse(tab.currentUrl)?.host ?? tab.currentUrl).truncate(15),
-                                      style: TextStyle(
-                                        color: isSelected
-                                            ? Theme.of(context).colorScheme.onSurface
-                                            : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                                      ),
-                                    ),
-                                    if (tabs.length > 1) ...[
-                                      const SizedBox(width: 8),
-                                      GestureDetector(
-                                        onTap: () => _closeTab(index),
-                                        child: Icon(
-                                          Icons.close,
-                                          size: 16,
-                                          color: Theme.of(context)
-                                              .colorScheme
-                                              .onSurface
-                                              .withValues(alpha: 0.7),
-                                        ),
-                                      ),
-                                    ],
-                                  ],
-                                ),
-                              ),
-                            ),
-                          );
-                        },
-                      )
+                                  ),
+                                );
+                              },
+                            )
                           : TabBar(
                               controller: tabController,
                               isScrollable: true,
@@ -2703,30 +2700,9 @@ class _BrowserPageState extends State<BrowserPage>
                               tabs: tabs.asMap().entries.map((entry) {
                                 final index = entry.key;
                                 final tab = entry.value;
+                                final isSelected = tabController.index == index;
                                 return Tab(
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        Icons.public,
-                                        size: 16,
-                                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Text((Uri.tryParse(tab.currentUrl)?.host ?? tab.currentUrl).truncate(15)),
-                                      if (tabs.length > 1) ...[
-                                        const SizedBox(width: 8),
-                                        GestureDetector(
-                                          onTap: () => _closeTab(index),
-                                          child: Icon(
-                                            Icons.close,
-                                            size: 16,
-                                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-                                          ),
-                                        ),
-                                      ],
-                                    ],
-                                  ),
+                                  child: _buildTabItem(tab, index, isSelected),
                                 );
                               }).toList(),
                             ),
