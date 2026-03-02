@@ -9,51 +9,51 @@ PODS:
     - FlutterMacOS
   - file_selector_macos (0.0.1):
     - FlutterMacOS
-  - Firebase/AppCheck (12.8.0):
+  - Firebase/AppCheck (12.9.0):
     - Firebase/CoreOnly
-    - FirebaseAppCheck (~> 12.8.0)
-  - Firebase/Auth (12.8.0):
+    - FirebaseAppCheck (~> 12.9.0)
+  - Firebase/Auth (12.9.0):
     - Firebase/CoreOnly
-    - FirebaseAuth (~> 12.8.0)
-  - Firebase/CoreOnly (12.8.0):
-    - FirebaseCore (~> 12.8.0)
-  - firebase_app_check (0.4.1-4):
-    - Firebase/AppCheck (~> 12.8.0)
-    - Firebase/CoreOnly (~> 12.8.0)
+    - FirebaseAuth (~> 12.9.0)
+  - Firebase/CoreOnly (12.9.0):
+    - FirebaseCore (~> 12.9.0)
+  - firebase_app_check (0.4.1-5):
+    - Firebase/AppCheck (~> 12.9.0)
+    - Firebase/CoreOnly (~> 12.9.0)
     - firebase_core
     - FlutterMacOS
-  - firebase_auth (6.1.4):
-    - Firebase/Auth (~> 12.8.0)
-    - Firebase/CoreOnly (~> 12.8.0)
+  - firebase_auth (6.2.0):
+    - Firebase/Auth (~> 12.9.0)
+    - Firebase/CoreOnly (~> 12.9.0)
     - firebase_core
     - FlutterMacOS
-  - firebase_core (4.4.0):
-    - Firebase/CoreOnly (~> 12.8.0)
+  - firebase_core (4.5.0):
+    - Firebase/CoreOnly (~> 12.9.0)
     - FlutterMacOS
-  - FirebaseAppCheck (12.8.0):
+  - FirebaseAppCheck (12.9.0):
     - AppCheckCore (~> 11.0)
-    - FirebaseAppCheckInterop (~> 12.8.0)
-    - FirebaseCore (~> 12.8.0)
+    - FirebaseAppCheckInterop (~> 12.9.0)
+    - FirebaseCore (~> 12.9.0)
     - GoogleUtilities/Environment (~> 8.1)
     - GoogleUtilities/UserDefaults (~> 8.1)
-  - FirebaseAppCheckInterop (12.8.0)
-  - FirebaseAuth (12.8.0):
-    - FirebaseAppCheckInterop (~> 12.8.0)
-    - FirebaseAuthInterop (~> 12.8.0)
-    - FirebaseCore (~> 12.8.0)
-    - FirebaseCoreExtension (~> 12.8.0)
+  - FirebaseAppCheckInterop (12.9.0)
+  - FirebaseAuth (12.9.0):
+    - FirebaseAppCheckInterop (~> 12.9.0)
+    - FirebaseAuthInterop (~> 12.9.0)
+    - FirebaseCore (~> 12.9.0)
+    - FirebaseCoreExtension (~> 12.9.0)
     - GoogleUtilities/AppDelegateSwizzler (~> 8.1)
     - GoogleUtilities/Environment (~> 8.1)
     - GTMSessionFetcher/Core (< 6.0, >= 3.4)
     - RecaptchaInterop (~> 101.0)
-  - FirebaseAuthInterop (12.8.0)
-  - FirebaseCore (12.8.0):
-    - FirebaseCoreInternal (~> 12.8.0)
+  - FirebaseAuthInterop (12.9.0)
+  - FirebaseCore (12.9.0):
+    - FirebaseCoreInternal (~> 12.9.0)
     - GoogleUtilities/Environment (~> 8.1)
     - GoogleUtilities/Logger (~> 8.1)
-  - FirebaseCoreExtension (12.8.0):
-    - FirebaseCore (~> 12.8.0)
-  - FirebaseCoreInternal (12.8.0):
+  - FirebaseCoreExtension (12.9.0):
+    - FirebaseCore (~> 12.9.0)
+  - FirebaseCoreInternal (12.9.0):
     - "GoogleUtilities/NSData+zlib (~> 8.1)"
   - flutter_secure_storage_darwin (10.0.0):
     - Flutter
@@ -167,17 +167,17 @@ SPEC CHECKSUMS:
   desktop_drop: 10a3e6a7fa9dbe350541f2574092fecfa345a07b
   device_info_plus: 4fb280989f669696856f8b129e4a5e3cd6c48f76
   file_selector_macos: 9e9e068e90ebee155097d00e89ae91edb2374db7
-  Firebase: 9a58fdbc9d8655ed7b79a19cf9690bb007d3d46d
-  firebase_app_check: daf97f2d7044e28b68d23bc90e16751acee09732
-  firebase_auth: 2c2438e41f061c03bd67dcb045dfd7bc843b5f52
-  firebase_core: b1697fb64ff2b9ca16baaa821205f8b0c058e5d2
-  FirebaseAppCheck: 11da425929a45c677d537adfff3520ccd57c1690
-  FirebaseAppCheckInterop: ba3dc604a89815379e61ec2365101608d365cf7d
-  FirebaseAuth: 4c289b1a43f5955283244a55cf6bd616de344be5
-  FirebaseAuthInterop: 95363fe96493cb4f106656666a0768b420cba090
-  FirebaseCore: 0dbad74bda10b8fb9ca34ad8f375fb9dd3ebef7c
-  FirebaseCoreExtension: 6605938d51f765d8b18bfcafd2085276a252bee2
-  FirebaseCoreInternal: fe5fa466aeb314787093a7dce9f0beeaad5a2a21
+  Firebase: 065f2bb395062046623036d8e6dc857bc2521d56
+  firebase_app_check: 1ea404b52b0910bf632b1ea2e00ceb8d1730cb44
+  firebase_auth: def738277a306ec5676724b44ce49b37edd3bc91
+  firebase_core: c74b220e9288decea6bed17399c249734a7e76d2
+  FirebaseAppCheck: 94dae4d9bb682bdef85a778b0c1024a4613f1e89
+  FirebaseAppCheckInterop: 4bade10286cc977e516f75d2d8312cbdfa534789
+  FirebaseAuth: 3a39f6436c21ebfd7919b698228b4f89ff94c23b
+  FirebaseAuthInterop: f8f6ff72dc24621906497fbe5cf3c42ee815e59c
+  FirebaseCore: 428912f751178b06bef0a1793effeb4a5e09a9b8
+  FirebaseCoreExtension: e911052d59cd0da237a45d706fc0f81654f035c1
+  FirebaseCoreInternal: b321eafae5362113bc182956fafc9922cfc77b72
   flutter_secure_storage_darwin: acdb3f316ed05a3e68f856e0353b133eec373a23
   FlutterMacOS: d0db08ddef1a9af05a5ec4b724367152bb0500b1
   GoogleUtilities: 00c88b9a86066ef77f0da2fab05f65d7768ed8e1
