@@ -678,6 +678,7 @@ class _BrowserPageState extends State<BrowserPage>
     'about',
     'blob',
     'data',
+    'file',
   };
 
   late TabController tabController;
