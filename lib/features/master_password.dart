@@ -13,7 +13,9 @@ class MasterPasswordService {
   final FlutterSecureStorage _storage;
 
   MasterPasswordService({FlutterSecureStorage? storage})
-      : _storage = storage ?? const FlutterSecureStorage();
+      : _storage = storage ?? const FlutterSecureStorage(
+              iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock),
+            );
 
   String _hashPassword(String password) {
     final bytes = utf8.encode(password);
