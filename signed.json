@@ -1,7 +1,6 @@
 {
   "signed": [
     "bniladridas",
-    "github-actions[bot]",
-    "fossabot badges@fossa.io"
+    "github-actions[bot]"
   ]
 }

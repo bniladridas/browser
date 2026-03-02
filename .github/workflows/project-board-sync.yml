@@ -12,7 +12,6 @@ on:
     types: [opened, reopened, edited, labeled, unlabeled]
   pull_request:
     types: [opened, reopened, synchronize, edited, ready_for_review]
-  workflow_dispatch:
 
 jobs:
   add-to-project:
@@ -27,4 +26,4 @@ jobs:
         uses: actions/add-to-project@v1.0.2
         with:
           project-url: https://github.com/users/bniladridas/projects/10
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.ADD_TO_PROJECT_PAT }}
