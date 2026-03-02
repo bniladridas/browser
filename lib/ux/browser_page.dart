@@ -2576,6 +2576,7 @@ class _BrowserPageState extends State<BrowserPage>
                 Column(
                   children: [
                     Container(
+                      height: 48,
                       decoration: BoxDecoration(
                         color: Theme.of(context).colorScheme.surface,
                         border: Border(
