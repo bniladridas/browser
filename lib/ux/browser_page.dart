@@ -130,6 +130,7 @@ class SettingsDialog extends HookWidget {
     final adBlocking = useState(false);
     final strictMode = useState(false);
     final passwordManagerEnabled = useState(false);
+    final reorderableTabs = useState(true);
     final selectedTheme =
         useState<AppThemeMode>(currentTheme ?? AppThemeMode.system);
     final homepageController = useTextEditingController();
@@ -154,6 +155,7 @@ class SettingsDialog extends HookWidget {
         strictMode.value = prefs.getBool(strictModeKey) ?? false;
         passwordManagerEnabled.value =
             prefs.getBool(passwordManagerEnabledKey) ?? false;
+        reorderableTabs.value = prefs.getBool(reorderableTabsKey) ?? true;
         if (prefs.getString(themeModeKey) != null) {
           selectedTheme.value = AppThemeMode.values.firstWhere(
               (m) => m.name == prefs.getString(themeModeKey),
@@ -250,6 +252,12 @@ class SettingsDialog extends HookWidget {
                   );
                 },
               ),
+            SwitchListTile(
+              title: const Text('Reorderable Tabs'),
+              subtitle: const Text('Drag tabs to reorder'),
+              value: reorderableTabs.value,
+              onChanged: (value) => reorderableTabs.value = value,
+            ),
             DropdownButton<AppThemeMode>(
               value: selectedTheme.value,
               onChanged: (AppThemeMode? value) {
@@ -329,6 +337,7 @@ class SettingsDialog extends HookWidget {
             await prefs.setBool(strictModeKey, strictMode.value);
             await prefs.setBool(
                 passwordManagerEnabledKey, passwordManagerEnabled.value);
+            await prefs.setBool(reorderableTabsKey, reorderableTabs.value);
             await prefs.setString(themeModeKey, selectedTheme.value.name);
 
             onSettingsChanged?.call();
@@ -708,6 +717,7 @@ class _BrowserPageState extends State<BrowserPage>
   double _titleBarHeight = 0;
   bool _dragging = false;
   final FocusNode _keyboardFocusNode = FocusNode();
+  bool _reorderableTabs = true;
 
   static const String _themeProbeScript = '''
 (() => {
@@ -766,6 +776,7 @@ class _BrowserPageState extends State<BrowserPage>
   @override
   void initState() {
     super.initState();
+    _loadReorderableTabs();
     if (defaultTargetPlatform == TargetPlatform.macOS && !isIntegrationTest) {
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         try {
@@ -1373,6 +1384,74 @@ class _BrowserPageState extends State<BrowserPage>
     }
   }
 
+  void _reorderTab(int oldIndex, int newIndex) {
+    setState(() {
+      if (newIndex > oldIndex) newIndex--;
+      final currentIndex = tabController.index;
+      final tab = tabs.removeAt(oldIndex);
+      tabs.insert(newIndex, tab);
+
+      // Update controller index
+      if (currentIndex == oldIndex) {
+        tabController.index = newIndex;
+      } else if (currentIndex > oldIndex && currentIndex <= newIndex) {
+        tabController.index = currentIndex - 1;
+      } else if (currentIndex < oldIndex && currentIndex >= newIndex) {
+        tabController.index = currentIndex + 1;
+      }
+    });
+  }
+
+  Widget _buildTabItem(TabData tab, int index, bool isSelected, {bool showDragHandle = false}) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (showDragHandle) ...[
+          Icon(
+            Icons.drag_indicator,
+            size: 16,
+            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+          ),
+          const SizedBox(width: 4),
+        ],
+        Icon(
+          Icons.public,
+          size: 16,
+          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          (Uri.tryParse(tab.currentUrl)?.host ?? tab.currentUrl).truncate(15),
+          style: TextStyle(
+            color: isSelected
+                ? Theme.of(context).colorScheme.onSurface
+                : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+          ),
+        ),
+        if (tabs.length > 1) ...[
+          const SizedBox(width: 8),
+          GestureDetector(
+            onTap: () => _closeTab(index),
+            child: Icon(
+              Icons.close,
+              size: 16,
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Future<void> _loadReorderableTabs() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    setState(() {
+      _reorderableTabs = prefs.getBool(reorderableTabsKey) ?? true;
+    });
+  }
+
+
   @override
   void dispose() {
     _keyboardFocusNode.dispose();
@@ -1613,7 +1692,10 @@ class _BrowserPageState extends State<BrowserPage>
     showDialog(
       context: context,
       builder: (context) => SettingsDialog(
-          onSettingsChanged: widget.onSettingsChanged,
+          onSettingsChanged: () {
+            _loadReorderableTabs();
+            widget.onSettingsChanged?.call();
+          },
           onClearCaches: _clearAllCaches,
           currentTheme: widget.themeMode,
           aiAvailable: widget.aiAvailable),
@@ -2557,6 +2639,7 @@ class _BrowserPageState extends State<BrowserPage>
                 Column(
                   children: [
                     Container(
+                      height: 48,
                       decoration: BoxDecoration(
                         color: Theme.of(context).colorScheme.surface,
                         border: Border(
@@ -2571,70 +2654,69 @@ class _BrowserPageState extends State<BrowserPage>
                           ),
                         ),
                       ),
-                      child: TabBar(
-                        controller: tabController,
-                        isScrollable: true,
-                        indicatorColor: widget.themeMode == AppThemeMode.adjust
-                            ? Colors.transparent
-                            : Theme.of(context).colorScheme.primary,
-                        dividerColor: widget.themeMode == AppThemeMode.adjust
-                            ? Colors.transparent
-                            : Theme.of(context)
-                                .colorScheme
-                                .outline
-                                .withValues(alpha: 0.2),
-                        labelColor: Theme.of(context).colorScheme.onSurface,
-                        unselectedLabelColor: Theme.of(context)
-                            .colorScheme
-                            .onSurface
-                            .withValues(alpha: 0.6),
-                        tabs: tabs.asMap().entries.map((entry) {
-                          final index = entry.key;
-                          final tab = entry.value;
-                          return Tab(
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.public,
-                                  size: 16,
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onSurface
-                                      .withValues(alpha: 0.7),
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  (Uri.tryParse(tab.currentUrl)?.host ??
-                                          tab.currentUrl)
-                                      .truncate(15),
-                                ),
-                                if (tabs.length > 1) ...[
-                                  const SizedBox(width: 8),
-                                  GestureDetector(
-                                    onTap: () => _closeTab(index),
-                                    child: Icon(
-                                      Icons.close,
-                                      size: 16,
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .onSurface
-                                          .withValues(alpha: 0.7),
+                      child: _reorderableTabs
+                          ? ReorderableListView.builder(
+                              scrollDirection: Axis.horizontal,
+                              itemCount: tabs.length,
+                              onReorder: _reorderTab,
+                              buildDefaultDragHandles: false,
+                              itemBuilder: (context, index) {
+                                final tab = tabs[index];
+                                final isSelected = tabController.index == index;
+                                return ReorderableDragStartListener(
+                                  key: ObjectKey(tab),
+                                  index: index,
+                                  child: InkWell(
+                                    onTap: () => setState(() => tabController.index = index),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                      decoration: BoxDecoration(
+                                        border: Border(
+                                          bottom: BorderSide(
+                                            color: isSelected
+                                                ? Theme.of(context).colorScheme.primary
+                                                : Colors.transparent,
+                                            width: 2,
+                                          ),
+                                        ),
+                                      ),
+                                      child: _buildTabItem(tab, index, isSelected, showDragHandle: true),
                                     ),
                                   ),
-                                ],
-                              ],
+                                );
+                              },
+                            )
+                          : TabBar(
+                              controller: tabController,
+                              isScrollable: true,
+                              indicatorColor: widget.themeMode == AppThemeMode.adjust
+                                  ? Colors.transparent
+                                  : Theme.of(context).colorScheme.primary,
+                              dividerColor: widget.themeMode == AppThemeMode.adjust
+                                  ? Colors.transparent
+                                  : Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
+                              labelColor: Theme.of(context).colorScheme.onSurface,
+                              unselectedLabelColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                              tabs: tabs.asMap().entries.map((entry) {
+                                final index = entry.key;
+                                final tab = entry.value;
+                                final isSelected = tabController.index == index;
+                                return Tab(
+                                  child: _buildTabItem(tab, index, isSelected),
+                                );
+                              }).toList(),
                             ),
-                          );
-                        }).toList(),
-                      ),
                     ),
                     Expanded(
-                      child: TabBarView(
-                        controller: tabController,
-                        children:
-                            tabs.map((tab) => _buildTabBody(tab)).toList(),
-                      ),
+                      child: _reorderableTabs
+                          ? IndexedStack(
+                              index: tabController.index,
+                              children: tabs.map((tab) => _buildTabBody(tab)).toList(),
+                            )
+                          : TabBarView(
+                              controller: tabController,
+                              children: tabs.map((tab) => _buildTabBody(tab)).toList(),
+                            ),
                     ),
                   ],
                 ),

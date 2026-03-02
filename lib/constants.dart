@@ -13,6 +13,7 @@ const String adBlockingKey = 'adBlocking';
 const String strictModeKey = 'strictMode';
 const String themeModeKey = 'themeMode';
 const String passwordManagerEnabledKey = 'passwordManagerEnabled';
+const String reorderableTabsKey = 'reorderableTabs';
 
 const String defaultHomepageUrl = 'about:browser-home';
 
