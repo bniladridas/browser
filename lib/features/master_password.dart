@@ -7,20 +7,41 @@
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:local_auth/local_auth.dart';
 import '../constants.dart';
 
 class MasterPasswordService {
   final FlutterSecureStorage _storage;
+  final LocalAuthentication _localAuth;
 
-  MasterPasswordService({FlutterSecureStorage? storage})
+  MasterPasswordService({FlutterSecureStorage? storage, LocalAuthentication? localAuth})
       : _storage = storage ?? const FlutterSecureStorage(
               iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock),
-            );
+            ),
+        _localAuth = localAuth ?? LocalAuthentication();
 
   String _hashPassword(String password) {
     final bytes = utf8.encode(password);
     final digest = sha256.convert(bytes);
     return digest.toString();
+  }
+
+  Future<bool> canUseBiometrics() async {
+    try {
+      return await _localAuth.canCheckBiometrics && await _localAuth.isDeviceSupported();
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Future<bool> authenticateWithBiometrics() async {
+    try {
+      return await _localAuth.authenticate(
+        localizedReason: 'Authenticate to access your passwords',
+      );
+    } catch (e) {
+      return false;
+    }
   }
 
   Future<bool> hasMasterPassword() async {

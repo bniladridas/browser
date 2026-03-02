@@ -42,6 +42,7 @@ class _PasswordVaultScreenState extends State<PasswordVaultScreen> {
   Future<void> _checkAuthentication() async {
     final service = MasterPasswordService();
     final hasMasterPassword = await service.hasMasterPassword();
+    final canUseBiometrics = await service.canUseBiometrics();
 
     if (!hasMasterPassword) {
       if (!mounted) return;
@@ -51,6 +52,13 @@ class _PasswordVaultScreenState extends State<PasswordVaultScreen> {
         builder: (context) => const MasterPasswordDialog(isSetup: true),
       );
       if (result != true) {
+        if (!mounted) return;
+        Navigator.of(context).pop();
+        return;
+      }
+    } else if (canUseBiometrics) {
+      final authenticated = await service.authenticateWithBiometrics();
+      if (!authenticated) {
         if (!mounted) return;
         Navigator.of(context).pop();
         return;
