@@ -12,6 +12,7 @@ on:
     types: [opened, reopened, edited, labeled, unlabeled]
   pull_request:
     types: [opened, reopened, synchronize, edited, ready_for_review]
+  workflow_dispatch:
 
 jobs:
   add-to-project:
