@@ -35,6 +35,12 @@ Only mark items that are directly applicable to the PR. Do not pre-check categor
 - [ ] Performance
 - [ ] Security
 
+Impact validation rule (required):
+- For every checked category, there must be at least one matching bullet in `## Summary`.
+- If no concrete change supports a category, keep it unchecked.
+- For version-bump PRs, `Build / CI` should be checked only when workflows/build tooling are changed in the PR.
+- For version-bump PRs without CI/workflow changes, prefer `Refactor / cleanup` and/or `Documentation` when applicable.
+
 ## Related Items
 - Resolves issues: #[issue-number]
 - Closes: #[pr-number]
@@ -135,6 +141,7 @@ When creating version bump PRs (e.g., `version-bump-X.Y.Z` branch):
 
    ## Impact
    - Mark only categories that are truly applicable to this specific version bump PR.
+   - Apply the impact validation rule above before checking any box.
    - [ ] New feature
    - [ ] Bug fix
    - [ ] Breaking change
