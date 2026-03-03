@@ -24,6 +24,7 @@ Use the format:
 
 ## Impact
 Select applicable categories (use `[x]` for checked, `[ ]` for unchecked):
+Only mark items that are directly applicable to the PR. Do not pre-check categories by default.
 - [ ] New feature
 - [ ] Bug fix
 - [ ] Breaking change
@@ -133,12 +134,13 @@ When creating version bump PRs (e.g., `version-bump-X.Y.Z` branch):
    - #<pr-number> - <type>[<scope>]: <description>
 
    ## Impact
+   - Mark only categories that are truly applicable to this specific version bump PR.
    - [ ] New feature
    - [ ] Bug fix
    - [ ] Breaking change
-   - [x] Build / CI
-   - [x] Refactor / cleanup
-   - [x] Documentation
+   - [ ] Build / CI
+   - [ ] Refactor / cleanup
+   - [ ] Documentation
    - [ ] Tests
    - [ ] Performance
    - [ ] Security
