@@ -3115,98 +3115,124 @@ class _BrowserPageState extends State<BrowserPage>
 
     return Container(
       color: colorScheme.surface,
-      child: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 640),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(18),
-                  decoration: BoxDecoration(
-                    color: colorScheme.primaryContainer,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Icon(
-                    Icons.security,
-                    size: 44,
-                    color: colorScheme.onPrimaryContainer,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  'Search Torry',
-                  style: theme.textTheme.headlineSmall?.copyWith(
-                    color: colorScheme.primary,
-                    fontWeight: FontWeight.w700,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'Private search via torry.io.',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 20),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(
-                    color: colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: colorScheme.outline.withValues(alpha: 0.6),
+      child: SafeArea(
+        bottom: false,
+        child: Align(
+          alignment: Alignment.topCenter,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(18, 14, 18, 12),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 560),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: colorScheme.primaryContainer,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Icon(
+                      Icons.security,
+                      size: 36,
+                      color: colorScheme.onPrimaryContainer,
                     ),
                   ),
-                  child: TextField(
-                    controller: tab.torrySearchController,
-                    focusNode: tab.torrySearchFocusNode,
-                    textInputAction: TextInputAction.search,
-                    onSubmitted: (s) => _performTorrySearch(tab, s),
-                    decoration: InputDecoration(
-                      hintText: 'Search Torry',
-                      border: InputBorder.none,
-                      prefixIcon: Icon(
-                        Icons.search,
-                        color: colorScheme.primary,
+                  const SizedBox(height: 10),
+                  Text(
+                    'Search Torry',
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      color: colorScheme.primary,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 28,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Private search via torry.io.',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                      fontSize: 13,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 14),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    decoration: BoxDecoration(
+                      color: colorScheme.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: colorScheme.outline.withValues(alpha: 0.45),
                       ),
-                      suffixIcon: IconButton(
-                        onPressed: () => _performTorrySearch(tab),
-                        icon: Icon(
-                          Icons.arrow_forward,
+                    ),
+                    child: TextField(
+                      controller: tab.torrySearchController,
+                      focusNode: tab.torrySearchFocusNode,
+                      textInputAction: TextInputAction.search,
+                      style: theme.textTheme.bodyMedium?.copyWith(fontSize: 13),
+                      onSubmitted: (s) => _performTorrySearch(tab, s),
+                      decoration: InputDecoration(
+                        hintText: 'Search',
+                        isDense: true,
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                        prefixIcon: Icon(
+                          Icons.search,
                           color: colorScheme.primary,
+                          size: 18,
+                        ),
+                        prefixIconConstraints:
+                            const BoxConstraints(minHeight: 36, minWidth: 42),
+                        suffixIcon: IconButton(
+                          onPressed: () => _performTorrySearch(tab),
+                          icon: Icon(
+                            Icons.arrow_forward,
+                            color: colorScheme.primary,
+                            size: 22,
+                          ),
+                          visualDensity: VisualDensity.compact,
                         ),
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 8,
-                  alignment: WrapAlignment.center,
-                  children: [
-                    TextButton.icon(
-                      onPressed: () =>
-                          _loadUrl('https://www.torry.io/learn/directory/'),
-                      icon: const Icon(Icons.list),
-                      label: const Text('Onion directory'),
-                    ),
-                    TextButton.icon(
-                      onPressed: () =>
-                          _loadUrl('https://www.torry.io/anonymous-view/'),
-                      icon: const Icon(Icons.visibility),
-                      label: const Text('Anonymous view'),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-              ],
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 6,
+                    alignment: WrapAlignment.center,
+                    children: [
+                      TextButton.icon(
+                        onPressed: () =>
+                            _loadUrl('https://www.torry.io/learn/directory/'),
+                        icon: const Icon(Icons.list),
+                        label: const Text(
+                          'Onion directory',
+                          style: TextStyle(fontSize: 12),
+                        ),
+                        style: TextButton.styleFrom(
+                          visualDensity: VisualDensity.compact,
+                        ),
+                      ),
+                      TextButton.icon(
+                        onPressed: () =>
+                            _loadUrl('https://www.torry.io/anonymous-view/'),
+                        icon: const Icon(Icons.visibility),
+                        label: const Text(
+                          'Anonymous view',
+                          style: TextStyle(fontSize: 12),
+                        ),
+                        style: TextButton.styleFrom(
+                          visualDensity: VisualDensity.compact,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                ],
+              ),
             ),
           ),
         ),
@@ -3215,60 +3241,68 @@ class _BrowserPageState extends State<BrowserPage>
   }
 
   Widget _buildErrorView(TabData tab) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     final errorMessage = tab.state is BrowserError
         ? (tab.state as BrowserError).message
         : 'We could not load that page.';
     return Container(
-      color: Theme.of(context).colorScheme.surface,
+      color: colorScheme.surface,
       child: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primaryContainer,
-                borderRadius: BorderRadius.circular(20),
+                color: colorScheme.primaryContainer,
+                borderRadius: BorderRadius.circular(16),
               ),
               child: Icon(
                 Icons.public_off,
-                size: 54,
-                color: Theme.of(context).colorScheme.onPrimaryContainer,
+                size: 42,
+                color: colorScheme.onPrimaryContainer,
               ),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              'Browser',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    color: Theme.of(context).colorScheme.primary,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.6,
-                  ),
             ),
             const SizedBox(height: 12),
             Text(
+              'Browser',
+              style: theme.textTheme.titleLarge?.copyWith(
+                    color: colorScheme.primary,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.3,
+                    fontSize: 18,
+                  ),
+            ),
+            const SizedBox(height: 10),
+            Text(
               'Sorry, we can’t open this page.',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurface,
+              style: theme.textTheme.headlineSmall?.copyWith(
+                    color: colorScheme.onSurface,
+                    fontSize: 24,
                   ),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             Text(
               errorMessage,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                    fontSize: 13,
                   ),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
             Wrap(
-              spacing: 12,
-              runSpacing: 12,
+              spacing: 8,
+              runSpacing: 8,
               alignment: WrapAlignment.center,
               children: [
                 if (tab.webViewController != null)
                   FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
+                    ),
                     onPressed: () {
                       setState(() {
                         tab.state = const BrowserState.idle();
@@ -3279,6 +3313,9 @@ class _BrowserPageState extends State<BrowserPage>
                     label: const Text('Try Again'),
                   ),
                 OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                  ),
                   onPressed: () {
                     tab.urlFocusNode.requestFocus();
                   },

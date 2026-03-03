@@ -7,6 +7,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import '../features/password_storage.dart';
 import '../logging/logger.dart';
 
@@ -70,12 +71,17 @@ class _PasswordVaultScreenState extends State<PasswordVaultScreen> {
   }
 
   Future<void> _deleteCredential(PasswordCredential credential) async {
+    final theme = Theme.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete Password'),
+        title: Text(
+          'Delete Password',
+          style: theme.textTheme.titleSmall?.copyWith(fontSize: 15),
+        ),
         content: Text(
           'Delete password for ${credential.username} on ${credential.origin}?',
+          style: theme.textTheme.bodySmall?.copyWith(fontSize: 12),
         ),
         actions: [
           TextButton(
@@ -102,12 +108,17 @@ class _PasswordVaultScreenState extends State<PasswordVaultScreen> {
   }
 
   Future<void> _deleteAll() async {
+    final theme = Theme.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete All Passwords'),
-        content: const Text(
+        title: Text(
+          'Delete All Passwords',
+          style: theme.textTheme.titleSmall?.copyWith(fontSize: 15),
+        ),
+        content: Text(
           'This will permanently delete all saved passwords. This action cannot be undone.',
+          style: theme.textTheme.bodySmall?.copyWith(fontSize: 12),
         ),
         actions: [
           TextButton(
@@ -142,27 +153,61 @@ class _PasswordVaultScreenState extends State<PasswordVaultScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Password Vault'),
+    final theme = Theme.of(context);
+    final isMacDesktop = defaultTargetPlatform == TargetPlatform.macOS;
+    final topToolbarInset = isMacDesktop ? 24.0 : 0.0;
+
+    final appBar = AppBar(
+      leadingWidth: isMacDesktop ? 86 : null,
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back_ios_new, size: 20),
+        visualDensity: VisualDensity.compact,
+        onPressed: () => Navigator.of(context).maybePop(),
+      ),
+      titleSpacing: isMacDesktop ? 0 : null,
+        title: Text(
+          'Password Vault',
+          style: theme.textTheme.titleSmall?.copyWith(fontSize: 15),
+        ),
         actions: [
           if (_credentials.isNotEmpty)
             IconButton(
-              icon: const Icon(Icons.delete_sweep),
+              icon: const Icon(Icons.delete_sweep, size: 20),
               tooltip: 'Delete All',
+              visualDensity: VisualDensity.compact,
               onPressed: _deleteAll,
             ),
         ],
-      ),
+      );
+
+    return Scaffold(
+      appBar: topToolbarInset > 0
+          ? PreferredSize(
+              preferredSize: Size.fromHeight(kToolbarHeight + topToolbarInset),
+              child: Column(
+                children: [
+                  Container(
+                    height: topToolbarInset,
+                    color: theme.colorScheme.surface,
+                  ),
+                  appBar,
+                ],
+              ),
+            )
+          : appBar,
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(14, 10, 14, 8),
             child: TextField(
-              decoration: const InputDecoration(
+              style: theme.textTheme.bodyMedium?.copyWith(fontSize: 13),
+              decoration: InputDecoration(
                 labelText: 'Search',
-                prefixIcon: Icon(Icons.search),
-                border: OutlineInputBorder(),
+                isDense: true,
+                prefixIcon: const Icon(Icons.search, size: 18),
+                prefixIconConstraints:
+                    const BoxConstraints(minHeight: 30, minWidth: 34),
+                border: const OutlineInputBorder(),
               ),
               onChanged: (value) {
                 if (_debounce?.isActive ?? false) _debounce!.cancel();
@@ -181,7 +226,8 @@ class _PasswordVaultScreenState extends State<PasswordVaultScreen> {
                           _searchQuery.isEmpty
                               ? 'No saved passwords'
                               : 'No matching passwords',
-                          style: Theme.of(context).textTheme.bodyLarge,
+                          style: theme.textTheme.bodyMedium
+                              ?.copyWith(fontSize: 13),
                         ),
                       )
                     : ListView.builder(
@@ -231,14 +277,26 @@ class _PasswordTileState extends State<_PasswordTile> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
       child: ExpansionTile(
-        title: Text(widget.credential.origin),
-        subtitle: Text(widget.credential.username),
+        tilePadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+        childrenPadding: EdgeInsets.zero,
+        title: Text(
+          widget.credential.origin,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        subtitle: Text(
+          widget.credential.username,
+          style: theme.textTheme.bodySmall?.copyWith(fontSize: 11),
+        ),
         children: [
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -247,47 +305,53 @@ class _PasswordTileState extends State<_PasswordTile> {
                     Expanded(
                       child: Text(
                         'Username: ${widget.credential.username}',
-                        style: Theme.of(context).textTheme.bodyMedium,
+                        style: theme.textTheme.bodySmall?.copyWith(fontSize: 12),
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.copy, size: 20),
+                      icon: const Icon(Icons.copy, size: 18),
                       tooltip: 'Copy username',
+                      visualDensity: VisualDensity.compact,
                       onPressed: widget.onCopyUsername,
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 6),
                 Row(
                   children: [
                     Expanded(
                       child: Text(
                         'Password: ${_showPassword ? widget.credential.password : '••••••••'}',
-                        style: Theme.of(context).textTheme.bodyMedium,
+                        style: theme.textTheme.bodySmall?.copyWith(fontSize: 12),
                       ),
                     ),
                     IconButton(
                       icon: Icon(
                         _showPassword ? Icons.visibility_off : Icons.visibility,
-                        size: 20,
+                        size: 18,
                       ),
                       tooltip: _showPassword ? 'Hide' : 'Show',
+                      visualDensity: VisualDensity.compact,
                       onPressed: () => setState(() => _showPassword = !_showPassword),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.copy, size: 20),
+                      icon: const Icon(Icons.copy, size: 18),
                       tooltip: 'Copy password',
+                      visualDensity: VisualDensity.compact,
                       onPressed: widget.onCopyPassword,
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 10),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     TextButton.icon(
-                      icon: const Icon(Icons.delete),
-                      label: const Text('Delete'),
+                      icon: const Icon(Icons.delete, size: 16),
+                      label: Text(
+                        'Delete',
+                        style: theme.textTheme.bodySmall?.copyWith(fontSize: 12),
+                      ),
                       onPressed: widget.onDelete,
                     ),
                   ],
