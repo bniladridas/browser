@@ -42,7 +42,7 @@ Impact validation rule (required):
 - For version-bump PRs without CI/workflow changes, prefer `Refactor / cleanup` and/or `Documentation` when applicable.
 
 ## Related Items
-- Resolves issues: #[issue-number]
+- Resolves #<id>
 - Closes: #[pr-number]
 - Resources: [PRs tab](../../pulls), [Issues tab](../../issues)
 
@@ -99,10 +99,30 @@ When a PR addresses multiple distinct findings/fixes, create separate tracking i
 
 1. Create issue(s) using `gh issue create` (use clear tracking title + summary/body).
 2. Update PR description with `gh pr edit` and include all issue numbers under:
-   - `Resolves issues: #<issue1>, #<issue2>, ...`
+   - `Resolves #<issue1>, #<issue2>, ...`
 3. Keep the PR summary aligned with the issue list so reviewers can trace each fix.
 
 This keeps changes auditable and links each user-facing fix to an issue.
+
+## Issue and PR Reference Syntax
+
+When referencing issues or PRs in PR descriptions, use GitHub auto-linking/auto-closing keywords.
+Preferred forms:
+
+- `Fixes #<id>`
+- `Fix #<id>`
+- `Fixed #<id>`
+
+- `Closes #<id>`
+- `Close #<id>`
+- `Closed #<id>`
+
+- `Resolves #<id>`
+- `Resolve #<id>`
+- `Resolved #<id>`
+
+Do not use labels like `Closes PRs:` because they do not follow GitHub keyword syntax.
+If GitHub linking is unavailable in a specific environment, add plain references as fallback.
 
 ## Version Bump PR Template
 
@@ -153,7 +173,7 @@ When creating version bump PRs (e.g., `version-bump-X.Y.Z` branch):
    - [ ] Security
 
    ## Related Items
-   - Resolves issues: #<pr-number>
+   - Resolves #<id>
    - Closes: #<pr-number>
    - Merged PRs: #<pr1>, #<pr2>, ...
 
@@ -225,7 +245,7 @@ gh pr create \
 - [ ] Security
 
 ## Related Items
-- Resolves issues: #[issue-number]
+- Resolves #<id>
 - Closes: #[pr-number]
 - Resources: [PRs tab](../../pulls), [Issues tab](../../issues)
 

@@ -45,64 +45,91 @@ class _NetworkDebugDialogState extends State<NetworkDebugDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    const compactDensity = VisualDensity(horizontal: -2, vertical: -2);
     final failedEvents = _events.where((e) => !e.success).toList();
 
     return AlertDialog(
       title: Row(
         children: [
-          const Text('Network Debug'),
-          const Spacer(),
-          Chip(
-            label: Text('${NetworkMonitor().successCount} success'),
-            backgroundColor: Colors.green.withValues(alpha: 0.2),
-            labelStyle: const TextStyle(fontSize: 12),
+          Text(
+            'Network Debug',
+            style: theme.textTheme.titleSmall?.copyWith(fontSize: 15),
           ),
-          const SizedBox(width: 8),
-          Chip(
-            label: Text('${NetworkMonitor().failureCount} failed'),
+          const Spacer(),
+          RawChip(
+            visualDensity: compactDensity,
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            label: Text(
+              '${NetworkMonitor().successCount} ok',
+              style: theme.textTheme.bodySmall?.copyWith(fontSize: 10),
+            ),
+            backgroundColor: Colors.green.withValues(alpha: 0.2),
+          ),
+          const SizedBox(width: 6),
+          RawChip(
+            visualDensity: compactDensity,
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            label: Text(
+              '${NetworkMonitor().failureCount} fail',
+              style: theme.textTheme.bodySmall
+                  ?.copyWith(fontSize: 10, color: Colors.red),
+            ),
             backgroundColor: Colors.red.withValues(alpha: 0.2),
-            labelStyle: const TextStyle(fontSize: 12, color: Colors.red),
           ),
         ],
       ),
       content: SizedBox(
         width: double.maxFinite,
-        height: 400,
+        height: 340,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (failedEvents.isNotEmpty) ...[
               Container(
-                padding: const EdgeInsets.all(8),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                 color: Colors.red.withValues(alpha: 0.1),
                 child: Row(
                   children: [
-                    const Icon(Icons.error, color: Colors.red, size: 16),
-                    const SizedBox(width: 8),
-                    Text('${failedEvents.length} failed requests'),
+                    const Icon(Icons.error, color: Colors.red, size: 14),
+                    const SizedBox(width: 6),
+                    Text(
+                      '${failedEvents.length} failed requests',
+                      style: theme.textTheme.bodySmall?.copyWith(fontSize: 11),
+                    ),
                   ],
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 6),
             ],
             Expanded(
               child: _events.isEmpty
-                  ? const Center(child: Text('No network activity yet'))
+                  ? Center(
+                      child: Text(
+                        'No network activity yet',
+                        style:
+                            theme.textTheme.bodySmall?.copyWith(fontSize: 12),
+                      ),
+                    )
                   : ListView.builder(
                       itemCount: _events.length,
                       itemBuilder: (context, index) {
                         final event = _events.toList()[index];
                         return ListTile(
                           dense: true,
+                          visualDensity: compactDensity,
+                          contentPadding:
+                              const EdgeInsets.symmetric(horizontal: 6),
+                          minLeadingWidth: 18,
                           leading: Icon(
                             event.success ? Icons.check_circle : Icons.error,
                             color: event.success ? Colors.green : Colors.red,
-                            size: 18,
+                            size: 16,
                           ),
                           title: Text(
                             '${event.method} ${event.url.truncate(50)}',
-                            style: TextStyle(
-                              fontSize: 12,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              fontSize: 11,
                               color: event.success ? null : Colors.red,
                             ),
                           ),
@@ -111,8 +138,8 @@ class _NetworkDebugDialogState extends State<NetworkDebugDialog> {
                               if (event.statusCode != null)
                                 Text(
                                   '${event.statusCode} ',
-                                  style: TextStyle(
-                                    fontSize: 11,
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    fontSize: 10,
                                     color: event.statusCode! >= 400
                                         ? Colors.red
                                         : null,
@@ -120,12 +147,14 @@ class _NetworkDebugDialogState extends State<NetworkDebugDialog> {
                                 ),
                               Text(
                                 '${event.duration.inMilliseconds}ms',
-                                style: const TextStyle(fontSize: 11),
+                                style: theme.textTheme.bodySmall
+                                    ?.copyWith(fontSize: 10),
                               ),
-                              const SizedBox(width: 8),
+                              const SizedBox(width: 6),
                               Text(
                                 event.timestamp.toString().split('.').first,
-                                style: const TextStyle(fontSize: 10),
+                                style: theme.textTheme.bodySmall
+                                    ?.copyWith(fontSize: 9),
                               ),
                             ],
                           ),
