@@ -133,7 +133,7 @@ class SettingsDialog extends HookWidget {
     this.onClearCaches,
     this.currentTheme,
     required this.aiAvailable,
-    this.aiSearchSuggestionsEnabled = true,
+    this.aiSearchSuggestionsEnabled = false,
   });
 
   final void Function()? onSettingsChanged;
@@ -198,7 +198,7 @@ class SettingsDialog extends HookWidget {
             prefs.getBool(passwordManagerEnabledKey) ?? false;
         reorderableTabs.value = prefs.getBool(reorderableTabsKey) ?? true;
         aiSearchSuggestionsEnabled.value =
-            prefs.getBool(aiSearchSuggestionsEnabledKey) ?? true;
+            prefs.getBool(aiSearchSuggestionsEnabledKey) ?? false;
         if (prefs.getString(themeModeKey) != null) {
           selectedTheme.value = AppThemeMode.values.firstWhere(
               (m) => m.name == prefs.getString(themeModeKey),
@@ -607,7 +607,7 @@ class BrowserPage extends StatefulWidget {
       this.adBlocking = false,
       this.strictMode = false,
       this.pageFontFamily = '',
-      this.aiSearchSuggestionsEnabled = true,
+      this.aiSearchSuggestionsEnabled = false,
       this.themeMode = AppThemeMode.system,
       this.aiAvailable = true,
       this.onSettingsChanged,
@@ -2640,6 +2640,7 @@ class _BrowserPageState extends State<BrowserPage>
   }
 
   Future<void> _showAiSearchSuggestionsSheet() async {
+    final theme = Theme.of(context);
     final suggestionsFuture = _fetchAiSearchSuggestions();
     await showModalBottomSheet<void>(
       context: context,
@@ -2651,21 +2652,21 @@ class _BrowserPageState extends State<BrowserPage>
           builder: (context, snapshot) {
             if (snapshot.connectionState != ConnectionState.done) {
               return const SizedBox(
-                height: 240,
+                height: 200,
                 child: Center(child: CircularProgressIndicator()),
               );
             }
             final suggestions = snapshot.data ?? _fallbackSearchSuggestions();
             return SizedBox(
-              height: 320,
+              height: 260,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                    padding: const EdgeInsets.fromLTRB(14, 2, 14, 6),
                     child: Text(
                       'Explore with AI',
-                      style: Theme.of(context).textTheme.titleMedium,
+                      style: theme.textTheme.titleSmall?.copyWith(fontSize: 14),
                     ),
                   ),
                   Expanded(
@@ -2674,8 +2675,22 @@ class _BrowserPageState extends State<BrowserPage>
                       itemBuilder: (context, index) {
                         final suggestion = suggestions[index];
                         return ListTile(
-                          leading: const Icon(Icons.auto_awesome),
-                          title: Text(suggestion),
+                          dense: true,
+                          visualDensity:
+                              const VisualDensity(horizontal: -2, vertical: -2),
+                          contentPadding:
+                              const EdgeInsets.symmetric(horizontal: 14),
+                          minLeadingWidth: 18,
+                          leading: Icon(
+                            Icons.auto_awesome,
+                            size: 16,
+                            color: theme.colorScheme.primary,
+                          ),
+                          title: Text(
+                            suggestion,
+                            style: theme.textTheme.bodyMedium
+                                ?.copyWith(fontSize: 13),
+                          ),
                           onTap: () {
                             Navigator.of(context).pop();
                             _loadUrl(suggestion);
