@@ -36,7 +36,7 @@ Select applicable categories (use `[x]` for checked, `[ ]` for unchecked):
 
 ## Related Items
 - Resolves issues: #[issue-number]
-- Closes PRs: #[pr-number]
+- Closes: #[pr-number]
 - Resources: [PRs tab](../../pulls), [Issues tab](../../issues)
 
 ## Notes for reviewers
@@ -145,6 +145,7 @@ When creating version bump PRs (e.g., `version-bump-X.Y.Z` branch):
 
    ## Related Items
    - Resolves issues: #<pr-number>
+   - Closes: #<pr-number>
    - Merged PRs: #<pr1>, #<pr2>, ...
 
    ## Notes for reviewers
@@ -216,7 +217,7 @@ gh pr create \
 
 ## Related Items
 - Resolves issues: #[issue-number]
-- Closes PRs: #[pr-number]
+- Closes: #[pr-number]
 - Resources: [PRs tab](../../pulls), [Issues tab](../../issues)
 
 ## Notes for reviewers
