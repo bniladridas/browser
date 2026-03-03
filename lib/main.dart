@@ -51,7 +51,7 @@ class _MyAppState extends State<MyApp> {
   bool adBlocking = false;
   bool strictMode = false;
   String pageFontFamily = '';
-  bool aiSearchSuggestionsEnabled = true;
+  bool aiSearchSuggestionsEnabled = false;
 
   @override
   void initState() {
@@ -75,7 +75,7 @@ class _MyAppState extends State<MyApp> {
         strictMode = prefs.getBool(strictModeKey) ?? false;
         pageFontFamily = prefs.getString(pageFontFamilyKey) ?? '';
         aiSearchSuggestionsEnabled =
-            prefs.getBool(aiSearchSuggestionsEnabledKey) ?? true;
+            prefs.getBool(aiSearchSuggestionsEnabledKey) ?? false;
         final themeString = prefs.getString(themeModeKey);
         if (themeString != null) {
           themeMode = AppThemeMode.values.firstWhere(
