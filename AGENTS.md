@@ -104,6 +104,19 @@ When a PR addresses multiple distinct findings/fixes, create separate tracking i
 
 This keeps changes auditable and links each user-facing fix to an issue.
 
+## Standard Delivery Flow
+
+Use this sequence for normal feature/fix delivery:
+
+1. Create a branch from `main` with a descriptive name (for example, `fix-...`, `feat-...`).
+2. Create or identify the tracking issue with `gh issue create` (or existing issue).
+3. Implement changes, run required checks, and commit using valid commit-message rules.
+4. Push the branch to origin.
+5. Create the PR with `gh pr create` using the template.
+6. In PR `## Related Items`, include `Resolves #<id>` for the tracking issue.
+
+This flow ensures each PR is traceable from branch to issue to merge.
+
 ## Issue and PR Reference Syntax
 
 When referencing issues or PRs in PR descriptions, use GitHub auto-linking/auto-closing keywords.
