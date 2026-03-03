@@ -18,6 +18,7 @@ const String pageFontFamilyKey = 'pageFontFamily';
 const String pageFontOverridesKey = 'pageFontOverrides';
 const String bookmarksStorageKey = 'bookmarks';
 const String browsingHistoryKey = 'browsingHistory';
+const String aiSearchSuggestionsEnabledKey = 'aiSearchSuggestionsEnabled';
 
 const String defaultHomepageUrl = 'about:browser-home';
 
