@@ -120,4 +120,5 @@ flutter:
   # see https://flutter.dev/to/font-from-package
   assets:
     - assets/ad_blockers.json
+    - assets/legacy_layout_fix.js
     - .env
