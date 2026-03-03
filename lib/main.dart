@@ -50,6 +50,7 @@ class _MyAppState extends State<MyApp> {
   bool privateBrowsing = false;
   bool adBlocking = false;
   bool strictMode = false;
+  String pageFontFamily = '';
 
   @override
   void initState() {
@@ -71,6 +72,7 @@ class _MyAppState extends State<MyApp> {
         privateBrowsing = prefs.getBool(privateBrowsingKey) ?? false;
         adBlocking = prefs.getBool(adBlockingKey) ?? false;
         strictMode = prefs.getBool(strictModeKey) ?? false;
+        pageFontFamily = prefs.getString(pageFontFamilyKey) ?? '';
         final themeString = prefs.getString(themeModeKey);
         if (themeString != null) {
           themeMode = AppThemeMode.values.firstWhere(
@@ -142,6 +144,7 @@ class _MyAppState extends State<MyApp> {
           privateBrowsing: privateBrowsing,
           adBlocking: adBlocking,
           strictMode: strictMode,
+          pageFontFamily: pageFontFamily,
           themeMode: themeMode,
           onPageThemeChanged: _setAdjustedThemeMode,
           onSettingsChanged: _loadSettings,
