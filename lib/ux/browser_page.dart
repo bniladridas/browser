@@ -95,6 +95,36 @@ class UrlUtils {
   }
 }
 
+class _PageFontChoice {
+  const _PageFontChoice(this.label, this.cssFamily);
+
+  final String label;
+  final String cssFamily;
+}
+
+const List<_PageFontChoice> _pageFontChoices = [
+  _PageFontChoice('Default (Website)', ''),
+  _PageFontChoice('Arial', 'Arial, Helvetica, sans-serif'),
+  _PageFontChoice('Georgia', 'Georgia, serif'),
+  _PageFontChoice('Times New Roman', '"Times New Roman", Times, serif'),
+  _PageFontChoice('Verdana', 'Verdana, Geneva, sans-serif'),
+  _PageFontChoice('Trebuchet MS', '"Trebuchet MS", sans-serif'),
+  _PageFontChoice('Courier New', '"Courier New", Courier, monospace'),
+  _PageFontChoice('Comic Sans MS', '"Comic Sans MS", cursive'),
+];
+
+class _FontPickerResult {
+  const _FontPickerResult({
+    required this.fontFamily,
+    required this.applyToCurrentSite,
+    this.clearCurrentSiteRule = false,
+  });
+
+  final String fontFamily;
+  final bool applyToCurrentSite;
+  final bool clearCurrentSiteRule;
+}
+
 class SettingsDialog extends HookWidget {
   const SettingsDialog({
     super.key,
@@ -373,6 +403,8 @@ class CloseTabIntent extends Intent {}
 
 class NewWindowIntent extends Intent {}
 
+class PageFontIntent extends Intent {}
+
 class TabData {
   String currentUrl;
   final TextEditingController urlController;
@@ -528,6 +560,7 @@ class BrowserPage extends StatefulWidget {
       this.privateBrowsing = false,
       this.adBlocking = false,
       this.strictMode = false,
+      this.pageFontFamily = '',
       this.themeMode = AppThemeMode.system,
       this.aiAvailable = true,
       this.onSettingsChanged,
@@ -540,6 +573,7 @@ class BrowserPage extends StatefulWidget {
   final bool privateBrowsing;
   final bool adBlocking;
   final bool strictMode;
+  final String pageFontFamily;
   final AppThemeMode themeMode;
   final bool aiAvailable;
   final void Function()? onSettingsChanged;
@@ -667,7 +701,7 @@ class _ScanRingPainter extends CustomPainter {
 }
 
 class _BrowserPageState extends State<BrowserPage>
-    with TickerProviderStateMixin {
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   // WebKit cancellation signal seen on Apple platforms.
   static const int _wkErrorCancelled = -999;
   // Chromium aborted navigation code (net::ERR_ABORTED). On Android WebView
@@ -718,10 +752,13 @@ class _BrowserPageState extends State<BrowserPage>
     'mkv',
   };
   final Set<String> _pendingHeaderChecks = {};
-  double _titleBarHeight = 0;
   bool _dragging = false;
   final FocusNode _keyboardFocusNode = FocusNode();
   bool _reorderableTabs = true;
+  String _pageFontFamily = '';
+  final Map<String, String> _siteFontFamilies = {};
+  final List<String> _history = [];
+  static const int _maxHistoryEntries = 200;
 
   static const String _themeProbeScript = '''
 (() => {
@@ -777,29 +814,37 @@ class _BrowserPageState extends State<BrowserPage>
 
   String _displayUrl(String url) => url == defaultHomepageUrl ? '' : url;
 
+  Future<void> _syncMacWindowButtonsVisibility() async {
+    if (defaultTargetPlatform != TargetPlatform.macOS || isIntegrationTest) {
+      return;
+    }
+    try {
+      await windowManager.setTitleBarStyle(
+        TitleBarStyle.hidden,
+        windowButtonVisibility: !widget.hideAppBar,
+      );
+    } catch (e) {
+      logger.w('Failed to update macOS window button visibility: $e');
+    }
+  }
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _syncMacWindowButtonsVisibility();
+    });
+    _pageFontFamily = widget.pageFontFamily;
     _loadReorderableTabs();
-    if (defaultTargetPlatform == TargetPlatform.macOS && !isIntegrationTest) {
-      WidgetsBinding.instance.addPostFrameCallback((_) async {
-        try {
-          final height = await windowManager.getTitleBarHeight();
-          if (!mounted) return;
-          setState(() {
-            _titleBarHeight = height.toDouble();
-          });
-        } catch (e) {
-          logger.w('Failed to read title bar height: $e');
-        }
-      });
-    }
+    _loadFontOverrides();
     tabs.add(
         TabData(widget.initialUrl, displayUrl: _displayUrl(widget.initialUrl)));
     tabController = TabController(length: 1, vsync: this);
     previousTabIndex = 0;
     tabController.addListener(_onTabChanged);
     _loadBookmarks();
+    _loadHistory();
     if (widget.adBlocking) {
       loadAdBlockers();
     }
@@ -808,6 +853,13 @@ class _BrowserPageState extends State<BrowserPage>
   @override
   void didUpdateWidget(covariant BrowserPage oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.hideAppBar != widget.hideAppBar) {
+      _syncMacWindowButtonsVisibility();
+    }
+    if (oldWidget.pageFontFamily != widget.pageFontFamily) {
+      _pageFontFamily = widget.pageFontFamily;
+      _applyFontOverrideToAllTabs();
+    }
     if (oldWidget.themeMode != widget.themeMode) {
       if (widget.themeMode == AppThemeMode.adjust) {
         _applyThemeForTab(activeTab);
@@ -865,6 +917,90 @@ class _BrowserPageState extends State<BrowserPage>
       tab.detectedSeedColor = null;
       widget.onPageThemeChanged?.call(ThemeMode.system, null);
     }
+  }
+
+  Future<void> _applyFontOverride(TabData tab) async {
+    if (widget.strictMode) return;
+    final controller = tab.webViewController;
+    if (controller == null) return;
+    final normalizedFont = _resolveFontForTab(tab).trim();
+    try {
+      if (normalizedFont.isEmpty) {
+        await controller.runJavaScript('''
+(() => {
+  const style = document.getElementById('browser-font-override-style');
+  if (style) {
+    style.remove();
+  }
+})();
+''');
+        return;
+      }
+      final fontFamilyJson = jsonEncode(normalizedFont);
+      await controller.runJavaScript('''
+(() => {
+  const fontFamily = $fontFamilyJson;
+  const styleId = 'browser-font-override-style';
+  let style = document.getElementById(styleId);
+  if (!style) {
+    style = document.createElement('style');
+    style.id = styleId;
+    (document.head || document.documentElement).appendChild(style);
+  }
+  style.textContent =
+    'html, body, body * { font-family: ' + fontFamily + ' !important; }';
+})();
+''');
+    } catch (e, s) {
+      logger.w('Failed to apply page font override', error: e, stackTrace: s);
+    }
+  }
+
+  Future<void> _applyFontOverrideToAllTabs() async {
+    for (final tab in tabs) {
+      await _applyFontOverride(tab);
+    }
+  }
+
+  String? _hostFromUrl(String url) {
+    final uri = Uri.tryParse(url);
+    if (uri == null || uri.host.isEmpty) return null;
+    return uri.host.toLowerCase();
+  }
+
+  String _resolveFontForTab(TabData tab) {
+    final host = _hostFromUrl(tab.currentUrl);
+    if (host != null && _siteFontFamilies.containsKey(host)) {
+      return _siteFontFamilies[host] ?? '';
+    }
+    return _pageFontFamily;
+  }
+
+  Future<void> _loadFontOverrides() async {
+    final prefs = await SharedPreferences.getInstance();
+    final rawOverrides = prefs.getString(pageFontOverridesKey);
+    if (rawOverrides == null || rawOverrides.trim().isEmpty) {
+      return;
+    }
+
+    try {
+      final decoded = jsonDecode(rawOverrides);
+      if (decoded is! Map<String, dynamic>) return;
+      _siteFontFamilies
+        ..clear()
+        ..addEntries(
+          decoded.entries.where((entry) => entry.key.trim().isNotEmpty).map(
+              (entry) => MapEntry(entry.key.toLowerCase(), '${entry.value}')),
+        );
+      await _applyFontOverrideToAllTabs();
+    } catch (e, s) {
+      logger.w('Failed to load font overrides', error: e, stackTrace: s);
+    }
+  }
+
+  Future<void> _persistFontOverrides() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(pageFontOverridesKey, jsonEncode(_siteFontFamilies));
   }
 
   Map<String, dynamic>? _parseThemeProbe(dynamic result) {
@@ -1169,7 +1305,8 @@ class _BrowserPageState extends State<BrowserPage>
       final rpId = options['rp']['id'] as String;
 
       if (!_isValidRpId(rpId, pageOrigin.host)) {
-        throw Exception('RP ID validation failed: $rpId does not match origin ${pageOrigin.host}');
+        throw Exception(
+            'RP ID validation failed: $rpId does not match origin ${pageOrigin.host}');
       }
 
       final challenge = _base64UrlEncode(List<int>.from(options['challenge']));
@@ -1196,11 +1333,17 @@ class _BrowserPageState extends State<BrowserPage>
       if (response != null && tab.webViewController != null) {
         // Decode base64url strings to bytes
         final rawIdBytes = base64Url.decode(response.rawId.padRight(
-          response.rawId.length + (4 - response.rawId.length % 4) % 4, '='));
-        final clientDataBytes = base64Url.decode(response.clientDataJSON.padRight(
-          response.clientDataJSON.length + (4 - response.clientDataJSON.length % 4) % 4, '='));
-        final attestationBytes = base64Url.decode(response.attestationObject.padRight(
-          response.attestationObject.length + (4 - response.attestationObject.length % 4) % 4, '='));
+            response.rawId.length + (4 - response.rawId.length % 4) % 4, '='));
+        final clientDataBytes = base64Url.decode(response.clientDataJSON
+            .padRight(
+                response.clientDataJSON.length +
+                    (4 - response.clientDataJSON.length % 4) % 4,
+                '='));
+        final attestationBytes = base64Url.decode(response.attestationObject
+            .padRight(
+                response.attestationObject.length +
+                    (4 - response.attestationObject.length % 4) % 4,
+                '='));
 
         final jsResponse = '''
           {
@@ -1220,7 +1363,8 @@ class _BrowserPageState extends State<BrowserPage>
           }
         ''');
       } else {
-        await _rejectWebAuthnRequest(tab, requestId, 'User cancelled or error occurred');
+        await _rejectWebAuthnRequest(
+            tab, requestId, 'User cancelled or error occurred');
       }
     } catch (e, s) {
       logger.e('WebAuthn create failed', error: e, stackTrace: s);
@@ -1244,7 +1388,8 @@ class _BrowserPageState extends State<BrowserPage>
       final rpId = options['rpId'] as String;
 
       if (!_isValidRpId(rpId, pageOrigin.host)) {
-        throw Exception('RP ID validation failed: $rpId does not match origin ${pageOrigin.host}');
+        throw Exception(
+            'RP ID validation failed: $rpId does not match origin ${pageOrigin.host}');
       }
 
       final challenge = _base64UrlEncode(List<int>.from(options['challenge']));
@@ -1272,18 +1417,27 @@ class _BrowserPageState extends State<BrowserPage>
       if (response != null && tab.webViewController != null) {
         // Decode base64url strings to bytes
         final rawIdBytes = base64Url.decode(response.rawId.padRight(
-          response.rawId.length + (4 - response.rawId.length % 4) % 4, '='));
-        final clientDataBytes = base64Url.decode(response.clientDataJSON.padRight(
-          response.clientDataJSON.length + (4 - response.clientDataJSON.length % 4) % 4, '='));
-        final authDataBytes = base64Url.decode(response.authenticatorData.padRight(
-          response.authenticatorData.length + (4 - response.authenticatorData.length % 4) % 4, '='));
+            response.rawId.length + (4 - response.rawId.length % 4) % 4, '='));
+        final clientDataBytes = base64Url.decode(response.clientDataJSON
+            .padRight(
+                response.clientDataJSON.length +
+                    (4 - response.clientDataJSON.length % 4) % 4,
+                '='));
+        final authDataBytes = base64Url.decode(response.authenticatorData
+            .padRight(
+                response.authenticatorData.length +
+                    (4 - response.authenticatorData.length % 4) % 4,
+                '='));
         final signatureBytes = base64Url.decode(response.signature.padRight(
-          response.signature.length + (4 - response.signature.length % 4) % 4, '='));
+            response.signature.length + (4 - response.signature.length % 4) % 4,
+            '='));
 
         final userHandleBytes = response.userHandle.isNotEmpty
-          ? base64Url.decode(response.userHandle.padRight(
-              response.userHandle.length + (4 - response.userHandle.length % 4) % 4, '='))
-          : null;
+            ? base64Url.decode(response.userHandle.padRight(
+                response.userHandle.length +
+                    (4 - response.userHandle.length % 4) % 4,
+                '='))
+            : null;
 
         final jsResponse = '''
           {
@@ -1305,7 +1459,8 @@ class _BrowserPageState extends State<BrowserPage>
           }
         ''');
       } else {
-        await _rejectWebAuthnRequest(tab, requestId, 'User cancelled or error occurred');
+        await _rejectWebAuthnRequest(
+            tab, requestId, 'User cancelled or error occurred');
       }
     } catch (e, s) {
       logger.e('WebAuthn get failed', error: e, stackTrace: s);
@@ -1313,7 +1468,8 @@ class _BrowserPageState extends State<BrowserPage>
     }
   }
 
-  Future<void> _rejectWebAuthnRequest(TabData tab, int requestId, String error) async {
+  Future<void> _rejectWebAuthnRequest(
+      TabData tab, int requestId, String error) async {
     if (tab.webViewController == null) return;
 
     final errorMsg = jsonEncode(error);
@@ -1640,7 +1796,8 @@ class _BrowserPageState extends State<BrowserPage>
     });
   }
 
-  Widget _buildTabItem(TabData tab, int index, bool isSelected, {bool showDragHandle = false}) {
+  Widget _buildTabItem(TabData tab, int index, bool isSelected,
+      {bool showDragHandle = false}) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -1648,7 +1805,8 @@ class _BrowserPageState extends State<BrowserPage>
           Icon(
             Icons.drag_indicator,
             size: 16,
-            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+            color:
+                Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
           ),
           const SizedBox(width: 4),
         ],
@@ -1663,7 +1821,10 @@ class _BrowserPageState extends State<BrowserPage>
           style: TextStyle(
             color: isSelected
                 ? Theme.of(context).colorScheme.onSurface
-                : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                : Theme.of(context)
+                    .colorScheme
+                    .onSurface
+                    .withValues(alpha: 0.6),
           ),
         ),
         if (tabs.length > 1) ...[
@@ -1673,7 +1834,10 @@ class _BrowserPageState extends State<BrowserPage>
             child: Icon(
               Icons.close,
               size: 16,
-              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+              color: Theme.of(context)
+                  .colorScheme
+                  .onSurface
+                  .withValues(alpha: 0.7),
             ),
           ),
         ],
@@ -1689,9 +1853,28 @@ class _BrowserPageState extends State<BrowserPage>
     });
   }
 
+  Future<void> _setWindowMovable(bool movable) async {
+    if (isIntegrationTest) return;
+    try {
+      await windowManager.setMovable(movable);
+    } catch (e) {
+      logger.w('Failed to update window movability: $e');
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached) {
+      _saveBookmarks();
+      _saveHistory();
+    }
+  }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _keyboardFocusNode.dispose();
     for (final tab in tabs) {
       tab.urlController.dispose();
@@ -1701,18 +1884,19 @@ class _BrowserPageState extends State<BrowserPage>
     }
     tabController.dispose();
     _saveBookmarks();
+    _saveHistory();
     super.dispose();
   }
 
   Future<void> _loadBookmarks() async {
     final prefs = await SharedPreferences.getInstance();
-    final bookmarksJson = prefs.getString('bookmarks');
+    final bookmarksJson = prefs.getString(bookmarksStorageKey);
     if (bookmarksJson != null) {
       try {
         bookmarkManager.load(bookmarksJson);
       } catch (e, s) {
         logger.w('Failed to load bookmarks', error: e, stackTrace: s);
-        await prefs.remove('bookmarks');
+        await prefs.remove(bookmarksStorageKey);
       }
     }
   }
@@ -1720,7 +1904,53 @@ class _BrowserPageState extends State<BrowserPage>
   Future<void> _saveBookmarks() async {
     if (widget.privateBrowsing) return;
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('bookmarks', bookmarkManager.save());
+    await prefs.setString(bookmarksStorageKey, bookmarkManager.save());
+  }
+
+  Future<void> _loadHistory() async {
+    if (widget.privateBrowsing) return;
+    final prefs = await SharedPreferences.getInstance();
+    final historyJson = prefs.getString(browsingHistoryKey);
+    if (historyJson == null || historyJson.trim().isEmpty) {
+      return;
+    }
+    try {
+      final decoded = jsonDecode(historyJson);
+      if (decoded is! List) return;
+      _history
+        ..clear()
+        ..addAll(decoded.whereType<String>());
+      if (_history.length > _maxHistoryEntries) {
+        _history.removeRange(0, _history.length - _maxHistoryEntries);
+      }
+    } catch (e, s) {
+      logger.w('Failed to load browsing history', error: e, stackTrace: s);
+    }
+  }
+
+  Future<void> _saveHistory() async {
+    if (widget.privateBrowsing) return;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(browsingHistoryKey, jsonEncode(_history));
+  }
+
+  void _recordHistory(TabData tab, String url) {
+    if (widget.privateBrowsing || url.isEmpty) return;
+
+    if (tab.history.isEmpty || tab.history.last != url) {
+      tab.history.add(url);
+      if (tab.history.length > 50) {
+        tab.history.removeAt(0);
+      }
+    }
+
+    if (_history.isEmpty || _history.last != url) {
+      _history.add(url);
+      if (_history.length > _maxHistoryEntries) {
+        _history.removeAt(0);
+      }
+      _saveHistory();
+    }
   }
 
   void _handleLoadError(TabData tab, String newErrorMessage) {
@@ -1940,6 +2170,171 @@ class _BrowserPageState extends State<BrowserPage>
     );
   }
 
+  Future<void> _showFontPicker() async {
+    const customOptionValue = '__custom__';
+    final currentHost = _hostFromUrl(activeTab.currentUrl);
+    final hasSiteRule =
+        currentHost != null && _siteFontFamilies.containsKey(currentHost);
+    var applyToCurrentSite = hasSiteRule;
+    final initialFont =
+        hasSiteRule ? _siteFontFamilies[currentHost] ?? '' : _pageFontFamily;
+    final hasPreset = _pageFontChoices.any(
+      (choice) => choice.cssFamily == initialFont,
+    );
+    var selectedValue = hasPreset ? initialFont : customOptionValue;
+    final customFontController = TextEditingController(
+      text: hasPreset ? '' : initialFont,
+    );
+
+    final result = await showDialog<_FontPickerResult>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setStateDialog) => AlertDialog(
+          title: const Text('Page Font'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (currentHost != null) ...[
+                SizedBox(
+                  width: double.infinity,
+                  child: SegmentedButton<bool>(
+                    segments: [
+                      const ButtonSegment<bool>(
+                        value: false,
+                        label: Text('Global'),
+                      ),
+                      ButtonSegment<bool>(
+                        value: true,
+                        label: Text(currentHost),
+                      ),
+                    ],
+                    selected: {applyToCurrentSite},
+                    onSelectionChanged: (selection) {
+                      setStateDialog(() {
+                        applyToCurrentSite = selection.first;
+                      });
+                    },
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ],
+              DropdownButtonFormField<String>(
+                initialValue: selectedValue,
+                decoration: const InputDecoration(labelText: 'Choose font'),
+                items: [
+                  ..._pageFontChoices.map(
+                    (choice) => DropdownMenuItem<String>(
+                      value: choice.cssFamily,
+                      child: Text(choice.label),
+                    ),
+                  ),
+                  const DropdownMenuItem<String>(
+                    value: customOptionValue,
+                    child: Text('Custom CSS Font Family'),
+                  ),
+                ],
+                onChanged: (value) {
+                  if (value == null) return;
+                  setStateDialog(() {
+                    selectedValue = value;
+                  });
+                },
+              ),
+              if (selectedValue == customOptionValue) ...[
+                const SizedBox(height: 12),
+                TextField(
+                  controller: customFontController,
+                  decoration: const InputDecoration(
+                    labelText: 'Custom font-family value',
+                    hintText: 'e.g. "Fira Sans", Arial, sans-serif',
+                  ),
+                ),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            if (currentHost != null && hasSiteRule && applyToCurrentSite)
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop(
+                    const _FontPickerResult(
+                      fontFamily: '',
+                      applyToCurrentSite: true,
+                      clearCurrentSiteRule: true,
+                    ),
+                  );
+                },
+                child: const Text('Clear Site Rule'),
+              ),
+            TextButton(
+              onPressed: () {
+                final chosenFont = selectedValue == customOptionValue
+                    ? customFontController.text.trim()
+                    : selectedValue;
+                Navigator.of(context).pop(
+                  _FontPickerResult(
+                    fontFamily: chosenFont,
+                    applyToCurrentSite:
+                        currentHost != null && applyToCurrentSite,
+                  ),
+                );
+              },
+              child: const Text('Apply'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    customFontController.dispose();
+
+    if (!mounted || result == null) {
+      return;
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+
+    if (result.applyToCurrentSite && currentHost != null) {
+      if (result.clearCurrentSiteRule) {
+        if (!_siteFontFamilies.containsKey(currentHost)) return;
+        setState(() {
+          _siteFontFamilies.remove(currentHost);
+        });
+        await _persistFontOverrides();
+      } else {
+        if ((_siteFontFamilies[currentHost] ?? '') == result.fontFamily) return;
+        setState(() {
+          _siteFontFamilies[currentHost] = result.fontFamily;
+        });
+        await _persistFontOverrides();
+      }
+    } else {
+      if (result.fontFamily == _pageFontFamily) return;
+      await prefs.setString(pageFontFamilyKey, result.fontFamily);
+      setState(() {
+        _pageFontFamily = result.fontFamily;
+      });
+    }
+
+    await _applyFontOverrideToAllTabs();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          result.clearCurrentSiteRule
+              ? 'Site font rule removed'
+              : result.fontFamily.isEmpty
+                  ? 'Font override disabled'
+                  : 'Page font updated',
+        ),
+      ),
+    );
+  }
+
   void _showNetworkDebug() {
     showDialog(
       context: context,
@@ -1963,6 +2358,9 @@ class _BrowserPageState extends State<BrowserPage>
         break;
       case 'settings':
         _showSettings();
+        break;
+      case 'page_font':
+        _showFontPicker();
         break;
       case 'git_fetch':
         _showGitFetchDialog();
@@ -2027,6 +2425,16 @@ class _BrowserPageState extends State<BrowserPage>
             ],
           ),
         ),
+      const PopupMenuItem(
+        value: 'page_font',
+        child: Row(
+          children: [
+            Icon(Icons.font_download),
+            SizedBox(width: 12),
+            Text('Page Font'),
+          ],
+        ),
+      ),
       const PopupMenuItem(
         value: 'settings',
         child: Row(
@@ -2133,7 +2541,7 @@ class _BrowserPageState extends State<BrowserPage>
       );
       return;
     }
-    final history = activeTab.history;
+    final history = _history;
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -2159,6 +2567,7 @@ class _BrowserPageState extends State<BrowserPage>
                           setState(() {
                             history.removeAt(historyIndex);
                           });
+                          _saveHistory();
                         },
                       ),
                     );
@@ -2170,7 +2579,11 @@ class _BrowserPageState extends State<BrowserPage>
             onPressed: () {
               setState(() {
                 history.clear();
+                for (final tab in tabs) {
+                  tab.history.clear();
+                }
               });
+              _saveHistory();
               Navigator.of(context).pop();
             },
             child: const Text('Clear All'),
@@ -2182,6 +2595,59 @@ class _BrowserPageState extends State<BrowserPage>
         ],
       ),
     );
+  }
+
+  Future<void> _showQuickUrlPrompt() async {
+    var inputValue =
+        activeTab.currentUrl == defaultHomepageUrl ? '' : activeTab.currentUrl;
+    var dialogClosed = false;
+    final submittedValue = await showDialog<String>(
+      context: context,
+      useRootNavigator: true,
+      builder: (dialogContext) {
+        void closeDialog([String? value]) {
+          if (dialogClosed) return;
+          dialogClosed = true;
+          Navigator.of(dialogContext).pop(value);
+        }
+
+        return AlertDialog(
+          title: const Text('Open URL or Search'),
+          content: TextFormField(
+            initialValue: inputValue,
+            autofocus: true,
+            textInputAction: TextInputAction.go,
+            decoration: const InputDecoration(
+              hintText: 'Search or enter URL',
+            ),
+            onChanged: (value) {
+              inputValue = value;
+            },
+            onFieldSubmitted: (value) {
+              Future<void>.delayed(Duration.zero, () {
+                closeDialog(value);
+              });
+            },
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => closeDialog(),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => closeDialog(inputValue),
+              child: const Text('Open'),
+            ),
+          ],
+        );
+      },
+    );
+
+    final value = submittedValue?.trim();
+    if (value == null || value.isEmpty) return;
+    await Future<void>.delayed(Duration.zero);
+    if (!mounted) return;
+    await _loadUrl(value);
   }
 
   Future<void> _loadUrl(String url) async {
@@ -2439,12 +2905,7 @@ class _BrowserPageState extends State<BrowserPage>
       tab.webViewController!.addJavaScriptChannel('HistoryChannel',
           onMessageReceived: (JavaScriptMessage message) {
         final url = message.message;
-        if (!widget.privateBrowsing && !tab.history.contains(url)) {
-          tab.history.add(url);
-          if (tab.history.length > 50) {
-            tab.history.removeAt(0);
-          }
-        }
+        _recordHistory(tab, url);
         // Update the URL bar for SPA navigation
         if (!tab.isClosed && mounted && tab.currentUrl != url) {
           setState(() {
@@ -2502,14 +2963,7 @@ class _BrowserPageState extends State<BrowserPage>
                 tab.state = const BrowserState.loading();
                 tab.detectedBrightness = null;
                 tab.detectedSeedColor = null;
-                if (!widget.privateBrowsing &&
-                    (tab.history.isEmpty ||
-                        tab.history.last != tab.currentUrl)) {
-                  tab.history.add(tab.currentUrl);
-                  if (tab.history.length > 50) {
-                    tab.history.removeAt(0);
-                  }
-                }
+                _recordHistory(tab, tab.currentUrl);
               });
             }
           }
@@ -2547,6 +3001,7 @@ class _BrowserPageState extends State<BrowserPage>
             tab.webViewController!.runJavaScript(loginDetectionScript);
             // Inject WebAuthn script
             tab.webViewController!.runJavaScript(webAuthnScript);
+            _applyFontOverride(tab);
             // Attempt autofill if credentials available
             _attemptAutofill(tab);
           }
@@ -2633,8 +3088,7 @@ class _BrowserPageState extends State<BrowserPage>
                   ),
                 ),
               ),
-            if (tab.pendingPasswordPrompt != null &&
-                activeTab == tab)
+            if (tab.pendingPasswordPrompt != null && activeTab == tab)
               Positioned(
                 top: 16,
                 left: 16,
@@ -2658,10 +3112,8 @@ class _BrowserPageState extends State<BrowserPage>
 
   @override
   Widget build(BuildContext context) {
-    final double titleBarInset =
-        defaultTargetPlatform == TargetPlatform.macOS ? _titleBarHeight : 0.0;
-    final leadingInset =
-        defaultTargetPlatform == TargetPlatform.macOS ? 88.0 : 16.0;
+    final isMacDesktop = defaultTargetPlatform == TargetPlatform.macOS;
+    final leadingInset = (isMacDesktop && !widget.hideAppBar) ? 88.0 : 16.0;
 
     final PreferredSizeWidget? appBarWidget = widget.hideAppBar
         ? null
@@ -2758,14 +3210,17 @@ class _BrowserPageState extends State<BrowserPage>
               ),
             ),
           );
+    final double topToolbarInset =
+        (isMacDesktop && !widget.hideAppBar) ? 24.0 : 0.0;
 
     return KeyboardListener(
       focusNode: _keyboardFocusNode,
       autofocus: true,
       onKeyEvent: (event) {
         if (event is KeyDownEvent) {
-          final isCommandOrControl = (isCommandKey && HardwareKeyboard.instance.isMetaPressed) ||
-              (isControlKey && HardwareKeyboard.instance.isControlPressed);
+          final isCommandOrControl =
+              (isCommandKey && HardwareKeyboard.instance.isMetaPressed) ||
+                  (isControlKey && HardwareKeyboard.instance.isControlPressed);
 
           if (isCommandOrControl) {
             if (event.logicalKey == LogicalKeyboardKey.keyT) {
@@ -2776,6 +3231,9 @@ class _BrowserPageState extends State<BrowserPage>
               activeTab.urlFocusNode.requestFocus();
             } else if (event.logicalKey == LogicalKeyboardKey.keyR) {
               _refresh();
+            } else if (event.logicalKey == LogicalKeyboardKey.keyF &&
+                HardwareKeyboard.instance.isShiftPressed) {
+              _showFontPicker();
             }
           } else if (HardwareKeyboard.instance.isAltPressed) {
             if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
@@ -2787,267 +3245,341 @@ class _BrowserPageState extends State<BrowserPage>
         }
       },
       child: Shortcuts(
-      shortcuts: {
-        SingleActivator(LogicalKeyboardKey.keyL,
-                control: isControlKey,
-                meta: isCommandKey):
-            FocusUrlIntent(),
-        SingleActivator(LogicalKeyboardKey.keyR,
-                control: isControlKey,
-                meta: isCommandKey):
-            RefreshIntent(),
-        SingleActivator(LogicalKeyboardKey.keyT,
-                control: isControlKey,
-                meta: isCommandKey):
-            NewTabIntent(),
-        SingleActivator(LogicalKeyboardKey.keyW,
-                control: isControlKey,
-                meta: isCommandKey):
-            CloseTabIntent(),
-        SingleActivator(LogicalKeyboardKey.keyN,
-                control: isControlKey,
-                meta: isCommandKey):
-            NewWindowIntent(),
-        const SingleActivator(LogicalKeyboardKey.arrowLeft, alt: true):
-            GoBackIntent(),
-        const SingleActivator(LogicalKeyboardKey.arrowRight, alt: true):
-            GoForwardIntent(),
-      },
-      child: FocusableActionDetector(
-        autofocus: true,
-        shortcuts: const {},
-        actions: const {},
-        child: Actions(
-        actions: {
-          FocusUrlIntent: CallbackAction<FocusUrlIntent>(
-            onInvoke: (intent) => activeTab.urlFocusNode.requestFocus(),
-          ),
-          RefreshIntent: CallbackAction<RefreshIntent>(
-            onInvoke: (intent) => _refresh(),
-          ),
-          NewTabIntent: CallbackAction<NewTabIntent>(
-            onInvoke: (intent) => _addNewTab(),
-          ),
-          CloseTabIntent: CallbackAction<CloseTabIntent>(
-            onInvoke: (intent) => _closeTab(tabController.index),
-          ),
-          NewWindowIntent: CallbackAction<NewWindowIntent>(
-            onInvoke: (intent) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('New window not supported in desktop app'),
-                  duration: Duration(seconds: 2),
-                ),
-              );
-              return null;
-            },
-          ),
-          GoBackIntent: CallbackAction<GoBackIntent>(
-            onInvoke: (intent) => _goBack(),
-          ),
-          GoForwardIntent: CallbackAction<GoForwardIntent>(
-            onInvoke: (intent) => _goForward(),
-          ),
+        shortcuts: {
+          SingleActivator(LogicalKeyboardKey.keyL,
+              control: isControlKey, meta: isCommandKey): FocusUrlIntent(),
+          SingleActivator(LogicalKeyboardKey.keyR,
+              control: isControlKey, meta: isCommandKey): RefreshIntent(),
+          SingleActivator(LogicalKeyboardKey.keyT,
+              control: isControlKey, meta: isCommandKey): NewTabIntent(),
+          SingleActivator(LogicalKeyboardKey.keyW,
+              control: isControlKey, meta: isCommandKey): CloseTabIntent(),
+          SingleActivator(LogicalKeyboardKey.keyN,
+              control: isControlKey, meta: isCommandKey): NewWindowIntent(),
+          SingleActivator(LogicalKeyboardKey.keyF,
+              control: isControlKey,
+              meta: isCommandKey,
+              shift: true): PageFontIntent(),
+          const SingleActivator(LogicalKeyboardKey.arrowLeft, alt: true):
+              GoBackIntent(),
+          const SingleActivator(LogicalKeyboardKey.arrowRight, alt: true):
+              GoForwardIntent(),
         },
-        child: DropTarget(
-          onDragEntered: (details) => setState(() => _dragging = true),
-          onDragExited: (details) => setState(() => _dragging = false),
-          onDragDone: (details) async {
-            setState(() => _dragging = false);
-            if (details.files.isNotEmpty) {
-              final file = details.files.first;
-              final path = 'file://${file.path}';
-              if (tabs.isEmpty) {
-                _addNewTab();
-              }
-              _loadUrl(path);
-            }
-          },
-          child: Scaffold(
-            appBar: titleBarInset > 0 && appBarWidget != null
-                ? PreferredSize(
-                    preferredSize:
-                        Size.fromHeight(kToolbarHeight + titleBarInset),
-                    child: Column(
+        child: FocusableActionDetector(
+          autofocus: true,
+          shortcuts: const {},
+          actions: const {},
+          child: Actions(
+            actions: {
+              FocusUrlIntent: CallbackAction<FocusUrlIntent>(
+                onInvoke: (intent) => activeTab.urlFocusNode.requestFocus(),
+              ),
+              RefreshIntent: CallbackAction<RefreshIntent>(
+                onInvoke: (intent) => _refresh(),
+              ),
+              NewTabIntent: CallbackAction<NewTabIntent>(
+                onInvoke: (intent) => _addNewTab(),
+              ),
+              CloseTabIntent: CallbackAction<CloseTabIntent>(
+                onInvoke: (intent) => _closeTab(tabController.index),
+              ),
+              NewWindowIntent: CallbackAction<NewWindowIntent>(
+                onInvoke: (intent) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('New window not supported in desktop app'),
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                  return null;
+                },
+              ),
+              PageFontIntent: CallbackAction<PageFontIntent>(
+                onInvoke: (intent) => _showFontPicker(),
+              ),
+              GoBackIntent: CallbackAction<GoBackIntent>(
+                onInvoke: (intent) => _goBack(),
+              ),
+              GoForwardIntent: CallbackAction<GoForwardIntent>(
+                onInvoke: (intent) => _goForward(),
+              ),
+            },
+            child: DropTarget(
+              onDragEntered: (details) => setState(() => _dragging = true),
+              onDragExited: (details) => setState(() => _dragging = false),
+              onDragDone: (details) async {
+                setState(() => _dragging = false);
+                if (details.files.isNotEmpty) {
+                  final file = details.files.first;
+                  final path = 'file://${file.path}';
+                  if (tabs.isEmpty) {
+                    _addNewTab();
+                  }
+                  _loadUrl(path);
+                }
+              },
+              child: Scaffold(
+                appBar: topToolbarInset > 0 && appBarWidget != null
+                    ? PreferredSize(
+                        preferredSize:
+                            Size.fromHeight(kToolbarHeight + topToolbarInset),
+                        child: Column(
+                          children: [
+                            Container(
+                              height: topToolbarInset,
+                              color: Theme.of(context).colorScheme.surface,
+                            ),
+                            appBarWidget,
+                          ],
+                        ),
+                      )
+                    : appBarWidget,
+                body: Stack(
+                  children: [
+                    Column(
                       children: [
                         Container(
-                          height: titleBarInset,
-                          color: Theme.of(context).colorScheme.surface,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.surface,
+                            border: Border(
+                              bottom: BorderSide(
+                                color: widget.themeMode == AppThemeMode.adjust
+                                    ? Colors.transparent
+                                    : Theme.of(context)
+                                        .colorScheme
+                                        .outline
+                                        .withValues(alpha: 0.2),
+                                width: 1,
+                              ),
+                            ),
+                          ),
+                          child: MouseRegion(
+                            onEnter: (_) {
+                              if (defaultTargetPlatform ==
+                                      TargetPlatform.macOS &&
+                                  widget.hideAppBar &&
+                                  _reorderableTabs) {
+                                _setWindowMovable(false);
+                              }
+                            },
+                            onExit: (_) {
+                              if (defaultTargetPlatform ==
+                                      TargetPlatform.macOS &&
+                                  widget.hideAppBar &&
+                                  _reorderableTabs) {
+                                _setWindowMovable(true);
+                              }
+                            },
+                            child: Listener(
+                              behavior: HitTestBehavior.translucent,
+                              onPointerDown: (_) {
+                                if (widget.hideAppBar && _reorderableTabs) {
+                                  _setWindowMovable(false);
+                                }
+                              },
+                              onPointerUp: (_) {
+                                if (widget.hideAppBar && _reorderableTabs) {
+                                  _setWindowMovable(true);
+                                }
+                              },
+                              onPointerCancel: (_) {
+                                if (widget.hideAppBar && _reorderableTabs) {
+                                  _setWindowMovable(true);
+                                }
+                              },
+                              child: _reorderableTabs
+                                  ? ReorderableListView.builder(
+                                      scrollDirection: Axis.horizontal,
+                                      itemCount: tabs.length,
+                                      onReorder: _reorderTab,
+                                      onReorderStart: (_) {
+                                        _setWindowMovable(false);
+                                      },
+                                      onReorderEnd: (_) {
+                                        _setWindowMovable(true);
+                                      },
+                                      buildDefaultDragHandles: false,
+                                      itemBuilder: (context, index) {
+                                        final tab = tabs[index];
+                                        final isSelected =
+                                            tabController.index == index;
+                                        return ReorderableDragStartListener(
+                                          key: ObjectKey(tab),
+                                          index: index,
+                                          child: InkWell(
+                                            onTap: () => setState(() =>
+                                                tabController.index = index),
+                                            child: Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: 16,
+                                                      vertical: 12),
+                                              decoration: BoxDecoration(
+                                                border: Border(
+                                                  bottom: BorderSide(
+                                                    color: isSelected
+                                                        ? Theme.of(context)
+                                                            .colorScheme
+                                                            .primary
+                                                        : Colors.transparent,
+                                                    width: 2,
+                                                  ),
+                                                ),
+                                              ),
+                                              child: _buildTabItem(
+                                                  tab, index, isSelected,
+                                                  showDragHandle: true),
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    )
+                                  : TabBar(
+                                      controller: tabController,
+                                      isScrollable: true,
+                                      indicatorColor: widget.themeMode ==
+                                              AppThemeMode.adjust
+                                          ? Colors.transparent
+                                          : Theme.of(context)
+                                              .colorScheme
+                                              .primary,
+                                      dividerColor: widget.themeMode ==
+                                              AppThemeMode.adjust
+                                          ? Colors.transparent
+                                          : Theme.of(context)
+                                              .colorScheme
+                                              .outline
+                                              .withValues(alpha: 0.2),
+                                      labelColor: Theme.of(context)
+                                          .colorScheme
+                                          .onSurface,
+                                      unselectedLabelColor: Theme.of(context)
+                                          .colorScheme
+                                          .onSurface
+                                          .withValues(alpha: 0.6),
+                                      tabs: tabs.asMap().entries.map((entry) {
+                                        final index = entry.key;
+                                        final tab = entry.value;
+                                        final isSelected =
+                                            tabController.index == index;
+                                        return Tab(
+                                          child: _buildTabItem(
+                                              tab, index, isSelected),
+                                        );
+                                      }).toList(),
+                                    ),
+                            ),
+                          ),
                         ),
-                        appBarWidget,
+                        Expanded(
+                          child: _reorderableTabs
+                              ? IndexedStack(
+                                  index: tabController.index,
+                                  children: tabs
+                                      .map((tab) => _buildTabBody(tab))
+                                      .toList(),
+                                )
+                              : TabBarView(
+                                  controller: tabController,
+                                  children: tabs
+                                      .map((tab) => _buildTabBody(tab))
+                                      .toList(),
+                                ),
+                        ),
                       ],
                     ),
-                  )
-                : appBarWidget,
-            body: Stack(
-              children: [
-                Column(
-                  children: [
-                    Container(
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.surface,
-                        border: Border(
-                          bottom: BorderSide(
-                            color: widget.themeMode == AppThemeMode.adjust
-                                ? Colors.transparent
-                                : Theme.of(context)
-                                    .colorScheme
-                                    .outline
-                                    .withValues(alpha: 0.2),
-                            width: 1,
+                    if (widget.hideAppBar)
+                      Positioned(
+                        top: 16,
+                        right: 16,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color:
+                                Theme.of(context).colorScheme.surfaceContainer,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.1),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon:
+                                    const Icon(Icons.arrow_back_ios, size: 18),
+                                onPressed: _goBack,
+                                tooltip: 'Back',
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.arrow_forward_ios,
+                                    size: 18),
+                                onPressed: _goForward,
+                                tooltip: 'Forward',
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.search, size: 18),
+                                onPressed: _showQuickUrlPrompt,
+                                tooltip: 'Search or URL',
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.refresh, size: 18),
+                                onPressed: _refresh,
+                                tooltip: 'Refresh',
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.add, size: 18),
+                                onPressed: _addNewTab,
+                                tooltip: 'New Tab',
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.settings, size: 18),
+                                onPressed: _showSettings,
+                                tooltip: 'Settings',
+                              ),
+                              _buildMenuButton(iconSize: 18),
+                            ],
                           ),
                         ),
                       ),
-                      child: _reorderableTabs
-                          ? ReorderableListView.builder(
-                              scrollDirection: Axis.horizontal,
-                              itemCount: tabs.length,
-                              onReorder: _reorderTab,
-                              buildDefaultDragHandles: false,
-                              itemBuilder: (context, index) {
-                                final tab = tabs[index];
-                                final isSelected = tabController.index == index;
-                                return ReorderableDragStartListener(
-                                  key: ObjectKey(tab),
-                                  index: index,
-                                  child: InkWell(
-                                    onTap: () => setState(() => tabController.index = index),
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                      decoration: BoxDecoration(
-                                        border: Border(
-                                          bottom: BorderSide(
-                                            color: isSelected
-                                                ? Theme.of(context).colorScheme.primary
-                                                : Colors.transparent,
-                                            width: 2,
-                                          ),
-                                        ),
-                                      ),
-                                      child: _buildTabItem(tab, index, isSelected, showDragHandle: true),
-                                    ),
-                                  ),
-                                );
-                              },
-                            )
-                          : TabBar(
-                              controller: tabController,
-                              isScrollable: true,
-                              indicatorColor: widget.themeMode == AppThemeMode.adjust
-                                  ? Colors.transparent
-                                  : Theme.of(context).colorScheme.primary,
-                              dividerColor: widget.themeMode == AppThemeMode.adjust
-                                  ? Colors.transparent
-                                  : Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
-                              labelColor: Theme.of(context).colorScheme.onSurface,
-                              unselectedLabelColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                              tabs: tabs.asMap().entries.map((entry) {
-                                final index = entry.key;
-                                final tab = entry.value;
-                                final isSelected = tabController.index == index;
-                                return Tab(
-                                  child: _buildTabItem(tab, index, isSelected),
-                                );
-                              }).toList(),
-                            ),
-                    ),
-                    Expanded(
-                      child: _reorderableTabs
-                          ? IndexedStack(
-                              index: tabController.index,
-                              children: tabs.map((tab) => _buildTabBody(tab)).toList(),
-                            )
-                          : TabBarView(
-                              controller: tabController,
-                              children: tabs.map((tab) => _buildTabBody(tab)).toList(),
-                            ),
-                    ),
+                    if (_dragging)
+                      Container(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .primary
+                            .withValues(alpha: 0.1),
+                        child: Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.file_open,
+                                size: 64,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                'Drop file to open',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  color: Theme.of(context).colorScheme.primary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                   ],
                 ),
-                if (widget.hideAppBar)
-                  Positioned(
-                    top: 16,
-                    right: 16,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.surfaceContainer,
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.1),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.arrow_back_ios, size: 18),
-                            onPressed: _goBack,
-                            tooltip: 'Back',
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.arrow_forward_ios, size: 18),
-                            onPressed: _goForward,
-                            tooltip: 'Forward',
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.refresh, size: 18),
-                            onPressed: _refresh,
-                            tooltip: 'Refresh',
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.add, size: 18),
-                            onPressed: _addNewTab,
-                            tooltip: 'New Tab',
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.settings, size: 18),
-                            onPressed: _showSettings,
-                            tooltip: 'Settings',
-                          ),
-                          _buildMenuButton(iconSize: 18),
-                        ],
-                      ),
-                    ),
-                  ),
-                if (_dragging)
-                  Container(
-                    color: Theme.of(context)
-                        .colorScheme
-                        .primary
-                        .withValues(alpha: 0.1),
-                    child: Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.file_open,
-                            size: 64,
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'Drop file to open',
-                            style: TextStyle(
-                              fontSize: 18,
-                              color: Theme.of(context).colorScheme.primary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-              ],
+              ),
             ),
           ),
         ),
       ),
-    ),
-    ),
     );
   }
 }
