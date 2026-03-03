@@ -476,7 +476,8 @@ class SettingsDialog extends HookWidget {
             await prefs.setString(themeModeKey, selectedTheme.value.name);
 
             onSettingsChanged?.call();
-            if (privateBrowsing.value != originalPrivateBrowsing.value) {
+            if (privateBrowsing.value &&
+                originalPrivateBrowsing.value == false) {
               onClearCaches?.call();
             }
             ScaffoldMessenger.of(context).showSnackBar(
@@ -522,6 +523,7 @@ class TabData {
   Brightness? detectedBrightness;
   Color? detectedSeedColor;
   SavePasswordPromptData? pendingPasswordPrompt;
+  String? faviconUrl;
 
   TabData(this.currentUrl, {String? displayUrl})
       : urlController = TextEditingController(text: displayUrl ?? currentUrl),
@@ -757,102 +759,6 @@ class _KeepAliveWrapperState extends State<KeepAliveWrapper>
   }
 }
 
-class _TelescopeLoader extends StatefulWidget {
-  const _TelescopeLoader();
-
-  @override
-  State<_TelescopeLoader> createState() => _TelescopeLoaderState();
-}
-
-class _TelescopeLoaderState extends State<_TelescopeLoader>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 1700),
-  )..repeat();
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final color = Theme.of(context).colorScheme.primary;
-    final faint = color.withValues(alpha: 0.28);
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, _) {
-        final t = _controller.value;
-        final sway = math.sin(t * 2 * math.pi) * 0.18;
-        return SizedBox(
-          width: 78,
-          height: 78,
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              CustomPaint(
-                size: const Size.square(78),
-                painter: _ScanRingPainter(progress: t, color: faint),
-              ),
-              Transform.rotate(
-                angle: -0.55 + sway,
-                child: Icon(
-                  Icons.travel_explore,
-                  size: 42,
-                  color: color,
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _ScanRingPainter extends CustomPainter {
-  const _ScanRingPainter({
-    required this.progress,
-    required this.color,
-  });
-
-  final double progress;
-  final Color color;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = size.center(Offset.zero);
-    final radius = size.width * 0.42;
-    final basePaint = Paint()
-      ..color = color.withValues(alpha: 0.35)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.2;
-    canvas.drawCircle(center, radius, basePaint);
-
-    final sweepPaint = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 3
-      ..strokeCap = StrokeCap.round;
-    final startAngle = (progress * 2 * math.pi) - (math.pi / 5);
-    const sweepAngle = math.pi / 2.8;
-    canvas.drawArc(
-      Rect.fromCircle(center: center, radius: radius),
-      startAngle,
-      sweepAngle,
-      false,
-      sweepPaint,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant _ScanRingPainter oldDelegate) {
-    return oldDelegate.progress != progress || oldDelegate.color != color;
-  }
-}
-
 class _BrowserPageState extends State<BrowserPage>
     with TickerProviderStateMixin, WidgetsBindingObserver {
   // WebKit cancellation signal seen on Apple platforms.
@@ -912,8 +818,15 @@ class _BrowserPageState extends State<BrowserPage>
   final Map<String, String> _siteFontFamilies = {};
   final List<String> _history = [];
   static const int _maxHistoryEntries = 200;
+  static const int _maxTabHistoryEntries = 50;
   static const int _maxNavigationCacheEntries = 200;
   static const int _navigationCachePrewarmCount = 8;
+  static const Duration _navigationCachePrewarmTimeout = Duration(seconds: 3);
+  static const double _kMacOsLeadingInsetWithTrafficLights = 72.0;
+  static const double _kDefaultLeadingInset = 16.0;
+  static const double _kMacOsTopToolbarInset = 24.0;
+  static const String _legacyLayoutFixScriptAsset =
+      'assets/legacy_layout_fix.js';
   final AiService _aiService = AiService();
   List<String>? _cachedAiSearchSuggestions;
   DateTime? _lastAiSuggestionFetchAt;
@@ -922,6 +835,8 @@ class _BrowserPageState extends State<BrowserPage>
   Timer? _overflowMenuCloseTimer;
   bool _isOverflowTriggerHovered = false;
   bool _isOverflowMenuHovered = false;
+  final Map<String, String> _faviconCacheByHost = {};
+  String? _legacyLayoutFixScript;
 
   static const String _themeProbeScript = '''
 (() => {
@@ -1048,8 +963,11 @@ class _BrowserPageState extends State<BrowserPage>
       try {
         await controller.setUserAgent(userAgent);
         await controller.reload();
-      } on PlatformException {
-        // Ignore MissingPluginException on macOS
+      } on PlatformException catch (e, s) {
+        if (!_isMissingPluginException(e)) {
+          logger.w('Unexpected PlatformException on user-agent update',
+              error: e, stackTrace: s);
+        }
       }
     }
   }
@@ -1059,8 +977,11 @@ class _BrowserPageState extends State<BrowserPage>
     if (controller == null) return;
     try {
       await controller.setUserAgent(_getUserAgent(widget.useModernUserAgent));
-    } on PlatformException {
-      // Ignore MissingPluginException on macOS.
+    } on PlatformException catch (e, s) {
+      if (!_isMissingPluginException(e)) {
+        logger.w('Unexpected PlatformException on setUserAgent',
+            error: e, stackTrace: s);
+      }
     }
 
     try {
@@ -1068,9 +989,22 @@ class _BrowserPageState extends State<BrowserPage>
     } on FormatException {
       logger.w('Invalid URL: ${tab.currentUrl}');
       _handleLoadError(tab, 'Invalid URL format');
-    } on PlatformException {
-      // Ignore MissingPluginException on macOS.
+    } on PlatformException catch (e, s) {
+      if (!_isMissingPluginException(e)) {
+        logger.w('Unexpected PlatformException on initial loadRequest',
+            error: e, stackTrace: s);
+      }
     }
+  }
+
+  bool _isMissingPluginException(PlatformException e) {
+    final combined = [
+      e.code,
+      e.message ?? '',
+      e.details?.toString() ?? '',
+      e.toString(),
+    ].join(' ');
+    return combined.contains('MissingPluginException');
   }
 
   void _applyThemeForTab(TabData tab) {
@@ -1160,118 +1094,29 @@ class _BrowserPageState extends State<BrowserPage>
     }
   }
 
+  Future<String?> _loadLegacyLayoutFixScript() async {
+    if (_legacyLayoutFixScript != null) {
+      return _legacyLayoutFixScript;
+    }
+    try {
+      _legacyLayoutFixScript =
+          await rootBundle.loadString(_legacyLayoutFixScriptAsset);
+      return _legacyLayoutFixScript;
+    } catch (e, s) {
+      logger.w('Failed to load legacy layout fix script',
+          error: e, stackTrace: s);
+      return null;
+    }
+  }
+
   Future<void> _applyLegacyLayoutFix(TabData tab) async {
     if (widget.useModernUserAgent || widget.strictMode) return;
     final controller = tab.webViewController;
     if (controller == null) return;
+    final script = await _loadLegacyLayoutFixScript();
+    if (script == null || script.trim().isEmpty) return;
     try {
-      await controller.runJavaScript('''
-(() => {
-  const flag = '__browserLegacyLayoutFixInstalled';
-  if (window[flag]) {
-    return;
-  }
-  window[flag] = true;
-
-  const isGoogleHost = /(^|\\.)google\\./i.test(window.location.hostname);
-
-  const ensureViewport = () => {
-    if (isGoogleHost) return;
-    let viewport = document.querySelector('meta[name="viewport"]');
-    if (!viewport) {
-      viewport = document.createElement('meta');
-      viewport.setAttribute('name', 'viewport');
-      (document.head || document.documentElement).appendChild(viewport);
-    }
-    const current = viewport.getAttribute('content') || '';
-    if (!/width\\s*=\\s*device-width/i.test(current)) {
-      viewport.setAttribute(
-        'content',
-        'width=device-width, initial-scale=1, viewport-fit=cover',
-      );
-    }
-  };
-
-  const applyFix = () => {
-    const root = document.documentElement;
-    const body = document.body;
-    if (!root || !body) return;
-    if (isGoogleHost) {
-      // Keep Google's own responsive behavior untouched.
-      root.style.removeProperty('width');
-      body.style.removeProperty('width');
-      root.style.removeProperty('min-width');
-      body.style.removeProperty('min-width');
-      root.style.removeProperty('max-width');
-      body.style.removeProperty('max-width');
-      root.style.removeProperty('overflow-x');
-      body.style.removeProperty('overflow-x');
-    } else {
-      root.style.setProperty('width', '100%', 'important');
-      body.style.setProperty('width', '100%', 'important');
-      root.style.setProperty('min-width', '0', 'important');
-      body.style.setProperty('min-width', '0', 'important');
-      root.style.setProperty('max-width', '100vw', 'important');
-      root.style.setProperty('overflow-x', 'auto', 'important');
-      body.style.setProperty('max-width', '100vw', 'important');
-      body.style.setProperty('overflow-x', 'auto', 'important');
-    }
-
-    root.style.removeProperty('zoom');
-
-    if (isGoogleHost) {
-      const candidates = document.querySelectorAll(
-        'iframe, [role="dialog"], [role="menu"], [aria-modal="true"]',
-      );
-      for (const el of candidates) {
-        const rect = el.getBoundingClientRect();
-        if (rect.width < 120 || rect.height < 120) continue;
-        const style = window.getComputedStyle(el);
-        if (style.display === 'none' || style.visibility === 'hidden') continue;
-        const positioned = style.position === 'fixed' || style.position === 'absolute';
-        if (!positioned) continue;
-
-        if (rect.left < 8) {
-          if (el.dataset.browserClampBaseTransform == null) {
-            el.dataset.browserClampBaseTransform =
-              style.transform === 'none' ? '' : style.transform;
-          }
-          const base = el.dataset.browserClampBaseTransform;
-          const shift = 8 - rect.left;
-          const nextTransform =
-            (base ? base + ' ' : '') +
-            'translateX(' +
-            shift.toFixed(1) +
-            'px)';
-          el.style.setProperty('transform', nextTransform, 'important');
-          el.style.setProperty('transform-origin', 'top left', 'important');
-        } else if (el.dataset.browserClampBaseTransform != null) {
-          const base = el.dataset.browserClampBaseTransform;
-          if (!base) {
-            el.style.setProperty('transform', 'none', 'important');
-          } else {
-            el.style.setProperty('transform', base, 'important');
-          }
-          delete el.dataset.browserClampBaseTransform;
-        }
-      }
-    }
-  };
-
-  ensureViewport();
-  applyFix();
-  window.addEventListener('resize', applyFix, { passive: true });
-  const observer = new MutationObserver(() => applyFix());
-  observer.observe(document.documentElement, {
-    childList: true,
-    subtree: true,
-    attributes: true,
-    attributeFilter: ['style', 'class'],
-  });
-  setTimeout(applyFix, 300);
-  setTimeout(applyFix, 1200);
-})();
-''');
+      await controller.runJavaScript(script);
     } catch (e, s) {
       logger.w('Failed to apply legacy layout fix', error: e, stackTrace: s);
     }
@@ -2167,11 +2012,7 @@ class _BrowserPageState extends State<BrowserPage>
           ),
           const SizedBox(width: 4),
         ],
-        Icon(
-          Icons.public,
-          size: 15,
-          color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-        ),
+        _buildTabFavicon(tab, theme),
         const SizedBox(width: 6),
         Text(
           (Uri.tryParse(tab.currentUrl)?.host ?? tab.currentUrl).truncate(14),
@@ -2196,6 +2037,94 @@ class _BrowserPageState extends State<BrowserPage>
         ],
       ],
     );
+  }
+
+  Widget _buildTabFavicon(TabData tab, ThemeData theme) {
+    final fallback = Icon(
+      Icons.public,
+      size: 15,
+      color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+    );
+    final faviconUrl = tab.faviconUrl;
+    if (faviconUrl == null || faviconUrl.trim().isEmpty) {
+      return fallback;
+    }
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(3),
+      child: Image.network(
+        faviconUrl,
+        width: 15,
+        height: 15,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => fallback,
+      ),
+    );
+  }
+
+  String? _defaultFaviconUrlFor(String url) {
+    final uri = Uri.tryParse(url);
+    if (uri == null || uri.host.isEmpty) return null;
+    if (uri.scheme != 'http' && uri.scheme != 'https') return null;
+    return Uri(
+      scheme: uri.scheme,
+      host: uri.host,
+      port: uri.hasPort ? uri.port : null,
+      path: '/favicon.ico',
+    ).toString();
+  }
+
+  Future<void> _updateTabFavicon(TabData tab) async {
+    final controller = tab.webViewController;
+    if (controller == null || tab.isClosed) return;
+    final host = _hostFromUrl(tab.currentUrl);
+    if (host != null) {
+      final cached = _faviconCacheByHost[host];
+      if (cached != null && cached.isNotEmpty) {
+        if (cached != tab.faviconUrl && mounted && !tab.isClosed) {
+          setState(() {
+            tab.faviconUrl = cached;
+          });
+        }
+        return;
+      }
+    }
+
+    String? resolvedFavicon;
+    try {
+      final result = await controller.runJavaScriptReturningResult('''
+(() => {
+  const links = Array.from(document.querySelectorAll('link[rel]'));
+  const candidates = links.filter((link) => {
+    const rel = (link.getAttribute('rel') || '').toLowerCase();
+    return rel.includes('icon');
+  });
+  for (const link of candidates) {
+    const href = link.getAttribute('href');
+    if (!href) continue;
+    try {
+      return new URL(href, window.location.href).href;
+    } catch (_) {}
+  }
+  return null;
+})();
+''');
+      if (result is String && result.trim().isNotEmpty) {
+        resolvedFavicon = result.trim();
+      }
+    } catch (_) {
+      // Best effort only.
+    }
+    resolvedFavicon ??= _defaultFaviconUrlFor(tab.currentUrl);
+    if (resolvedFavicon != null &&
+        resolvedFavicon.isNotEmpty &&
+        host != null &&
+        host.isNotEmpty) {
+      _faviconCacheByHost[host] = resolvedFavicon;
+    }
+    if (resolvedFavicon == tab.faviconUrl || !mounted || tab.isClosed) return;
+    setState(() {
+      tab.faviconUrl = resolvedFavicon;
+    });
   }
 
   Future<void> _loadReorderableTabs() async {
@@ -2310,7 +2239,7 @@ class _BrowserPageState extends State<BrowserPage>
 
     if (tab.history.isEmpty || tab.history.last != url) {
       tab.history.add(url);
-      if (tab.history.length > 50) {
+      if (tab.history.length > _maxTabHistoryEntries) {
         tab.history.removeAt(0);
       }
     }
@@ -2393,9 +2322,10 @@ class _BrowserPageState extends State<BrowserPage>
         final uri = Uri.parse(url);
         await http.head(uri, headers: {
           'User-Agent': _getUserAgent(widget.useModernUserAgent)
-        }).timeout(const Duration(seconds: 3));
-      } catch (_) {
+        }).timeout(_navigationCachePrewarmTimeout);
+      } catch (e) {
         // Best effort prewarm only.
+        logger.d('Failed to prewarm navigation cache for $url', error: e);
       }
     }
   }
@@ -2469,8 +2399,11 @@ class _BrowserPageState extends State<BrowserPage>
       if (await activeTab.webViewController?.canGoBack() ?? false) {
         await activeTab.webViewController?.goBack();
       }
-    } on PlatformException {
-      // Ignore MissingPluginException on macOS
+    } on PlatformException catch (e, s) {
+      if (!_isMissingPluginException(e)) {
+        logger.w('Unexpected PlatformException on goBack',
+            error: e, stackTrace: s);
+      }
     }
   }
 
@@ -2479,16 +2412,22 @@ class _BrowserPageState extends State<BrowserPage>
       if (await activeTab.webViewController?.canGoForward() ?? false) {
         await activeTab.webViewController?.goForward();
       }
-    } on PlatformException {
-      // Ignore MissingPluginException on macOS
+    } on PlatformException catch (e, s) {
+      if (!_isMissingPluginException(e)) {
+        logger.w('Unexpected PlatformException on goForward',
+            error: e, stackTrace: s);
+      }
     }
   }
 
   Future<void> _refresh() async {
     try {
       await activeTab.webViewController?.reload();
-    } on PlatformException {
-      // Ignore MissingPluginException on macOS
+    } on PlatformException catch (e, s) {
+      if (!_isMissingPluginException(e)) {
+        logger.w('Unexpected PlatformException on reload',
+            error: e, stackTrace: s);
+      }
     }
   }
 
@@ -3038,8 +2977,13 @@ class _BrowserPageState extends State<BrowserPage>
           activeTab.urlController.text = url;
           try {
             activeTab.webViewController?.loadRequest(uri);
-          } on PlatformException {
-            // Ignore MissingPluginException on macOS
+          } on PlatformException catch (e, s) {
+            if (!_isMissingPluginException(e)) {
+              logger.w(
+                  'Unexpected PlatformException on loadRequest (Git Fetch)',
+                  error: e,
+                  stackTrace: s);
+            }
           }
         },
       ),
@@ -3097,12 +3041,17 @@ class _BrowserPageState extends State<BrowserPage>
       if (cleaned.isEmpty) continue;
       cleaned = cleaned.replaceAll(RegExp(r'^[-*•\d\.\)\s]+'), '').trim();
       if (cleaned.length < 4) continue;
+      if (_isDisallowedAiSuggestion(cleaned)) continue;
       if (seen.add(cleaned.toLowerCase())) {
         output.add(cleaned);
       }
       if (output.length >= 6) break;
     }
     return output;
+  }
+
+  bool _isDisallowedAiSuggestion(String suggestion) {
+    return suggestion.trim().toLowerCase().startsWith('file://');
   }
 
   Future<List<String>> _fetchAiSearchSuggestions() async {
@@ -3114,30 +3063,25 @@ class _BrowserPageState extends State<BrowserPage>
       return _cachedAiSearchSuggestions!;
     }
 
+    List<String> suggestions;
     if (!widget.aiAvailable) {
-      final fallback = _fallbackSearchSuggestions();
-      _cachedAiSearchSuggestions = fallback;
-      _lastAiSuggestionFetchAt = now;
-      return fallback;
+      suggestions = _fallbackSearchSuggestions();
+    } else {
+      try {
+        final response = await _aiService.generateResponse(
+          'Suggest 6 short, interesting web search ideas for a general audience. '
+          'Return only one idea per line. No numbering. No extra text.',
+        );
+        final parsed = _parseAiSuggestions(response);
+        suggestions = parsed.isEmpty ? _fallbackSearchSuggestions() : parsed;
+      } catch (_) {
+        suggestions = _fallbackSearchSuggestions();
+      }
     }
 
-    try {
-      final response = await _aiService.generateResponse(
-        'Suggest 6 short, interesting web search ideas for a general audience. '
-        'Return only one idea per line. No numbering. No extra text.',
-      );
-      final parsed = _parseAiSuggestions(response);
-      final suggestions =
-          parsed.isEmpty ? _fallbackSearchSuggestions() : parsed;
-      _cachedAiSearchSuggestions = suggestions;
-      _lastAiSuggestionFetchAt = now;
-      return suggestions;
-    } catch (_) {
-      final fallback = _fallbackSearchSuggestions();
-      _cachedAiSearchSuggestions = fallback;
-      _lastAiSuggestionFetchAt = now;
-      return fallback;
-    }
+    _cachedAiSearchSuggestions = suggestions;
+    _lastAiSuggestionFetchAt = now;
+    return suggestions;
   }
 
   Future<void> _showAiSearchSuggestionsSheet() async {
@@ -3193,6 +3137,19 @@ class _BrowserPageState extends State<BrowserPage>
                                 ?.copyWith(fontSize: 13),
                           ),
                           onTap: () {
+                            if (_isDisallowedAiSuggestion(suggestion)) {
+                              Navigator.of(context).pop();
+                              if (mounted) {
+                                ScaffoldMessenger.of(this.context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      'Blocked unsafe local file suggestion',
+                                    ),
+                                  ),
+                                );
+                              }
+                              return;
+                            }
                             Navigator.of(context).pop();
                             _loadUrl(suggestion);
                           },
@@ -3295,6 +3252,31 @@ class _BrowserPageState extends State<BrowserPage>
     );
   }
 
+  Iterable<String> _historyUrlSuggestions(String rawInput) {
+    final query = rawInput.trim().toLowerCase();
+    if (query.isEmpty) return const <String>[];
+
+    final seen = <String>{};
+    final matches = <String>[];
+    for (final url in _history.reversed) {
+      final normalized = url.trim();
+      if (normalized.isEmpty) continue;
+      final lower = normalized.toLowerCase();
+      if (!lower.contains(query)) continue;
+      if (!seen.add(lower)) continue;
+      matches.add(normalized);
+      if (matches.length >= 8) break;
+    }
+
+    matches.sort((a, b) {
+      final aStarts = a.toLowerCase().startsWith(query);
+      final bStarts = b.toLowerCase().startsWith(query);
+      if (aStarts != bStarts) return aStarts ? -1 : 1;
+      return a.length.compareTo(b.length);
+    });
+    return matches;
+  }
+
   Future<void> _showQuickUrlPrompt() async {
     var inputValue =
         activeTab.currentUrl == defaultHomepageUrl ? '' : activeTab.currentUrl;
@@ -3386,8 +3368,11 @@ class _BrowserPageState extends State<BrowserPage>
       } else {
         activeTab.webViewController?.loadRequest(Uri.parse(processedUrl));
       }
-    } on PlatformException {
-      // Ignore MissingPluginException on macOS
+    } on PlatformException catch (e, s) {
+      if (!_isMissingPluginException(e)) {
+        logger.w('Unexpected PlatformException on loadUrl',
+            error: e, stackTrace: s);
+      }
     }
   }
 
@@ -3660,6 +3645,13 @@ class _BrowserPageState extends State<BrowserPage>
         }
         _updateThemeFromTab(tab);
       });
+      tab.webViewController!.addJavaScriptChannel('PageTapChannel',
+          onMessageReceived: (JavaScriptMessage message) {
+        if (!mounted || tab.isClosed) return;
+        if (tab.urlFocusNode.hasFocus) {
+          tab.urlFocusNode.unfocus();
+        }
+      });
       tab.webViewController!.addJavaScriptChannel('LoginDetector',
           onMessageReceived: (JavaScriptMessage message) async {
         final prefs = await SharedPreferences.getInstance();
@@ -3708,6 +3700,10 @@ class _BrowserPageState extends State<BrowserPage>
                 tab.state = const BrowserState.loading();
                 tab.detectedBrightness = null;
                 tab.detectedSeedColor = null;
+                final host = _hostFromUrl(url);
+                tab.faviconUrl = host != null
+                    ? (_faviconCacheByHost[host] ?? _defaultFaviconUrlFor(url))
+                    : _defaultFaviconUrlFor(url);
                 _recordHistory(tab, tab.currentUrl);
               });
             }
@@ -3741,6 +3737,13 @@ class _BrowserPageState extends State<BrowserPage>
               };
               window.historyListenerAdded = true;
             }
+            if (!window.pageTapListenerAdded) {
+              const notifyTap = function() {
+                try { PageTapChannel.postMessage('tap'); } catch (_) {}
+              };
+              window.addEventListener('pointerdown', notifyTap, true);
+              window.pageTapListenerAdded = true;
+            }
           ''');
             // Inject login detection script
             tab.webViewController!.runJavaScript(loginDetectionScript);
@@ -3748,6 +3751,7 @@ class _BrowserPageState extends State<BrowserPage>
             tab.webViewController!.runJavaScript(webAuthnScript);
             _applyLegacyLayoutFix(tab);
             _applyFontOverride(tab);
+            _updateTabFavicon(tab);
             // Attempt autofill if credentials available
             _attemptAutofill(tab);
           }
@@ -3803,28 +3807,24 @@ class _BrowserPageState extends State<BrowserPage>
       return KeepAliveWrapper(
         child: Stack(
           children: [
-            WebViewWidget(controller: tab.webViewController!),
+            Listener(
+              behavior: HitTestBehavior.translucent,
+              onPointerDown: (_) {
+                if (tab.urlFocusNode.hasFocus) {
+                  tab.urlFocusNode.unfocus();
+                }
+              },
+              child: WebViewWidget(controller: tab.webViewController!),
+            ),
             if (tab.state is Loading)
-              Container(
-                color: Theme.of(context)
-                    .colorScheme
-                    .surface
-                    .withValues(alpha: 0.8),
-                child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const _TelescopeLoader(),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Searching...',
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.onSurface,
-                          fontSize: 16,
-                        ),
-                      ),
-                    ],
-                  ),
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: LinearProgressIndicator(
+                  minHeight: 2,
+                  backgroundColor: Colors.transparent,
+                  color: Theme.of(context).colorScheme.primary,
                 ),
               ),
             if (tab.pendingPasswordPrompt != null && activeTab == tab)
@@ -3852,7 +3852,9 @@ class _BrowserPageState extends State<BrowserPage>
   @override
   Widget build(BuildContext context) {
     final isMacDesktop = defaultTargetPlatform == TargetPlatform.macOS;
-    final leadingInset = (isMacDesktop && !widget.hideAppBar) ? 72.0 : 16.0;
+    final leadingInset = (isMacDesktop && !widget.hideAppBar)
+        ? _kMacOsLeadingInsetWithTrafficLights
+        : _kDefaultLeadingInset;
 
     final PreferredSizeWidget? appBarWidget = widget.hideAppBar
         ? null
@@ -3906,30 +3908,101 @@ class _BrowserPageState extends State<BrowserPage>
                   ),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: TextField(
-                      controller: activeTab.urlController,
+                    child: RawAutocomplete<String>(
                       focusNode: activeTab.urlFocusNode,
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.onSurface,
-                        fontSize: 13,
-                      ),
-                      decoration: InputDecoration(
-                        hintText: 'Search or enter URL',
-                        hintStyle: TextStyle(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                          fontSize: 13,
-                        ),
-                        border: InputBorder.none,
-                        contentPadding:
-                            const EdgeInsets.symmetric(vertical: 10),
-                      ),
-                      onTap: () {
-                        if (widget.aiSearchSuggestionsEnabled &&
-                            activeTab.urlController.text.trim().isEmpty) {
-                          _showAiSearchSuggestionsSheet();
-                        }
+                      textEditingController: activeTab.urlController,
+                      optionsBuilder: (value) =>
+                          _historyUrlSuggestions(value.text),
+                      onSelected: _loadUrl,
+                      optionsViewBuilder: (context, onSelected, options) {
+                        final optionList = options.toList(growable: false);
+                        if (optionList.isEmpty) return const SizedBox.shrink();
+                        final theme = Theme.of(context);
+                        return Stack(
+                          children: [
+                            Positioned.fill(
+                              child: GestureDetector(
+                                behavior: HitTestBehavior.translucent,
+                                onTap: () => activeTab.urlFocusNode.unfocus(),
+                                child: const SizedBox.expand(),
+                              ),
+                            ),
+                            Align(
+                              alignment: Alignment.topLeft,
+                              child: Material(
+                                elevation: 6,
+                                color: theme.colorScheme.surfaceContainerHigh,
+                                borderRadius: BorderRadius.circular(12),
+                                child: ConstrainedBox(
+                                  constraints: const BoxConstraints(
+                                    maxHeight: 240,
+                                    minWidth: 300,
+                                    maxWidth: 720,
+                                  ),
+                                  child: ListView.builder(
+                                    padding:
+                                        const EdgeInsets.symmetric(vertical: 6),
+                                    shrinkWrap: true,
+                                    itemCount: optionList.length,
+                                    itemBuilder: (context, index) {
+                                      final option = optionList[index];
+                                      return InkWell(
+                                        onTap: () => onSelected(option),
+                                        child: Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                            vertical: 8,
+                                          ),
+                                          child: Text(
+                                            option,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: theme.textTheme.bodySmall
+                                                ?.copyWith(
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        );
                       },
-                      onSubmitted: _loadUrl,
+                      fieldViewBuilder:
+                          (context, controller, focusNode, onFieldSubmitted) {
+                        return TextField(
+                          controller: controller,
+                          focusNode: focusNode,
+                          onTapOutside: (_) => focusNode.unfocus(),
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.onSurface,
+                            fontSize: 13,
+                          ),
+                          decoration: InputDecoration(
+                            hintText: 'Search or enter URL',
+                            hintStyle: TextStyle(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
+                              fontSize: 13,
+                            ),
+                            border: InputBorder.none,
+                            contentPadding:
+                                const EdgeInsets.symmetric(vertical: 10),
+                          ),
+                          onTap: () {
+                            if (widget.aiSearchSuggestionsEnabled &&
+                                controller.text.trim().isEmpty) {
+                              _showAiSearchSuggestionsSheet();
+                            }
+                          },
+                          onSubmitted: (_) => onFieldSubmitted(),
+                        );
+                      },
                     ),
                   ),
                   if (activeTab.state is Loading)
@@ -3960,7 +4033,7 @@ class _BrowserPageState extends State<BrowserPage>
             ),
           );
     final double topToolbarInset =
-        (isMacDesktop && !widget.hideAppBar) ? 24.0 : 0.0;
+        (isMacDesktop && !widget.hideAppBar) ? _kMacOsTopToolbarInset : 0.0;
 
     return KeyboardListener(
       focusNode: _keyboardFocusNode,
