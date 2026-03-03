@@ -39,6 +39,7 @@ import '../logging/network_monitor.dart';
 import '../utils/string_utils.dart';
 import '../utils/platform_utils.dart';
 import 'package:pkg/ai_chat_widget.dart';
+import 'package:pkg/ai_service.dart';
 import 'network_debug_dialog.dart';
 import 'save_password_prompt.dart';
 import 'password_vault_screen.dart';
@@ -132,12 +133,14 @@ class SettingsDialog extends HookWidget {
     this.onClearCaches,
     this.currentTheme,
     required this.aiAvailable,
+    this.aiSearchSuggestionsEnabled = true,
   });
 
   final void Function()? onSettingsChanged;
   final void Function()? onClearCaches;
   final AppThemeMode? currentTheme;
   final bool aiAvailable;
+  final bool aiSearchSuggestionsEnabled;
 
   String _themeLabel(AppThemeMode mode) {
     switch (mode) {
@@ -154,6 +157,9 @@ class SettingsDialog extends HookWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    const compactDensity = VisualDensity(horizontal: -2, vertical: -2);
+
     final homepage = useState<String?>(null);
     final hideAppBar = useState(false);
     final useModernUserAgent = useState(true);
@@ -164,6 +170,8 @@ class SettingsDialog extends HookWidget {
     final strictMode = useState(false);
     final passwordManagerEnabled = useState(false);
     final reorderableTabs = useState(true);
+    final aiSearchSuggestionsEnabled =
+        useState(this.aiSearchSuggestionsEnabled);
     final selectedTheme =
         useState<AppThemeMode>(currentTheme ?? AppThemeMode.system);
     final homepageController = useTextEditingController();
@@ -189,6 +197,8 @@ class SettingsDialog extends HookWidget {
         passwordManagerEnabled.value =
             prefs.getBool(passwordManagerEnabledKey) ?? false;
         reorderableTabs.value = prefs.getBool(reorderableTabsKey) ?? true;
+        aiSearchSuggestionsEnabled.value =
+            prefs.getBool(aiSearchSuggestionsEnabledKey) ?? true;
         if (prefs.getString(themeModeKey) != null) {
           selectedTheme.value = AppThemeMode.values.firstWhere(
               (m) => m.name == prefs.getString(themeModeKey),
@@ -208,134 +218,168 @@ class SettingsDialog extends HookWidget {
     }
 
     return AlertDialog(
-      title: const Text('Settings'),
+      title: Text(
+        'Settings',
+        style: theme.textTheme.titleMedium?.copyWith(fontSize: 16),
+      ),
       content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: homepageController,
-              decoration: const InputDecoration(labelText: 'Homepage'),
-            ),
-            const SizedBox(height: 4),
-            SizedBox(
-              width: double.infinity,
-              child: Text(
-                'Leave this blank to show the Browser welcome screen.',
-                style: Theme.of(context).textTheme.bodySmall,
+        child: Theme(
+          data: theme.copyWith(
+            listTileTheme: ListTileThemeData(
+              dense: true,
+              visualDensity: compactDensity,
+              titleTextStyle: theme.textTheme.bodyMedium?.copyWith(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: theme.colorScheme.onSurface,
+              ),
+              subtitleTextStyle: theme.textTheme.bodySmall?.copyWith(
+                fontSize: 11,
+                color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
-            SwitchListTile(
-              title: const Text('Hide App Bar'),
-              value: hideAppBar.value,
-              onChanged: (value) => hideAppBar.value = value,
-            ),
-            SwitchListTile(
-              title: const Text('Use Modern User Agent'),
-              subtitle: const Text(
-                  'Load modern Google interface (applies to new tabs)'),
-              value: useModernUserAgent.value,
-              onChanged: (value) => useModernUserAgent.value = value,
-            ),
-            SwitchListTile(
-              title: const Text('Enable Git Fetch'),
-              subtitle:
-                  const Text('Show GitHub repository fetch option in menu'),
-              value: enableGitFetch.value,
-              onChanged: (value) => enableGitFetch.value = value,
-            ),
-            SwitchListTile(
-              title: const Text('Private Browsing'),
-              subtitle: const Text(
-                  'Clear cache and cookies on toggle (shared globally)'),
-              value: privateBrowsing.value,
-              onChanged: (value) => privateBrowsing.value = value,
-            ),
-            SwitchListTile(
-              title: const Text('Ad Blocking'),
-              subtitle: const Text('Block common ad domains'),
-              value: adBlocking.value,
-              onChanged: (value) => adBlocking.value = value,
-            ),
-            SwitchListTile(
-              title: const Text('Strict Mode'),
-              subtitle:
-                  const Text('Disable JavaScript and third-party cookies'),
-              value: strictMode.value,
-              onChanged: (value) => strictMode.value = value,
-            ),
-            SwitchListTile(
-              title: const Text('Password Manager'),
-              subtitle: const Text('Save passwords'),
-              value: passwordManagerEnabled.value,
-              onChanged: (value) => passwordManagerEnabled.value = value,
-            ),
-            if (passwordManagerEnabled.value)
-              ListTile(
-                leading: const Icon(Icons.lock),
-                title: const Text('Manage Passwords'),
-                subtitle: const Text('View and delete saved passwords'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () {
-                  Navigator.of(context).pop();
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => const PasswordVaultScreen(),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: homepageController,
+                style: theme.textTheme.bodyMedium?.copyWith(fontSize: 13),
+                decoration: const InputDecoration(
+                  labelText: 'Homepage',
+                  isDense: true,
+                ),
+              ),
+              const SizedBox(height: 4),
+              SizedBox(
+                width: double.infinity,
+                child: Text(
+                  'Leave this blank to show the Browser welcome screen.',
+                  style: theme.textTheme.bodySmall?.copyWith(fontSize: 11),
+                ),
+              ),
+              SwitchListTile(
+                title: const Text('Hide App Bar'),
+                value: hideAppBar.value,
+                onChanged: (value) => hideAppBar.value = value,
+              ),
+              SwitchListTile(
+                title: const Text('Use Modern User Agent'),
+                subtitle: const Text(
+                    'Load modern Google interface (applies to new tabs)'),
+                value: useModernUserAgent.value,
+                onChanged: (value) => useModernUserAgent.value = value,
+              ),
+              SwitchListTile(
+                title: const Text('Enable Git Fetch'),
+                subtitle:
+                    const Text('Show GitHub repository fetch option in menu'),
+                value: enableGitFetch.value,
+                onChanged: (value) => enableGitFetch.value = value,
+              ),
+              SwitchListTile(
+                title: const Text('Private Browsing'),
+                subtitle: const Text(
+                    'Clear cache and cookies on toggle (shared globally)'),
+                value: privateBrowsing.value,
+                onChanged: (value) => privateBrowsing.value = value,
+              ),
+              SwitchListTile(
+                title: const Text('Ad Blocking'),
+                subtitle: const Text('Block common ad domains'),
+                value: adBlocking.value,
+                onChanged: (value) => adBlocking.value = value,
+              ),
+              SwitchListTile(
+                title: const Text('Strict Mode'),
+                subtitle:
+                    const Text('Disable JavaScript and third-party cookies'),
+                value: strictMode.value,
+                onChanged: (value) => strictMode.value = value,
+              ),
+              SwitchListTile(
+                title: const Text('Password Manager'),
+                subtitle: const Text('Save passwords'),
+                value: passwordManagerEnabled.value,
+                onChanged: (value) => passwordManagerEnabled.value = value,
+              ),
+              if (passwordManagerEnabled.value)
+                ListTile(
+                  leading: const Icon(Icons.lock),
+                  title: const Text('Manage Passwords'),
+                  subtitle: const Text('View and delete saved passwords'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const PasswordVaultScreen(),
+                      ),
+                    );
+                  },
+                ),
+              SwitchListTile(
+                title: const Text('Reorderable Tabs'),
+                subtitle: const Text('Drag tabs to reorder'),
+                value: reorderableTabs.value,
+                onChanged: (value) => reorderableTabs.value = value,
+              ),
+              SwitchListTile(
+                title: const Text('AI Search Suggestions'),
+                subtitle: const Text(
+                    'Show AI suggestions when URL bar is focused and empty'),
+                value: aiSearchSuggestionsEnabled.value,
+                onChanged: (value) => aiSearchSuggestionsEnabled.value = value,
+              ),
+              DropdownButton<AppThemeMode>(
+                value: selectedTheme.value,
+                onChanged: (AppThemeMode? value) {
+                  if (value != null) selectedTheme.value = value;
+                },
+                items: AppThemeMode.values
+                    .map<DropdownMenuItem<AppThemeMode>>((AppThemeMode mode) {
+                  return DropdownMenuItem<AppThemeMode>(
+                    value: mode,
+                    child: Text(
+                      'Theme: ${_themeLabel(mode)}',
+                      style: theme.textTheme.bodyMedium?.copyWith(fontSize: 13),
                     ),
                   );
-                },
+                }).toList(),
               ),
-            SwitchListTile(
-              title: const Text('Reorderable Tabs'),
-              subtitle: const Text('Drag tabs to reorder'),
-              value: reorderableTabs.value,
-              onChanged: (value) => reorderableTabs.value = value,
-            ),
-            DropdownButton<AppThemeMode>(
-              value: selectedTheme.value,
-              onChanged: (AppThemeMode? value) {
-                if (value != null) selectedTheme.value = value;
-              },
-              items: AppThemeMode.values
-                  .map<DropdownMenuItem<AppThemeMode>>((AppThemeMode mode) {
-                return DropdownMenuItem<AppThemeMode>(
-                  value: mode,
-                  child: Text('Theme: ${_themeLabel(mode)}'),
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 12),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(12),
+              const SizedBox(height: 12),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'AI Chat',
+                      style: theme.textTheme.titleSmall?.copyWith(fontSize: 13),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      aiAvailable
+                          ? 'Firebase configuration is present, so AI Chat is available.'
+                          : 'Firebase keys are missing, so AI Chat will stay hidden.',
+                      style: theme.textTheme.bodySmall?.copyWith(fontSize: 11),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Git Fetch requires GitHub access and only appears when '
+                      'Enable Git Fetch is turned on.',
+                      style: theme.textTheme.bodySmall?.copyWith(fontSize: 11),
+                    ),
+                  ],
+                ),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'AI Chat',
-                    style: Theme.of(context).textTheme.titleSmall,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    aiAvailable
-                        ? 'Firebase configuration is present, so AI Chat is available.'
-                        : 'Firebase keys are missing, so AI Chat will stay hidden.',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Git Fetch requires GitHub access and only appears when '
-                    'Enable Git Fetch is turned on.',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                ],
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
       actions: [
@@ -371,6 +415,8 @@ class SettingsDialog extends HookWidget {
             await prefs.setBool(
                 passwordManagerEnabledKey, passwordManagerEnabled.value);
             await prefs.setBool(reorderableTabsKey, reorderableTabs.value);
+            await prefs.setBool(aiSearchSuggestionsEnabledKey,
+                aiSearchSuggestionsEnabled.value);
             await prefs.setString(themeModeKey, selectedTheme.value.name);
 
             onSettingsChanged?.call();
@@ -561,6 +607,7 @@ class BrowserPage extends StatefulWidget {
       this.adBlocking = false,
       this.strictMode = false,
       this.pageFontFamily = '',
+      this.aiSearchSuggestionsEnabled = true,
       this.themeMode = AppThemeMode.system,
       this.aiAvailable = true,
       this.onSettingsChanged,
@@ -574,6 +621,7 @@ class BrowserPage extends StatefulWidget {
   final bool adBlocking;
   final bool strictMode;
   final String pageFontFamily;
+  final bool aiSearchSuggestionsEnabled;
   final AppThemeMode themeMode;
   final bool aiAvailable;
   final void Function()? onSettingsChanged;
@@ -759,6 +807,9 @@ class _BrowserPageState extends State<BrowserPage>
   final Map<String, String> _siteFontFamilies = {};
   final List<String> _history = [];
   static const int _maxHistoryEntries = 200;
+  final AiService _aiService = AiService();
+  List<String>? _cachedAiSearchSuggestions;
+  DateTime? _lastAiSuggestionFetchAt;
 
   static const String _themeProbeScript = '''
 (() => {
@@ -2166,6 +2217,7 @@ class _BrowserPageState extends State<BrowserPage>
           },
           onClearCaches: _clearAllCaches,
           currentTheme: widget.themeMode,
+          aiSearchSuggestionsEnabled: widget.aiSearchSuggestionsEnabled,
           aiAvailable: widget.aiAvailable),
     );
   }
@@ -2521,6 +2573,123 @@ class _BrowserPageState extends State<BrowserPage>
       context: context,
       builder: (context) =>
           AiChatWidget(pageTitle: pageTitle, pageUrl: pageUrl),
+    );
+  }
+
+  List<String> _fallbackSearchSuggestions() {
+    return const [
+      'best hidden travel places in 2026',
+      'latest space discoveries this week',
+      'beginner friendly side project ideas',
+      'healthy 20 minute dinner recipes',
+      'best documentaries to watch this month',
+      'top open source tools for productivity',
+    ];
+  }
+
+  List<String> _parseAiSuggestions(String raw) {
+    final seen = <String>{};
+    final output = <String>[];
+    final lines = raw.split('\n');
+    for (final line in lines) {
+      var cleaned = line.trim();
+      if (cleaned.isEmpty) continue;
+      cleaned = cleaned.replaceAll(RegExp(r'^[-*•\d\.\)\s]+'), '').trim();
+      if (cleaned.length < 4) continue;
+      if (seen.add(cleaned.toLowerCase())) {
+        output.add(cleaned);
+      }
+      if (output.length >= 6) break;
+    }
+    return output;
+  }
+
+  Future<List<String>> _fetchAiSearchSuggestions() async {
+    final now = DateTime.now();
+    final isCacheFresh = _cachedAiSearchSuggestions != null &&
+        _lastAiSuggestionFetchAt != null &&
+        now.difference(_lastAiSuggestionFetchAt!) < const Duration(minutes: 20);
+    if (isCacheFresh) {
+      return _cachedAiSearchSuggestions!;
+    }
+
+    if (!widget.aiAvailable) {
+      final fallback = _fallbackSearchSuggestions();
+      _cachedAiSearchSuggestions = fallback;
+      _lastAiSuggestionFetchAt = now;
+      return fallback;
+    }
+
+    try {
+      final response = await _aiService.generateResponse(
+        'Suggest 6 short, interesting web search ideas for a general audience. '
+        'Return only one idea per line. No numbering. No extra text.',
+      );
+      final parsed = _parseAiSuggestions(response);
+      final suggestions =
+          parsed.isEmpty ? _fallbackSearchSuggestions() : parsed;
+      _cachedAiSearchSuggestions = suggestions;
+      _lastAiSuggestionFetchAt = now;
+      return suggestions;
+    } catch (_) {
+      final fallback = _fallbackSearchSuggestions();
+      _cachedAiSearchSuggestions = fallback;
+      _lastAiSuggestionFetchAt = now;
+      return fallback;
+    }
+  }
+
+  Future<void> _showAiSearchSuggestionsSheet() async {
+    final suggestionsFuture = _fetchAiSearchSuggestions();
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: false,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: FutureBuilder<List<String>>(
+          future: suggestionsFuture,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState != ConnectionState.done) {
+              return const SizedBox(
+                height: 240,
+                child: Center(child: CircularProgressIndicator()),
+              );
+            }
+            final suggestions = snapshot.data ?? _fallbackSearchSuggestions();
+            return SizedBox(
+              height: 320,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                    child: Text(
+                      'Explore with AI',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                  ),
+                  Expanded(
+                    child: ListView.builder(
+                      itemCount: suggestions.length,
+                      itemBuilder: (context, index) {
+                        final suggestion = suggestions[index];
+                        return ListTile(
+                          leading: const Icon(Icons.auto_awesome),
+                          title: Text(suggestion),
+                          onTap: () {
+                            Navigator.of(context).pop();
+                            _loadUrl(suggestion);
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+      ),
     );
   }
 
@@ -3180,6 +3349,12 @@ class _BrowserPageState extends State<BrowserPage>
                         contentPadding:
                             const EdgeInsets.symmetric(vertical: 12),
                       ),
+                      onTap: () {
+                        if (widget.aiSearchSuggestionsEnabled &&
+                            activeTab.urlController.text.trim().isEmpty) {
+                          _showAiSearchSuggestionsSheet();
+                        }
+                      },
                       onSubmitted: _loadUrl,
                     ),
                   ),
