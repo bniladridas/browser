@@ -24,6 +24,7 @@ Use the format:
 
 ## Impact
 Select applicable categories (use `[x]` for checked, `[ ]` for unchecked):
+Only mark items that are directly applicable to the PR. Do not pre-check categories by default.
 - [ ] New feature
 - [ ] Bug fix
 - [ ] Breaking change
@@ -34,9 +35,15 @@ Select applicable categories (use `[x]` for checked, `[ ]` for unchecked):
 - [ ] Performance
 - [ ] Security
 
+Impact validation rule (required):
+- For every checked category, there must be at least one matching bullet in `## Summary`.
+- If no concrete change supports a category, keep it unchecked.
+- For version-bump PRs, `Build / CI` should be checked only when workflows/build tooling are changed in the PR.
+- For version-bump PRs without CI/workflow changes, prefer `Refactor / cleanup` and/or `Documentation` when applicable.
+
 ## Related Items
 - Resolves issues: #[issue-number]
-- Closes PRs: #[pr-number]
+- Closes: #[pr-number]
 - Resources: [PRs tab](../../pulls), [Issues tab](../../issues)
 
 ## Notes for reviewers
@@ -133,18 +140,21 @@ When creating version bump PRs (e.g., `version-bump-X.Y.Z` branch):
    - #<pr-number> - <type>[<scope>]: <description>
 
    ## Impact
+   - Mark only categories that are truly applicable to this specific version bump PR.
+   - Apply the impact validation rule above before checking any box.
    - [ ] New feature
    - [ ] Bug fix
    - [ ] Breaking change
-   - [x] Build / CI
-   - [x] Refactor / cleanup
-   - [x] Documentation
+   - [ ] Build / CI
+   - [ ] Refactor / cleanup
+   - [ ] Documentation
    - [ ] Tests
    - [ ] Performance
    - [ ] Security
 
    ## Related Items
    - Resolves issues: #<pr-number>
+   - Closes: #<pr-number>
    - Merged PRs: #<pr1>, #<pr2>, ...
 
    ## Notes for reviewers
@@ -216,7 +226,7 @@ gh pr create \
 
 ## Related Items
 - Resolves issues: #[issue-number]
-- Closes PRs: #[pr-number]
+- Closes: #[pr-number]
 - Resources: [PRs tab](../../pulls), [Issues tab](../../issues)
 
 ## Notes for reviewers
