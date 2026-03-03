@@ -46,13 +46,14 @@ class _MyAppState extends State<MyApp> {
   Color adjustedSeedColor = Colors.blue;
   String homepage = defaultHomepageUrl;
   bool hideAppBar = false;
-  bool useModernUserAgent = true;
+  bool useModernUserAgent = false;
   bool enableGitFetch = false;
   bool privateBrowsing = false;
   bool adBlocking = false;
   bool strictMode = false;
   String pageFontFamily = '';
   bool aiSearchSuggestionsEnabled = false;
+  bool advancedCacheEnabled = false;
 
   @override
   void initState() {
@@ -69,7 +70,7 @@ class _MyAppState extends State<MyApp> {
             ? defaultHomepageUrl
             : storedHomepage;
         hideAppBar = prefs.getBool(hideAppBarKey) ?? false;
-        useModernUserAgent = prefs.getBool(useModernUserAgentKey) ?? true;
+        useModernUserAgent = prefs.getBool(useModernUserAgentKey) ?? false;
         enableGitFetch = prefs.getBool(enableGitFetchKey) ?? false;
         privateBrowsing = prefs.getBool(privateBrowsingKey) ?? false;
         adBlocking = prefs.getBool(adBlockingKey) ?? false;
@@ -77,6 +78,7 @@ class _MyAppState extends State<MyApp> {
         pageFontFamily = prefs.getString(pageFontFamilyKey) ?? '';
         aiSearchSuggestionsEnabled =
             prefs.getBool(aiSearchSuggestionsEnabledKey) ?? false;
+        advancedCacheEnabled = prefs.getBool(advancedCacheEnabledKey) ?? false;
         final themeString = prefs.getString(themeModeKey);
         if (themeString != null) {
           themeMode = AppThemeMode.values.firstWhere(
@@ -176,6 +178,7 @@ class _MyAppState extends State<MyApp> {
           strictMode: strictMode,
           pageFontFamily: pageFontFamily,
           aiSearchSuggestionsEnabled: aiSearchSuggestionsEnabled,
+          advancedCacheEnabled: advancedCacheEnabled,
           themeMode: effectiveThemeMode,
           onPageThemeChanged: _setAdjustedThemeMode,
           onSettingsChanged: _loadSettings,

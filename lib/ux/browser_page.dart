@@ -50,19 +50,19 @@ const _userAgents = {
     'modern':
         'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0.2 Safari/605.1.15',
     'legacy':
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.2 Safari/605.1.15',
   },
   TargetPlatform.windows: {
     'modern':
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0',
     'legacy':
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:91.0) Gecko/20100101 Firefox/91.0',
   },
   TargetPlatform.linux: {
     'modern':
         'Mozilla/5.0 (X11; Linux x86_64; rv:120.0) Gecko/20100101 Firefox/120.0',
     'legacy':
-        'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (X11; Linux x86_64; rv:91.0) Gecko/20100101 Firefox/91.0',
   },
 };
 
@@ -136,6 +136,7 @@ class SettingsDialog extends HookWidget {
     this.currentTheme,
     required this.aiAvailable,
     this.aiSearchSuggestionsEnabled = false,
+    this.advancedCacheEnabled = false,
   });
 
   final void Function()? onSettingsChanged;
@@ -144,6 +145,7 @@ class SettingsDialog extends HookWidget {
   final AppThemeMode? currentTheme;
   final bool aiAvailable;
   final bool aiSearchSuggestionsEnabled;
+  final bool advancedCacheEnabled;
 
   String _themeLabel(AppThemeMode mode) {
     switch (mode) {
@@ -165,19 +167,21 @@ class SettingsDialog extends HookWidget {
 
     final homepage = useState<String?>(null);
     final hideAppBar = useState(false);
-    final useModernUserAgent = useState(true);
+    final useModernUserAgent = useState(false);
     final enableGitFetch = useState(false);
     final privateBrowsing = useState(false);
     final originalPrivateBrowsing = useRef<bool?>(null);
     final adBlocking = useState(false);
     final strictMode = useState(false);
     final passwordManagerEnabled = useState(false);
-    final reorderableTabs = useState(true);
+    final reorderableTabs = useState(false);
     final aiSearchSuggestionsEnabled =
         useState(this.aiSearchSuggestionsEnabled);
+    final advancedCacheEnabled = useState(this.advancedCacheEnabled);
     final selectedTheme =
         useState<AppThemeMode>(currentTheme ?? AppThemeMode.system);
     final homepageController = useTextEditingController();
+    final settingsScrollController = useScrollController();
 
     useEffect(() {
       Future<void> loadPreferences() async {
@@ -191,7 +195,8 @@ class SettingsDialog extends HookWidget {
         homepageController.text =
             resolvedHomepage == defaultHomepageUrl ? '' : resolvedHomepage;
         hideAppBar.value = prefs.getBool(hideAppBarKey) ?? false;
-        useModernUserAgent.value = prefs.getBool(useModernUserAgentKey) ?? true;
+        useModernUserAgent.value =
+            prefs.getBool(useModernUserAgentKey) ?? false;
         enableGitFetch.value = prefs.getBool(enableGitFetchKey) ?? false;
         privateBrowsing.value = prefs.getBool(privateBrowsingKey) ?? false;
         originalPrivateBrowsing.value = privateBrowsing.value;
@@ -199,9 +204,11 @@ class SettingsDialog extends HookWidget {
         strictMode.value = prefs.getBool(strictModeKey) ?? false;
         passwordManagerEnabled.value =
             prefs.getBool(passwordManagerEnabledKey) ?? false;
-        reorderableTabs.value = prefs.getBool(reorderableTabsKey) ?? true;
+        reorderableTabs.value = prefs.getBool(reorderableTabsKey) ?? false;
         aiSearchSuggestionsEnabled.value =
             prefs.getBool(aiSearchSuggestionsEnabledKey) ?? false;
+        advancedCacheEnabled.value =
+            prefs.getBool(advancedCacheEnabledKey) ?? false;
         if (prefs.getString(themeModeKey) != null) {
           selectedTheme.value = AppThemeMode.values.firstWhere(
               (m) => m.name == prefs.getString(themeModeKey),
@@ -220,174 +227,212 @@ class SettingsDialog extends HookWidget {
       );
     }
 
+    final dialogMaxHeight = math.min(
+      MediaQuery.of(context).size.height * 0.72,
+      560.0,
+    );
+
     return AlertDialog(
+      alignment: Alignment.centerRight,
+      insetPadding: const EdgeInsets.fromLTRB(24, 24, 16, 24),
       title: Text(
         'Settings',
         style: theme.textTheme.titleSmall?.copyWith(fontSize: 15),
       ),
-      content: SingleChildScrollView(
-        child: Theme(
-          data: theme.copyWith(
-            listTileTheme: ListTileThemeData(
-              dense: true,
-              visualDensity: compactDensity,
-              titleTextStyle: theme.textTheme.bodyMedium?.copyWith(
-                fontSize: 12,
-                fontWeight: FontWeight.w400,
-                color: theme.colorScheme.onSurface,
+      content: ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: dialogMaxHeight),
+        child: Scrollbar(
+          controller: settingsScrollController,
+          thumbVisibility: false,
+          child: SingleChildScrollView(
+            controller: settingsScrollController,
+            child: Theme(
+              data: theme.copyWith(
+                listTileTheme: ListTileThemeData(
+                  dense: true,
+                  visualDensity: compactDensity,
+                  titleTextStyle: theme.textTheme.bodyMedium?.copyWith(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w400,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                  subtitleTextStyle: theme.textTheme.bodySmall?.copyWith(
+                    fontSize: 10,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
               ),
-              subtitleTextStyle: theme.textTheme.bodySmall?.copyWith(
-                fontSize: 10,
-                color: theme.colorScheme.onSurfaceVariant,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: homepageController,
+                    style: theme.textTheme.bodyMedium?.copyWith(fontSize: 13),
+                    decoration: const InputDecoration(
+                      labelText: 'Homepage',
+                      hintText: 'Blank = welcome page',
+                      isDense: true,
+                    ),
+                  ),
+                  SwitchListTile(
+                    title: const Text('Hide App Bar'),
+                    value: hideAppBar.value,
+                    onChanged: (value) => hideAppBar.value = value,
+                  ),
+                  SwitchListTile(
+                    title: const Text('Modern User Agent'),
+                    value: useModernUserAgent.value,
+                    onChanged: (value) => useModernUserAgent.value = value,
+                  ),
+                  SwitchListTile(
+                    title: const Text('Git Fetch'),
+                    value: enableGitFetch.value,
+                    onChanged: (value) => enableGitFetch.value = value,
+                  ),
+                  SwitchListTile(
+                    title: const Text('Private Browsing'),
+                    value: privateBrowsing.value,
+                    onChanged: (value) => privateBrowsing.value = value,
+                  ),
+                  SwitchListTile(
+                    title: const Text('Ad Blocking'),
+                    value: adBlocking.value,
+                    onChanged: (value) => adBlocking.value = value,
+                  ),
+                  SwitchListTile(
+                    title: const Text('Strict Mode'),
+                    value: strictMode.value,
+                    onChanged: (value) => strictMode.value = value,
+                  ),
+                  SwitchListTile(
+                    title: const Text('Password Manager'),
+                    value: passwordManagerEnabled.value,
+                    onChanged: (value) => passwordManagerEnabled.value = value,
+                  ),
+                  if (passwordManagerEnabled.value)
+                    ListTile(
+                      leading: const Icon(Icons.lock),
+                      title: const Text('Manage Passwords'),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () {
+                        Navigator.of(context).pop();
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => const PasswordVaultScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                  SwitchListTile(
+                    title: const Text('Reorderable Tabs'),
+                    value: reorderableTabs.value,
+                    onChanged: (value) => reorderableTabs.value = value,
+                  ),
+                  SwitchListTile(
+                    title: const Text('AI Search Suggestions'),
+                    value: aiSearchSuggestionsEnabled.value,
+                    onChanged: (value) =>
+                        aiSearchSuggestionsEnabled.value = value,
+                  ),
+                  SwitchListTile(
+                    title: const Text('Advanced Cache'),
+                    value: advancedCacheEnabled.value,
+                    onChanged: (value) => advancedCacheEnabled.value = value,
+                  ),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Theme',
+                      style: theme.textTheme.bodyMedium?.copyWith(fontSize: 12),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: AppThemeMode.values.map((mode) {
+                      final isSelected = selectedTheme.value == mode;
+                      return ChoiceChip(
+                        label: Text(
+                          _themeLabel(mode),
+                          style:
+                              theme.textTheme.bodySmall?.copyWith(fontSize: 11),
+                        ),
+                        selected: isSelected,
+                        visualDensity: compactDensity,
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        onSelected: (_) {
+                          selectedTheme.value = mode;
+                          onThemePreviewChanged?.call(mode);
+                        },
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color:
+                          Theme.of(context).colorScheme.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Text(
+                              'AI Chat',
+                              style: theme.textTheme.titleSmall
+                                  ?.copyWith(fontSize: 12),
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: aiAvailable
+                                    ? theme.colorScheme.primaryContainer
+                                    : theme.colorScheme.errorContainer,
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    aiAvailable
+                                        ? Icons.verified_rounded
+                                        : Icons.warning_amber_rounded,
+                                    size: 12,
+                                    color: aiAvailable
+                                        ? theme.colorScheme.onPrimaryContainer
+                                        : theme.colorScheme.onErrorContainer,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    aiAvailable
+                                        ? 'Firebase ready'
+                                        : 'Firebase missing',
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w600,
+                                      color: aiAvailable
+                                          ? theme.colorScheme.onPrimaryContainer
+                                          : theme.colorScheme.onErrorContainer,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: homepageController,
-                style: theme.textTheme.bodyMedium?.copyWith(fontSize: 13),
-                decoration: const InputDecoration(
-                  labelText: 'Homepage',
-                  isDense: true,
-                ),
-              ),
-              const SizedBox(height: 4),
-              SizedBox(
-                width: double.infinity,
-                child: Text(
-                  'Blank = welcome page',
-                  style: theme.textTheme.bodySmall?.copyWith(fontSize: 10),
-                ),
-              ),
-              SwitchListTile(
-                title: const Text('Hide App Bar'),
-                value: hideAppBar.value,
-                onChanged: (value) => hideAppBar.value = value,
-              ),
-              SwitchListTile(
-                title: const Text('Use Modern User Agent'),
-                subtitle: const Text('Applies to new tabs'),
-                value: useModernUserAgent.value,
-                onChanged: (value) => useModernUserAgent.value = value,
-              ),
-              SwitchListTile(
-                title: const Text('Enable Git Fetch'),
-                subtitle: const Text('Show GitHub repo tool in menu'),
-                value: enableGitFetch.value,
-                onChanged: (value) => enableGitFetch.value = value,
-              ),
-              SwitchListTile(
-                title: const Text('Private Browsing'),
-                subtitle: const Text('Clears cache/cookies when toggled'),
-                value: privateBrowsing.value,
-                onChanged: (value) => privateBrowsing.value = value,
-              ),
-              SwitchListTile(
-                title: const Text('Ad Blocking'),
-                subtitle: const Text('Block common ad domains'),
-                value: adBlocking.value,
-                onChanged: (value) => adBlocking.value = value,
-              ),
-              SwitchListTile(
-                title: const Text('Strict Mode'),
-                subtitle: const Text('Disable JS + 3rd-party cookies'),
-                value: strictMode.value,
-                onChanged: (value) => strictMode.value = value,
-              ),
-              SwitchListTile(
-                title: const Text('Password Manager'),
-                subtitle: const Text('Save passwords'),
-                value: passwordManagerEnabled.value,
-                onChanged: (value) => passwordManagerEnabled.value = value,
-              ),
-              if (passwordManagerEnabled.value)
-                ListTile(
-                  leading: const Icon(Icons.lock),
-                  title: const Text('Manage Passwords'),
-                  subtitle: const Text('View/delete saved passwords'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => const PasswordVaultScreen(),
-                      ),
-                    );
-                  },
-                ),
-              SwitchListTile(
-                title: const Text('Reorderable Tabs'),
-                subtitle: const Text('Drag tabs to reorder'),
-                value: reorderableTabs.value,
-                onChanged: (value) => reorderableTabs.value = value,
-              ),
-              SwitchListTile(
-                title: const Text('AI Search Suggestions'),
-                subtitle: const Text('Show when URL field is focused + empty'),
-                value: aiSearchSuggestionsEnabled.value,
-                onChanged: (value) => aiSearchSuggestionsEnabled.value = value,
-              ),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  'Theme',
-                  style: theme.textTheme.bodyMedium?.copyWith(fontSize: 12),
-                ),
-              ),
-              const SizedBox(height: 4),
-              Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                children: AppThemeMode.values.map((mode) {
-                  final isSelected = selectedTheme.value == mode;
-                  return ChoiceChip(
-                    label: Text(
-                      _themeLabel(mode),
-                      style: theme.textTheme.bodySmall?.copyWith(fontSize: 11),
-                    ),
-                    selected: isSelected,
-                    visualDensity: compactDensity,
-                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    onSelected: (_) {
-                      selectedTheme.value = mode;
-                      onThemePreviewChanged?.call(mode);
-                    },
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 8),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'AI Chat',
-                      style: theme.textTheme.titleSmall?.copyWith(fontSize: 12),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      aiAvailable
-                          ? 'Available (Firebase configured)'
-                          : 'Unavailable (missing Firebase keys)',
-                      style: theme.textTheme.bodySmall?.copyWith(fontSize: 10),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Git Fetch appears when enabled above.',
-                      style: theme.textTheme.bodySmall?.copyWith(fontSize: 10),
-                    ),
-                  ],
-                ),
-              ),
-            ],
           ),
         ),
       ),
@@ -426,6 +471,8 @@ class SettingsDialog extends HookWidget {
             await prefs.setBool(reorderableTabsKey, reorderableTabs.value);
             await prefs.setBool(aiSearchSuggestionsEnabledKey,
                 aiSearchSuggestionsEnabled.value);
+            await prefs.setBool(
+                advancedCacheEnabledKey, advancedCacheEnabled.value);
             await prefs.setString(themeModeKey, selectedTheme.value.name);
 
             onSettingsChanged?.call();
@@ -653,13 +700,14 @@ class BrowserPage extends StatefulWidget {
       {super.key,
       required this.initialUrl,
       this.hideAppBar = false,
-      this.useModernUserAgent = true,
+      this.useModernUserAgent = false,
       this.enableGitFetch = false,
       this.privateBrowsing = false,
       this.adBlocking = false,
       this.strictMode = false,
       this.pageFontFamily = '',
       this.aiSearchSuggestionsEnabled = false,
+      this.advancedCacheEnabled = false,
       this.themeMode = AppThemeMode.system,
       this.aiAvailable = true,
       this.onSettingsChanged,
@@ -676,6 +724,7 @@ class BrowserPage extends StatefulWidget {
   final bool strictMode;
   final String pageFontFamily;
   final bool aiSearchSuggestionsEnabled;
+  final bool advancedCacheEnabled;
   final AppThemeMode themeMode;
   final bool aiAvailable;
   final void Function()? onSettingsChanged;
@@ -858,14 +907,17 @@ class _BrowserPageState extends State<BrowserPage>
   final Set<String> _pendingHeaderChecks = {};
   bool _dragging = false;
   final FocusNode _keyboardFocusNode = FocusNode();
-  bool _reorderableTabs = true;
+  bool _reorderableTabs = false;
   String _pageFontFamily = '';
   final Map<String, String> _siteFontFamilies = {};
   final List<String> _history = [];
   static const int _maxHistoryEntries = 200;
+  static const int _maxNavigationCacheEntries = 200;
+  static const int _navigationCachePrewarmCount = 8;
   final AiService _aiService = AiService();
   List<String>? _cachedAiSearchSuggestions;
   DateTime? _lastAiSuggestionFetchAt;
+  final Map<String, int> _navigationCacheIndex = {};
   final MenuController _overflowMenuController = MenuController();
   Timer? _overflowMenuCloseTimer;
   bool _isOverflowTriggerHovered = false;
@@ -949,6 +1001,7 @@ class _BrowserPageState extends State<BrowserPage>
     _pageFontFamily = widget.pageFontFamily;
     _loadReorderableTabs();
     _loadFontOverrides();
+    _loadNavigationCacheIndex();
     tabs.add(
         TabData(widget.initialUrl, displayUrl: _displayUrl(widget.initialUrl)));
     tabController = TabController(length: 1, vsync: this);
@@ -971,12 +1024,52 @@ class _BrowserPageState extends State<BrowserPage>
       _pageFontFamily = widget.pageFontFamily;
       _applyFontOverrideToAllTabs();
     }
+    if (oldWidget.advancedCacheEnabled != widget.advancedCacheEnabled &&
+        widget.advancedCacheEnabled) {
+      _prewarmNavigationCache();
+    }
+    if (oldWidget.useModernUserAgent != widget.useModernUserAgent) {
+      _applyUserAgentToAllTabs();
+    }
     if (oldWidget.themeMode != widget.themeMode) {
       if (widget.themeMode == AppThemeMode.adjust) {
         _applyThemeForTab(activeTab);
       } else {
         widget.onPageThemeChanged?.call(ThemeMode.system, null);
       }
+    }
+  }
+
+  Future<void> _applyUserAgentToAllTabs() async {
+    final userAgent = _getUserAgent(widget.useModernUserAgent);
+    for (final tab in tabs) {
+      final controller = tab.webViewController;
+      if (controller == null) continue;
+      try {
+        await controller.setUserAgent(userAgent);
+        await controller.reload();
+      } on PlatformException {
+        // Ignore MissingPluginException on macOS
+      }
+    }
+  }
+
+  Future<void> _loadInitialRequestForTab(TabData tab) async {
+    final controller = tab.webViewController;
+    if (controller == null) return;
+    try {
+      await controller.setUserAgent(_getUserAgent(widget.useModernUserAgent));
+    } on PlatformException {
+      // Ignore MissingPluginException on macOS.
+    }
+
+    try {
+      await controller.loadRequest(Uri.parse(tab.currentUrl));
+    } on FormatException {
+      logger.w('Invalid URL: ${tab.currentUrl}');
+      _handleLoadError(tab, 'Invalid URL format');
+    } on PlatformException {
+      // Ignore MissingPluginException on macOS.
     }
   }
 
@@ -1064,6 +1157,123 @@ class _BrowserPageState extends State<BrowserPage>
 ''');
     } catch (e, s) {
       logger.w('Failed to apply page font override', error: e, stackTrace: s);
+    }
+  }
+
+  Future<void> _applyLegacyLayoutFix(TabData tab) async {
+    if (widget.useModernUserAgent || widget.strictMode) return;
+    final controller = tab.webViewController;
+    if (controller == null) return;
+    try {
+      await controller.runJavaScript('''
+(() => {
+  const flag = '__browserLegacyLayoutFixInstalled';
+  if (window[flag]) {
+    return;
+  }
+  window[flag] = true;
+
+  const isGoogleHost = /(^|\\.)google\\./i.test(window.location.hostname);
+
+  const ensureViewport = () => {
+    if (isGoogleHost) return;
+    let viewport = document.querySelector('meta[name="viewport"]');
+    if (!viewport) {
+      viewport = document.createElement('meta');
+      viewport.setAttribute('name', 'viewport');
+      (document.head || document.documentElement).appendChild(viewport);
+    }
+    const current = viewport.getAttribute('content') || '';
+    if (!/width\\s*=\\s*device-width/i.test(current)) {
+      viewport.setAttribute(
+        'content',
+        'width=device-width, initial-scale=1, viewport-fit=cover',
+      );
+    }
+  };
+
+  const applyFix = () => {
+    const root = document.documentElement;
+    const body = document.body;
+    if (!root || !body) return;
+    if (isGoogleHost) {
+      // Keep Google's own responsive behavior untouched.
+      root.style.removeProperty('width');
+      body.style.removeProperty('width');
+      root.style.removeProperty('min-width');
+      body.style.removeProperty('min-width');
+      root.style.removeProperty('max-width');
+      body.style.removeProperty('max-width');
+      root.style.removeProperty('overflow-x');
+      body.style.removeProperty('overflow-x');
+    } else {
+      root.style.setProperty('width', '100%', 'important');
+      body.style.setProperty('width', '100%', 'important');
+      root.style.setProperty('min-width', '0', 'important');
+      body.style.setProperty('min-width', '0', 'important');
+      root.style.setProperty('max-width', '100vw', 'important');
+      root.style.setProperty('overflow-x', 'auto', 'important');
+      body.style.setProperty('max-width', '100vw', 'important');
+      body.style.setProperty('overflow-x', 'auto', 'important');
+    }
+
+    root.style.removeProperty('zoom');
+
+    if (isGoogleHost) {
+      const candidates = document.querySelectorAll(
+        'iframe, [role="dialog"], [role="menu"], [aria-modal="true"]',
+      );
+      for (const el of candidates) {
+        const rect = el.getBoundingClientRect();
+        if (rect.width < 120 || rect.height < 120) continue;
+        const style = window.getComputedStyle(el);
+        if (style.display === 'none' || style.visibility === 'hidden') continue;
+        const positioned = style.position === 'fixed' || style.position === 'absolute';
+        if (!positioned) continue;
+
+        if (rect.left < 8) {
+          if (el.dataset.browserClampBaseTransform == null) {
+            el.dataset.browserClampBaseTransform =
+              style.transform === 'none' ? '' : style.transform;
+          }
+          const base = el.dataset.browserClampBaseTransform;
+          const shift = 8 - rect.left;
+          const nextTransform =
+            (base ? base + ' ' : '') +
+            'translateX(' +
+            shift.toFixed(1) +
+            'px)';
+          el.style.setProperty('transform', nextTransform, 'important');
+          el.style.setProperty('transform-origin', 'top left', 'important');
+        } else if (el.dataset.browserClampBaseTransform != null) {
+          const base = el.dataset.browserClampBaseTransform;
+          if (!base) {
+            el.style.setProperty('transform', 'none', 'important');
+          } else {
+            el.style.setProperty('transform', base, 'important');
+          }
+          delete el.dataset.browserClampBaseTransform;
+        }
+      }
+    }
+  };
+
+  ensureViewport();
+  applyFix();
+  window.addEventListener('resize', applyFix, { passive: true });
+  const observer = new MutationObserver(() => applyFix());
+  observer.observe(document.documentElement, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ['style', 'class'],
+  });
+  setTimeout(applyFix, 300);
+  setTimeout(applyFix, 1200);
+})();
+''');
+    } catch (e, s) {
+      logger.w('Failed to apply legacy layout fix', error: e, stackTrace: s);
     }
   }
 
@@ -1992,7 +2202,7 @@ class _BrowserPageState extends State<BrowserPage>
     final prefs = await SharedPreferences.getInstance();
     if (!mounted) return;
     setState(() {
-      _reorderableTabs = prefs.getBool(reorderableTabsKey) ?? true;
+      _reorderableTabs = prefs.getBool(reorderableTabsKey) ?? false;
     });
   }
 
@@ -2084,6 +2294,9 @@ class _BrowserPageState extends State<BrowserPage>
     } catch (e, s) {
       logger.w('Failed to load browsing history', error: e, stackTrace: s);
     }
+    if (widget.advancedCacheEnabled) {
+      _prewarmNavigationCache();
+    }
   }
 
   Future<void> _saveHistory() async {
@@ -2108,6 +2321,82 @@ class _BrowserPageState extends State<BrowserPage>
         _history.removeAt(0);
       }
       _saveHistory();
+    }
+
+    if (widget.advancedCacheEnabled) {
+      _recordNavigationCache(url);
+    }
+  }
+
+  Future<void> _loadNavigationCacheIndex() async {
+    if (widget.privateBrowsing) return;
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(navigationCacheIndexKey);
+    if (raw == null || raw.trim().isEmpty) return;
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map<String, dynamic>) return;
+      _navigationCacheIndex
+        ..clear()
+        ..addEntries(
+          decoded.entries.where((entry) => entry.key.trim().isNotEmpty).map(
+              (entry) => MapEntry(entry.key, (entry.value as num).toInt())),
+        );
+      if (widget.advancedCacheEnabled) {
+        _prewarmNavigationCache();
+      }
+    } catch (e, s) {
+      logger.w('Failed to load navigation cache index',
+          error: e, stackTrace: s);
+    }
+  }
+
+  Future<void> _saveNavigationCacheIndex() async {
+    if (widget.privateBrowsing) return;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      navigationCacheIndexKey,
+      jsonEncode(_navigationCacheIndex),
+    );
+  }
+
+  void _recordNavigationCache(String url) {
+    final uri = Uri.tryParse(url);
+    if (uri == null || (uri.scheme != 'http' && uri.scheme != 'https')) return;
+    _navigationCacheIndex[url] = DateTime.now().millisecondsSinceEpoch;
+    if (_navigationCacheIndex.length > _maxNavigationCacheEntries) {
+      final oldest = _navigationCacheIndex.entries.toList()
+        ..sort((a, b) => a.value.compareTo(b.value));
+      final overflow =
+          _navigationCacheIndex.length - _maxNavigationCacheEntries;
+      for (var i = 0; i < overflow; i++) {
+        _navigationCacheIndex.remove(oldest[i].key);
+      }
+    }
+    _saveNavigationCacheIndex();
+  }
+
+  Future<void> _prewarmNavigationCache() async {
+    if (!widget.advancedCacheEnabled || widget.privateBrowsing) return;
+    final recent = _navigationCacheIndex.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    final targets = recent
+        .map((e) => e.key)
+        .where((url) {
+          final uri = Uri.tryParse(url);
+          return uri != null && (uri.scheme == 'http' || uri.scheme == 'https');
+        })
+        .take(_navigationCachePrewarmCount)
+        .toList();
+    for (final url in targets) {
+      try {
+        final uri = Uri.parse(url);
+        await http.head(uri, headers: {
+          'User-Agent': _getUserAgent(widget.useModernUserAgent)
+        }).timeout(const Duration(seconds: 3));
+      } catch (_) {
+        // Best effort prewarm only.
+      }
     }
   }
 
@@ -2337,6 +2626,9 @@ class _BrowserPageState extends State<BrowserPage>
         await tab.webViewController
             ?.runJavaScript('localStorage.clear(); sessionStorage.clear();');
       }
+      _navigationCacheIndex.clear();
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(navigationCacheIndexKey);
     } catch (e, s) {
       logger.w('Failed to clear caches', error: e, stackTrace: s);
     }
@@ -2354,6 +2646,7 @@ class _BrowserPageState extends State<BrowserPage>
           onThemePreviewChanged: widget.onThemePreviewChanged,
           currentTheme: widget.themeMode,
           aiSearchSuggestionsEnabled: widget.aiSearchSuggestionsEnabled,
+          advancedCacheEnabled: widget.advancedCacheEnabled,
           aiAvailable: widget.aiAvailable),
     );
     if (saved != true) {
@@ -3178,7 +3471,8 @@ class _BrowserPageState extends State<BrowserPage>
                         hintText: 'Search',
                         isDense: true,
                         border: InputBorder.none,
-                        contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                        contentPadding:
+                            const EdgeInsets.symmetric(vertical: 10),
                         prefixIcon: Icon(
                           Icons.search,
                           color: colorScheme.primary,
@@ -3268,28 +3562,28 @@ class _BrowserPageState extends State<BrowserPage>
             Text(
               'Browser',
               style: theme.textTheme.titleLarge?.copyWith(
-                    color: colorScheme.primary,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.3,
-                    fontSize: 18,
-                  ),
+                color: colorScheme.primary,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.3,
+                fontSize: 18,
+              ),
             ),
             const SizedBox(height: 10),
             Text(
               'Sorry, we can’t open this page.',
               style: theme.textTheme.headlineSmall?.copyWith(
-                    color: colorScheme.onSurface,
-                    fontSize: 24,
-                  ),
+                color: colorScheme.onSurface,
+                fontSize: 24,
+              ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 6),
             Text(
               errorMessage,
               style: theme.textTheme.bodyMedium?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                    fontSize: 13,
-                  ),
+                color: colorScheme.onSurfaceVariant,
+                fontSize: 13,
+              ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),
@@ -3348,8 +3642,6 @@ class _BrowserPageState extends State<BrowserPage>
       tab.webViewController!.setJavaScriptMode(widget.strictMode
           ? JavaScriptMode.disabled
           : JavaScriptMode.unrestricted);
-      tab.webViewController!
-          .setUserAgent(_getUserAgent(widget.useModernUserAgent));
       // Note: webview_flutter does not support built-in private browsing.
       // Cache is not stored for private tabs (LOAD_NO_CACHE equivalent not available).
       // Cookies are shared globally; private browsing does not clear them.
@@ -3454,6 +3746,7 @@ class _BrowserPageState extends State<BrowserPage>
             tab.webViewController!.runJavaScript(loginDetectionScript);
             // Inject WebAuthn script
             tab.webViewController!.runJavaScript(webAuthnScript);
+            _applyLegacyLayoutFix(tab);
             _applyFontOverride(tab);
             // Attempt autofill if credentials available
             _attemptAutofill(tab);
@@ -3503,14 +3796,7 @@ class _BrowserPageState extends State<BrowserPage>
           _handleLoadError(tab, 'HTTP ${error.response?.statusCode}');
         },
       ));
-      try {
-        tab.webViewController!.loadRequest(Uri.parse(tab.currentUrl));
-      } on FormatException {
-        logger.w('Invalid URL: ${tab.currentUrl}');
-        _handleLoadError(tab, 'Invalid URL format');
-      } on PlatformException {
-        // Ignore MissingPluginException on macOS
-      }
+      _loadInitialRequestForTab(tab);
     }
 
     try {
