@@ -104,6 +104,19 @@ When a PR addresses multiple distinct findings/fixes, create separate tracking i
 
 This keeps changes auditable and links each user-facing fix to an issue.
 
+## Standard Delivery Flow
+
+Use this sequence for normal feature/fix delivery:
+
+1. Create a branch from `main` with a descriptive name (for example, `fix-...`, `feat-...`).
+2. Create or identify the tracking issue with `gh issue create` (or existing issue).
+3. Implement changes, run required checks, and commit using valid commit-message rules.
+4. Push the branch to origin.
+5. Create the PR with `gh pr create` using the template.
+6. In PR `## Related Items`, include `Resolves #<id>` for the tracking issue.
+
+This flow ensures each PR is traceable from branch to issue to merge.
+
 ## Issue and PR Reference Syntax
 
 When referencing issues or PRs in PR descriptions, use GitHub auto-linking/auto-closing keywords.
@@ -184,6 +197,20 @@ When creating version bump PRs (e.g., `version-bump-X.Y.Z` branch):
    ```
 
 This ensures version bump PRs have high-quality descriptions that track all changes since the last release.
+
+## Version Bump Delivery Flow
+
+Use this sequence for version bump work:
+
+1. Start from `main` and pull latest changes.
+2. Switch to the version bump branch (for example, `version-bump-X.Y.Z`) or create it if needed.
+3. Run the project version bump script/process for that release target.
+4. Validate generated version changes and run required checks.
+5. Commit and push the version bump branch.
+6. Create or update the version bump PR using the template above.
+7. Ensure PR `## Related Items` uses GitHub keyword syntax (`Resolves #<id>`, `Closes #<id>` as applicable).
+
+This keeps release/version PRs repeatable and reviewable.
 
 ## Workflow Creation
 
