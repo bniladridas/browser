@@ -19,6 +19,8 @@ class AiChatWidget extends HookWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    const compactDensity = VisualDensity(horizontal: -2, vertical: -2);
     final messages = useState<List<String>>([]);
     final controller = useTextEditingController();
     final isLoading = useState(false);
@@ -57,10 +59,13 @@ class AiChatWidget extends HookWidget {
     }
 
     return AlertDialog(
-      title: const Text('AI Chat'),
+      title: Text(
+        'AI Chat',
+        style: theme.textTheme.titleSmall?.copyWith(fontSize: 15),
+      ),
       content: SizedBox(
-        width: 400,
-        height: 400,
+        width: 380,
+        height: 360,
         child: Column(
           children: [
             Expanded(
@@ -77,30 +82,68 @@ class AiChatWidget extends HookWidget {
                         content.contains('error') ||
                         content.contains('suggestion') ||
                         content.contains('option');
-                    final child = MarkdownBody(data: content);
+                    final child = MarkdownBody(
+                      data: content,
+                      styleSheet: MarkdownStyleSheet.fromTheme(theme).copyWith(
+                        p: theme.textTheme.bodySmall?.copyWith(fontSize: 12),
+                      ),
+                    );
                     return ListTile(
+                      dense: true,
+                      visualDensity: compactDensity,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
                       title: hasEmphasis ? CalloutBox(child: child) : child,
                     );
                   } else {
-                    return ListTile(title: Text(message));
+                    return ListTile(
+                      dense: true,
+                      visualDensity: compactDensity,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
+                      title: Text(
+                        message,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          fontSize: 12,
+                        ),
+                      ),
+                    );
                   }
                 },
               ),
             ),
-            if (isLoading.value) const CircularProgressIndicator(),
+            if (isLoading.value)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 6),
+                child: SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              ),
+            const SizedBox(height: 4),
             Row(
               children: [
                 Expanded(
                   child: TextField(
                     controller: controller,
                     autofocus: true,
-                    decoration: const InputDecoration(hintText: 'Ask AI...'),
+                    style: theme.textTheme.bodyMedium?.copyWith(fontSize: 13),
+                    decoration: const InputDecoration(
+                      hintText: 'Ask AI...',
+                      isDense: true,
+                    ),
                     onSubmitted: (_) => sendMessage(),
                   ),
                 ),
                 IconButton(
                   onPressed: isLoading.value ? null : sendMessage,
-                  icon: const Icon(Icons.send),
+                  visualDensity: compactDensity,
+                  icon: const Icon(Icons.send, size: 18),
                 ),
               ],
             ),

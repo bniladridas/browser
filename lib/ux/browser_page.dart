@@ -14,6 +14,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:passkeys/types.dart';
 
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
@@ -131,6 +132,7 @@ class SettingsDialog extends HookWidget {
     super.key,
     this.onSettingsChanged,
     this.onClearCaches,
+    this.onThemePreviewChanged,
     this.currentTheme,
     required this.aiAvailable,
     this.aiSearchSuggestionsEnabled = false,
@@ -138,6 +140,7 @@ class SettingsDialog extends HookWidget {
 
   final void Function()? onSettingsChanged;
   final void Function()? onClearCaches;
+  final void Function(AppThemeMode mode)? onThemePreviewChanged;
   final AppThemeMode? currentTheme;
   final bool aiAvailable;
   final bool aiSearchSuggestionsEnabled;
@@ -220,7 +223,7 @@ class SettingsDialog extends HookWidget {
     return AlertDialog(
       title: Text(
         'Settings',
-        style: theme.textTheme.titleMedium?.copyWith(fontSize: 16),
+        style: theme.textTheme.titleSmall?.copyWith(fontSize: 15),
       ),
       content: SingleChildScrollView(
         child: Theme(
@@ -229,12 +232,12 @@ class SettingsDialog extends HookWidget {
               dense: true,
               visualDensity: compactDensity,
               titleTextStyle: theme.textTheme.bodyMedium?.copyWith(
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
+                fontSize: 12,
+                fontWeight: FontWeight.w400,
                 color: theme.colorScheme.onSurface,
               ),
               subtitleTextStyle: theme.textTheme.bodySmall?.copyWith(
-                fontSize: 11,
+                fontSize: 10,
                 color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
@@ -254,8 +257,8 @@ class SettingsDialog extends HookWidget {
               SizedBox(
                 width: double.infinity,
                 child: Text(
-                  'Leave this blank to show the Browser welcome screen.',
-                  style: theme.textTheme.bodySmall?.copyWith(fontSize: 11),
+                  'Blank = welcome page',
+                  style: theme.textTheme.bodySmall?.copyWith(fontSize: 10),
                 ),
               ),
               SwitchListTile(
@@ -265,22 +268,19 @@ class SettingsDialog extends HookWidget {
               ),
               SwitchListTile(
                 title: const Text('Use Modern User Agent'),
-                subtitle: const Text(
-                    'Load modern Google interface (applies to new tabs)'),
+                subtitle: const Text('Applies to new tabs'),
                 value: useModernUserAgent.value,
                 onChanged: (value) => useModernUserAgent.value = value,
               ),
               SwitchListTile(
                 title: const Text('Enable Git Fetch'),
-                subtitle:
-                    const Text('Show GitHub repository fetch option in menu'),
+                subtitle: const Text('Show GitHub repo tool in menu'),
                 value: enableGitFetch.value,
                 onChanged: (value) => enableGitFetch.value = value,
               ),
               SwitchListTile(
                 title: const Text('Private Browsing'),
-                subtitle: const Text(
-                    'Clear cache and cookies on toggle (shared globally)'),
+                subtitle: const Text('Clears cache/cookies when toggled'),
                 value: privateBrowsing.value,
                 onChanged: (value) => privateBrowsing.value = value,
               ),
@@ -292,8 +292,7 @@ class SettingsDialog extends HookWidget {
               ),
               SwitchListTile(
                 title: const Text('Strict Mode'),
-                subtitle:
-                    const Text('Disable JavaScript and third-party cookies'),
+                subtitle: const Text('Disable JS + 3rd-party cookies'),
                 value: strictMode.value,
                 onChanged: (value) => strictMode.value = value,
               ),
@@ -307,7 +306,7 @@ class SettingsDialog extends HookWidget {
                 ListTile(
                   leading: const Icon(Icons.lock),
                   title: const Text('Manage Passwords'),
-                  subtitle: const Text('View and delete saved passwords'),
+                  subtitle: const Text('View/delete saved passwords'),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () {
                     Navigator.of(context).pop();
@@ -326,54 +325,64 @@ class SettingsDialog extends HookWidget {
               ),
               SwitchListTile(
                 title: const Text('AI Search Suggestions'),
-                subtitle: const Text(
-                    'Show AI suggestions when URL bar is focused and empty'),
+                subtitle: const Text('Show when URL field is focused + empty'),
                 value: aiSearchSuggestionsEnabled.value,
                 onChanged: (value) => aiSearchSuggestionsEnabled.value = value,
               ),
-              DropdownButton<AppThemeMode>(
-                value: selectedTheme.value,
-                onChanged: (AppThemeMode? value) {
-                  if (value != null) selectedTheme.value = value;
-                },
-                items: AppThemeMode.values
-                    .map<DropdownMenuItem<AppThemeMode>>((AppThemeMode mode) {
-                  return DropdownMenuItem<AppThemeMode>(
-                    value: mode,
-                    child: Text(
-                      'Theme: ${_themeLabel(mode)}',
-                      style: theme.textTheme.bodyMedium?.copyWith(fontSize: 13),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Theme',
+                  style: theme.textTheme.bodyMedium?.copyWith(fontSize: 12),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: AppThemeMode.values.map((mode) {
+                  final isSelected = selectedTheme.value == mode;
+                  return ChoiceChip(
+                    label: Text(
+                      _themeLabel(mode),
+                      style: theme.textTheme.bodySmall?.copyWith(fontSize: 11),
                     ),
+                    selected: isSelected,
+                    visualDensity: compactDensity,
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    onSelected: (_) {
+                      selectedTheme.value = mode;
+                      onThemePreviewChanged?.call(mode);
+                    },
                   );
                 }).toList(),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(10),
+                padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
                   color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(10),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       'AI Chat',
-                      style: theme.textTheme.titleSmall?.copyWith(fontSize: 13),
+                      style: theme.textTheme.titleSmall?.copyWith(fontSize: 12),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      aiAvailable
+                          ? 'Available (Firebase configured)'
+                          : 'Unavailable (missing Firebase keys)',
+                      style: theme.textTheme.bodySmall?.copyWith(fontSize: 10),
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      aiAvailable
-                          ? 'Firebase configuration is present, so AI Chat is available.'
-                          : 'Firebase keys are missing, so AI Chat will stay hidden.',
-                      style: theme.textTheme.bodySmall?.copyWith(fontSize: 11),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Git Fetch requires GitHub access and only appears when '
-                      'Enable Git Fetch is turned on.',
-                      style: theme.textTheme.bodySmall?.copyWith(fontSize: 11),
+                      'Git Fetch appears when enabled above.',
+                      style: theme.textTheme.bodySmall?.copyWith(fontSize: 10),
                     ),
                   ],
                 ),
@@ -384,7 +393,7 @@ class SettingsDialog extends HookWidget {
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () => Navigator.of(context).pop(false),
           child: const Text('Cancel'),
         ),
         TextButton(
@@ -426,7 +435,7 @@ class SettingsDialog extends HookWidget {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('Settings saved')),
             );
-            Navigator.of(context).pop();
+            Navigator.of(context).pop(true);
           },
           child: const Text('Save'),
         ),
@@ -515,6 +524,7 @@ class GitFetchDialog extends HookWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final repoController = useTextEditingController();
     final isLoading = useState(false);
     final repoData = useState<Map<String, dynamic>?>(null);
@@ -546,32 +556,74 @@ class GitFetchDialog extends HookWidget {
     }
 
     return AlertDialog(
-      title: const Text('Git Fetch'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          TextField(
-            controller: repoController,
-            decoration: const InputDecoration(
-              labelText: 'GitHub Repo (owner/repo)',
-              hintText: 'e.g., flutter/flutter',
+      title: Text(
+        'Git Fetch',
+        style: theme.textTheme.titleSmall?.copyWith(fontSize: 15),
+      ),
+      content: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 420),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextField(
+              controller: repoController,
+              style: theme.textTheme.bodyMedium?.copyWith(fontSize: 13),
+              decoration: const InputDecoration(
+                labelText: 'GitHub Repo (owner/repo)',
+                hintText: 'e.g., flutter/flutter',
+                isDense: true,
+              ),
             ),
-          ),
-          const SizedBox(height: 16),
-          if (isLoading.value) const CircularProgressIndicator(),
-          if (errorMessage.value != null)
-            Text(errorMessage.value!,
-                style: const TextStyle(color: Colors.red)),
-          if (repoData.value != null) ...[
-            Text('Name: ${repoData.value!['name'] ?? 'N/A'}'),
-            Text(
-                'Description: ${repoData.value!['description'] ?? 'No description'}'),
-            Text('Stars: ${repoData.value!['stargazers_count'] ?? 0}'),
-            Text('Forks: ${repoData.value!['forks_count'] ?? 0}'),
-            Text('Language: ${repoData.value!['language'] ?? 'N/A'}'),
-            Text('Open Issues: ${repoData.value!['open_issues_count'] ?? 0}'),
+            const SizedBox(height: 10),
+            if (isLoading.value)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 6),
+                child: SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              ),
+            if (errorMessage.value != null)
+              Text(
+                errorMessage.value!,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  fontSize: 12,
+                  color: theme.colorScheme.error,
+                ),
+              ),
+            if (repoData.value != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                'Name: ${repoData.value!['name'] ?? 'N/A'}',
+                style: theme.textTheme.bodySmall?.copyWith(fontSize: 12),
+              ),
+              Text(
+                'Description: ${repoData.value!['description'] ?? 'No description'}',
+                style: theme.textTheme.bodySmall?.copyWith(fontSize: 12),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              Text(
+                'Stars: ${repoData.value!['stargazers_count'] ?? 0}',
+                style: theme.textTheme.bodySmall?.copyWith(fontSize: 12),
+              ),
+              Text(
+                'Forks: ${repoData.value!['forks_count'] ?? 0}',
+                style: theme.textTheme.bodySmall?.copyWith(fontSize: 12),
+              ),
+              Text(
+                'Language: ${repoData.value!['language'] ?? 'N/A'}',
+                style: theme.textTheme.bodySmall?.copyWith(fontSize: 12),
+              ),
+              Text(
+                'Open Issues: ${repoData.value!['open_issues_count'] ?? 0}',
+                style: theme.textTheme.bodySmall?.copyWith(fontSize: 12),
+              ),
+            ],
           ],
-        ],
+        ),
       ),
       actions: [
         TextButton(
@@ -611,7 +663,9 @@ class BrowserPage extends StatefulWidget {
       this.themeMode = AppThemeMode.system,
       this.aiAvailable = true,
       this.onSettingsChanged,
-      this.onPageThemeChanged});
+      this.onPageThemeChanged,
+      this.onThemePreviewChanged,
+      this.onThemePreviewReset});
 
   final String initialUrl;
   final bool hideAppBar;
@@ -626,6 +680,8 @@ class BrowserPage extends StatefulWidget {
   final bool aiAvailable;
   final void Function()? onSettingsChanged;
   final void Function(ThemeMode mode, Color? seedColor)? onPageThemeChanged;
+  final void Function(AppThemeMode mode)? onThemePreviewChanged;
+  final void Function()? onThemePreviewReset;
 
   @override
   State<BrowserPage> createState() => _BrowserPageState();
@@ -810,6 +866,10 @@ class _BrowserPageState extends State<BrowserPage>
   final AiService _aiService = AiService();
   List<String>? _cachedAiSearchSuggestions;
   DateTime? _lastAiSuggestionFetchAt;
+  final MenuController _overflowMenuController = MenuController();
+  Timer? _overflowMenuCloseTimer;
+  bool _isOverflowTriggerHovered = false;
+  bool _isOverflowMenuHovered = false;
 
   static const String _themeProbeScript = '''
 (() => {
@@ -1113,19 +1173,25 @@ class _BrowserPageState extends State<BrowserPage>
     final textColor =
         probe['textColor'] is String ? probe['textColor'] as String : null;
     final scheme = (metaColorScheme ?? colorScheme ?? '').toLowerCase();
+    Brightness? schemeBrightness;
     if (scheme.contains('dark') && !scheme.contains('light')) {
-      return _ThemeTone(brightness: Brightness.dark);
-    }
-    if (scheme.contains('light') && !scheme.contains('dark')) {
-      return _ThemeTone(brightness: Brightness.light);
+      schemeBrightness = Brightness.dark;
+    } else if (scheme.contains('light') && !scheme.contains('dark')) {
+      schemeBrightness = Brightness.light;
     }
     final color = _parseCssColor(sampleBg) ??
         _parseCssColor(bg) ??
         _parseCssColor(themeColor);
     if (color != null) {
-      final brightness =
+      final inferredBrightness =
           color.computeLuminance() < 0.5 ? Brightness.dark : Brightness.light;
-      return _ThemeTone(brightness: brightness, seedColor: color);
+      return _ThemeTone(
+        brightness: schemeBrightness ?? inferredBrightness,
+        seedColor: color,
+      );
+    }
+    if (schemeBrightness != null) {
+      return _ThemeTone(brightness: schemeBrightness);
     }
     final text = _parseCssColor(textColor);
     if (text != null) {
@@ -1152,15 +1218,20 @@ class _BrowserPageState extends State<BrowserPage>
   Color? _parseRgbColor(String value) {
     final match = RegExp(r'rgba?\\(([^)]+)\\)').firstMatch(value);
     if (match == null) return null;
-    final parts = match.group(1)!.split(',').map((e) => e.trim()).toList();
+    final normalized = match.group(1)!.replaceAll('/', ' ');
+    final parts = normalized
+        .split(RegExp(r'[,\s]+'))
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
     if (parts.length < 3) return null;
-    final r = double.tryParse(parts[0]);
-    final g = double.tryParse(parts[1]);
-    final b = double.tryParse(parts[2]);
+    final r = _parseRgbChannel(parts[0]);
+    final g = _parseRgbChannel(parts[1]);
+    final b = _parseRgbChannel(parts[2]);
     if (r == null || g == null || b == null) return null;
     double alpha = 1.0;
     if (parts.length >= 4) {
-      alpha = double.tryParse(parts[3]) ?? 1.0;
+      alpha = _parseAlphaChannel(parts[3]) ?? 1.0;
     }
     alpha = alpha.clamp(0.0, 1.0);
     if (alpha <= 0.05) return null;
@@ -1174,6 +1245,11 @@ class _BrowserPageState extends State<BrowserPage>
 
   Color? _parseHexColor(String value) {
     var hex = value.substring(1);
+    if (hex.length == 4) {
+      // #RGBA
+      hex =
+          '${hex[0]}${hex[0]}${hex[1]}${hex[1]}${hex[2]}${hex[2]}${hex[3]}${hex[3]}';
+    }
     if (hex.length == 3) {
       hex = '${hex[0]}${hex[0]}${hex[1]}${hex[1]}${hex[2]}${hex[2]}';
     }
@@ -1188,16 +1264,35 @@ class _BrowserPageState extends State<BrowserPage>
       );
     }
     if (hex.length == 8) {
-      final argb = int.tryParse(hex, radix: 16);
-      if (argb == null) return null;
+      // CSS uses #RRGGBBAA, not ARGB.
+      final rgba = int.tryParse(hex, radix: 16);
+      if (rgba == null) return null;
       return Color.fromARGB(
-        (argb >> 24) & 0xFF,
-        (argb >> 16) & 0xFF,
-        (argb >> 8) & 0xFF,
-        argb & 0xFF,
+        rgba & 0xFF,
+        (rgba >> 24) & 0xFF,
+        (rgba >> 16) & 0xFF,
+        (rgba >> 8) & 0xFF,
       );
     }
     return null;
+  }
+
+  double? _parseRgbChannel(String token) {
+    if (token.endsWith('%')) {
+      final pct = double.tryParse(token.substring(0, token.length - 1));
+      if (pct == null) return null;
+      return (pct.clamp(0.0, 100.0) * 2.55);
+    }
+    return double.tryParse(token);
+  }
+
+  double? _parseAlphaChannel(String token) {
+    if (token.endsWith('%')) {
+      final pct = double.tryParse(token.substring(0, token.length - 1));
+      if (pct == null) return null;
+      return (pct.clamp(0.0, 100.0) / 100.0);
+    }
+    return double.tryParse(token);
   }
 
   int _clampChannel(double value) {
@@ -1849,6 +1944,7 @@ class _BrowserPageState extends State<BrowserPage>
 
   Widget _buildTabItem(TabData tab, int index, bool isSelected,
       {bool showDragHandle = false}) {
+    final theme = Theme.of(context);
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -1863,32 +1959,28 @@ class _BrowserPageState extends State<BrowserPage>
         ],
         Icon(
           Icons.public,
-          size: 16,
-          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+          size: 15,
+          color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: 6),
         Text(
-          (Uri.tryParse(tab.currentUrl)?.host ?? tab.currentUrl).truncate(15),
+          (Uri.tryParse(tab.currentUrl)?.host ?? tab.currentUrl).truncate(14),
           style: TextStyle(
+            fontSize: 12,
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
             color: isSelected
-                ? Theme.of(context).colorScheme.onSurface
-                : Theme.of(context)
-                    .colorScheme
-                    .onSurface
-                    .withValues(alpha: 0.6),
+                ? theme.colorScheme.onSurface
+                : theme.colorScheme.onSurface.withValues(alpha: 0.6),
           ),
         ),
         if (tabs.length > 1) ...[
-          const SizedBox(width: 8),
+          const SizedBox(width: 6),
           GestureDetector(
             onTap: () => _closeTab(index),
             child: Icon(
               Icons.close,
-              size: 16,
-              color: Theme.of(context)
-                  .colorScheme
-                  .onSurface
-                  .withValues(alpha: 0.7),
+              size: 15,
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
             ),
           ),
         ],
@@ -1925,6 +2017,7 @@ class _BrowserPageState extends State<BrowserPage>
 
   @override
   void dispose() {
+    _overflowMenuCloseTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     _keyboardFocusNode.dispose();
     for (final tab in tabs) {
@@ -1937,6 +2030,20 @@ class _BrowserPageState extends State<BrowserPage>
     _saveBookmarks();
     _saveHistory();
     super.dispose();
+  }
+
+  void _cancelOverflowMenuClose() {
+    _overflowMenuCloseTimer?.cancel();
+    _overflowMenuCloseTimer = null;
+  }
+
+  void _scheduleOverflowMenuClose() {
+    _cancelOverflowMenuClose();
+    _overflowMenuCloseTimer = Timer(const Duration(milliseconds: 140), () {
+      if (!mounted) return;
+      if (_isOverflowTriggerHovered || _isOverflowMenuHovered) return;
+      _overflowMenuController.close();
+    });
   }
 
   Future<void> _loadBookmarks() async {
@@ -2040,10 +2147,15 @@ class _BrowserPageState extends State<BrowserPage>
     await showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Add Bookmark'),
+        title: Text(
+          'Add Bookmark',
+          style: Theme.of(context).textTheme.titleSmall?.copyWith(fontSize: 15),
+        ),
         content: TextField(
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 13),
           onChanged: (value) => category = value.isEmpty ? 'General' : value,
-          decoration: const InputDecoration(labelText: 'Category'),
+          decoration:
+              const InputDecoration(labelText: 'Category', isDense: true),
         ),
         actions: [
           TextButton(
@@ -2111,85 +2223,108 @@ class _BrowserPageState extends State<BrowserPage>
     }
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Bookmarks'),
-        content: StatefulBuilder(
-          builder: (context, innerSetState) => bookmarkManager.bookmarks.isEmpty
-              ? const Text('No bookmarks')
-              : SizedBox(
-                  width: double.maxFinite,
-                  height: 300,
-                  child: ListView(
-                    children: bookmarkManager.bookmarks.entries
-                        .map((entry) => ExpansionTile(
-                              title: Text(entry.key),
-                              children: entry.value
-                                  .map((url) => ListTile(
-                                        title: Text(url),
-                                        onTap: () {
-                                          Navigator.of(context).pop();
-                                          _loadUrl(url);
-                                        },
-                                        trailing: IconButton(
-                                          icon: const Icon(Icons.delete),
-                                          onPressed: () async {
-                                            final confirm =
-                                                await showDialog<bool>(
-                                              context: context,
-                                              builder: (context) => AlertDialog(
-                                                title: const Text(
-                                                    'Delete Bookmark?'),
-                                                content: Text(
-                                                    'Remove "$url" from ${entry.key}?'),
-                                                actions: [
-                                                  TextButton(
-                                                    onPressed: () =>
-                                                        Navigator.of(context)
-                                                            .pop(false),
-                                                    child: const Text('Cancel'),
-                                                  ),
-                                                  TextButton(
-                                                    onPressed: () =>
-                                                        Navigator.of(context)
-                                                            .pop(true),
-                                                    child: const Text('Delete'),
-                                                  ),
-                                                ],
-                                              ),
-                                            );
-                                            if (confirm == true) {
-                                              innerSetState(() {
-                                                bookmarkManager.remove(
-                                                    url, entry.key);
-                                              });
-                                              _saveBookmarks();
-                                            }
+      builder: (context) {
+        final theme = Theme.of(context);
+        return AlertDialog(
+          title: Text(
+            'Bookmarks',
+            style: theme.textTheme.titleSmall?.copyWith(fontSize: 15),
+          ),
+          content: StatefulBuilder(
+            builder: (context, innerSetState) => bookmarkManager
+                    .bookmarks.isEmpty
+                ? const Text('No bookmarks')
+                : SizedBox(
+                    width: double.maxFinite,
+                    height: 300,
+                    child: ListView(
+                      children: bookmarkManager.bookmarks.entries
+                          .map((entry) => ExpansionTile(
+                                tilePadding:
+                                    const EdgeInsets.symmetric(horizontal: 8),
+                                title: Text(
+                                  entry.key,
+                                  style: theme.textTheme.bodyMedium
+                                      ?.copyWith(fontSize: 13),
+                                ),
+                                children: entry.value
+                                    .map((url) => ListTile(
+                                          dense: true,
+                                          visualDensity: const VisualDensity(
+                                              horizontal: -2, vertical: -2),
+                                          title: Text(
+                                            url,
+                                            style: theme.textTheme.bodyMedium
+                                                ?.copyWith(fontSize: 12),
+                                          ),
+                                          onTap: () {
+                                            Navigator.of(context).pop();
+                                            _loadUrl(url);
                                           },
-                                        ),
-                                      ))
-                                  .toList(),
-                            ))
-                        .toList(),
+                                          trailing: IconButton(
+                                            icon: const Icon(Icons.delete),
+                                            onPressed: () async {
+                                              final confirm =
+                                                  await showDialog<bool>(
+                                                context: context,
+                                                builder: (context) =>
+                                                    AlertDialog(
+                                                  title: const Text(
+                                                      'Delete Bookmark?'),
+                                                  content: Text(
+                                                      'Remove "$url" from ${entry.key}?'),
+                                                  actions: [
+                                                    TextButton(
+                                                      onPressed: () =>
+                                                          Navigator.of(context)
+                                                              .pop(false),
+                                                      child:
+                                                          const Text('Cancel'),
+                                                    ),
+                                                    TextButton(
+                                                      onPressed: () =>
+                                                          Navigator.of(context)
+                                                              .pop(true),
+                                                      child:
+                                                          const Text('Delete'),
+                                                    ),
+                                                  ],
+                                                ),
+                                              );
+                                              if (confirm == true) {
+                                                innerSetState(() {
+                                                  bookmarkManager.remove(
+                                                      url, entry.key);
+                                                });
+                                                _saveBookmarks();
+                                              }
+                                            },
+                                          ),
+                                        ))
+                                    .toList(),
+                              ))
+                          .toList(),
+                    ),
                   ),
-                ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              setState(() {
-                bookmarkManager.clear();
-              });
-              _saveBookmarks();
-              Navigator.of(context).pop();
-            },
-            child: const Text('Clear All'),
           ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                setState(() {
+                  bookmarkManager.clear();
+                });
+                _saveBookmarks();
+                Navigator.of(context).pop();
+              },
+              child: const Text('Clear All'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -2207,8 +2342,8 @@ class _BrowserPageState extends State<BrowserPage>
     }
   }
 
-  void _showSettings() {
-    showDialog(
+  void _showSettings() async {
+    final saved = await showDialog<bool>(
       context: context,
       builder: (context) => SettingsDialog(
           onSettingsChanged: () {
@@ -2216,10 +2351,14 @@ class _BrowserPageState extends State<BrowserPage>
             widget.onSettingsChanged?.call();
           },
           onClearCaches: _clearAllCaches,
+          onThemePreviewChanged: widget.onThemePreviewChanged,
           currentTheme: widget.themeMode,
           aiSearchSuggestionsEnabled: widget.aiSearchSuggestionsEnabled,
           aiAvailable: widget.aiAvailable),
     );
+    if (saved != true) {
+      widget.onThemePreviewReset?.call();
+    }
   }
 
   Future<void> _showFontPicker() async {
@@ -2270,27 +2409,47 @@ class _BrowserPageState extends State<BrowserPage>
                 ),
                 const SizedBox(height: 8),
               ],
-              DropdownButtonFormField<String>(
-                initialValue: selectedValue,
-                decoration: const InputDecoration(labelText: 'Choose font'),
-                items: [
-                  ..._pageFontChoices.map(
-                    (choice) => DropdownMenuItem<String>(
-                      value: choice.cssFamily,
-                      child: Text(choice.label),
+              SizedBox(
+                width: double.infinity,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 220),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      children: [
+                        ..._pageFontChoices.map(
+                          (choice) => ListTile(
+                            dense: true,
+                            visualDensity: const VisualDensity(
+                                horizontal: -2, vertical: -2),
+                            title: Text(choice.label),
+                            trailing: selectedValue == choice.cssFamily
+                                ? const Icon(Icons.check, size: 18)
+                                : null,
+                            onTap: () {
+                              setStateDialog(() {
+                                selectedValue = choice.cssFamily;
+                              });
+                            },
+                          ),
+                        ),
+                        ListTile(
+                          dense: true,
+                          visualDensity:
+                              const VisualDensity(horizontal: -2, vertical: -2),
+                          title: const Text('Custom CSS Font Family'),
+                          trailing: selectedValue == customOptionValue
+                              ? const Icon(Icons.check, size: 18)
+                              : null,
+                          onTap: () {
+                            setStateDialog(() {
+                              selectedValue = customOptionValue;
+                            });
+                          },
+                        ),
+                      ],
                     ),
                   ),
-                  const DropdownMenuItem<String>(
-                    value: customOptionValue,
-                    child: Text('Custom CSS Font Family'),
-                  ),
-                ],
-                onChanged: (value) {
-                  if (value == null) return;
-                  setStateDialog(() {
-                    selectedValue = value;
-                  });
-                },
+                ),
               ),
               if (selectedValue == customOptionValue) ...[
                 const SizedBox(height: 12),
@@ -2423,98 +2582,147 @@ class _BrowserPageState extends State<BrowserPage>
     }
   }
 
-  List<PopupMenuEntry<String>> _buildMenuEntries() {
+  Widget _buildMenuItem(
+    BuildContext context, {
+    required String value,
+    required IconData icon,
+    required String label,
+  }) {
+    final theme = Theme.of(context);
+    return MouseRegion(
+      onEnter: (_) {
+        _isOverflowMenuHovered = true;
+        _cancelOverflowMenuClose();
+      },
+      onExit: (_) {
+        _isOverflowMenuHovered = false;
+        _scheduleOverflowMenuClose();
+      },
+      child: MenuItemButton(
+        style: ButtonStyle(
+          minimumSize: WidgetStateProperty.all(const Size.fromHeight(32)),
+          padding: WidgetStateProperty.all(
+            const EdgeInsets.symmetric(horizontal: 10),
+          ),
+          visualDensity: VisualDensity.compact,
+        ),
+        onPressed: () {
+          _overflowMenuController.close();
+          _handleMenuSelection(value);
+        },
+        child: Row(
+          children: [
+            Icon(icon, size: 16),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  List<Widget> _buildMenuEntries(BuildContext context) {
     return [
-      const PopupMenuItem(
+      _buildMenuItem(
+        context,
         value: 'add_bookmark',
-        child: Row(
-          children: [
-            Icon(Icons.bookmark_add),
-            SizedBox(width: 12),
-            Text('Add Bookmark'),
-          ],
-        ),
+        icon: Icons.bookmark_add,
+        label: 'Add Bookmark',
       ),
-      const PopupMenuItem(
+      _buildMenuItem(
+        context,
         value: 'view_bookmarks',
-        child: Row(
-          children: [
-            Icon(Icons.bookmarks),
-            SizedBox(width: 12),
-            Text('Bookmarks'),
-          ],
-        ),
+        icon: Icons.bookmarks,
+        label: 'Bookmarks',
       ),
-      const PopupMenuItem(
+      _buildMenuItem(
+        context,
         value: 'history',
-        child: Row(
-          children: [
-            Icon(Icons.history),
-            SizedBox(width: 12),
-            Text('History'),
-          ],
-        ),
+        icon: Icons.history,
+        label: 'History',
       ),
       if (widget.enableGitFetch)
-        const PopupMenuItem(
+        _buildMenuItem(
+          context,
           value: 'git_fetch',
-          child: Row(
-            children: [
-              Icon(Icons.code),
-              SizedBox(width: 12),
-              Text('Git Fetch'),
-            ],
-          ),
+          icon: Icons.code,
+          label: 'Git Fetch',
         ),
       if (widget.aiAvailable)
-        const PopupMenuItem(
+        _buildMenuItem(
+          context,
           value: 'ai_chat',
-          child: Row(
-            children: [
-              Icon(Icons.smart_toy),
-              SizedBox(width: 12),
-              Text('AI Chat'),
-            ],
-          ),
+          icon: Icons.smart_toy,
+          label: 'AI Chat',
         ),
-      const PopupMenuItem(
+      _buildMenuItem(
+        context,
         value: 'page_font',
-        child: Row(
-          children: [
-            Icon(Icons.font_download),
-            SizedBox(width: 12),
-            Text('Page Font'),
-          ],
-        ),
+        icon: Icons.font_download,
+        label: 'Page Font',
       ),
-      const PopupMenuItem(
+      _buildMenuItem(
+        context,
         value: 'settings',
-        child: Row(
-          children: [
-            Icon(Icons.settings),
-            SizedBox(width: 12),
-            Text('Settings'),
-          ],
-        ),
+        icon: Icons.settings,
+        label: 'Settings',
       ),
-      PopupMenuItem(
+      _buildMenuItem(
+        context,
         value: 'network_debug',
-        child: Row(
-          children: [
-            Icon(Icons.network_check),
-            SizedBox(width: 12),
-            Text('Network Debug'),
-          ],
-        ),
+        icon: Icons.network_check,
+        label: 'Network Debug',
       ),
     ];
   }
 
-  PopupMenuButton<String> _buildMenuButton({double iconSize = 24}) {
-    return PopupMenuButton<String>(
-      icon: Icon(Icons.more_vert, size: iconSize),
-      onSelected: _handleMenuSelection,
-      itemBuilder: (context) => _buildMenuEntries(),
+  Widget _buildMenuButton({double iconSize = 24}) {
+    return MenuAnchor(
+      controller: _overflowMenuController,
+      consumeOutsideTap: true,
+      style: MenuStyle(
+        shape: WidgetStatePropertyAll(
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+        minimumSize: const WidgetStatePropertyAll(Size(180, 0)),
+        padding: const WidgetStatePropertyAll(
+          EdgeInsets.symmetric(vertical: 4),
+        ),
+      ),
+      onClose: () {
+        _isOverflowMenuHovered = false;
+        _isOverflowTriggerHovered = false;
+        _cancelOverflowMenuClose();
+      },
+      menuChildren: _buildMenuEntries(context),
+      builder: (context, controller, child) {
+        return MouseRegion(
+          onEnter: (_) {
+            _isOverflowTriggerHovered = true;
+            _cancelOverflowMenuClose();
+          },
+          onExit: (_) {
+            _isOverflowTriggerHovered = false;
+            _scheduleOverflowMenuClose();
+          },
+          child: IconButton(
+            icon: Icon(Icons.more_vert, size: iconSize),
+            onPressed: () {
+              if (controller.isOpen) {
+                controller.close();
+                return;
+              }
+              controller.open();
+            },
+          ),
+        );
+      },
     );
   }
 
@@ -2728,56 +2936,69 @@ class _BrowserPageState extends State<BrowserPage>
     final history = _history;
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('History'),
-        content: history.isEmpty
-            ? const Text('No history')
-            : SizedBox(
-                width: double.maxFinite,
-                height: 300,
-                child: ListView.builder(
-                  itemCount: history.length,
-                  itemBuilder: (context, index) {
-                    final historyIndex = history.length - 1 - index;
-                    return ListTile(
-                      title: Text(history[historyIndex]),
-                      onTap: () {
-                        Navigator.of(context).pop();
-                        _loadUrl(history[historyIndex]);
-                      },
-                      trailing: IconButton(
-                        icon: const Icon(Icons.delete),
-                        onPressed: () {
-                          setState(() {
-                            history.removeAt(historyIndex);
-                          });
-                          _saveHistory();
+      builder: (context) {
+        final theme = Theme.of(context);
+        return AlertDialog(
+          title: Text(
+            'History',
+            style: theme.textTheme.titleSmall?.copyWith(fontSize: 15),
+          ),
+          content: history.isEmpty
+              ? const Text('No history')
+              : SizedBox(
+                  width: double.maxFinite,
+                  height: 300,
+                  child: ListView.builder(
+                    itemCount: history.length,
+                    itemBuilder: (context, index) {
+                      final historyIndex = history.length - 1 - index;
+                      return ListTile(
+                        dense: true,
+                        visualDensity:
+                            const VisualDensity(horizontal: -2, vertical: -2),
+                        title: Text(
+                          history[historyIndex],
+                          style: theme.textTheme.bodyMedium
+                              ?.copyWith(fontSize: 12),
+                        ),
+                        onTap: () {
+                          Navigator.of(context).pop();
+                          _loadUrl(history[historyIndex]);
                         },
-                      ),
-                    );
-                  },
+                        trailing: IconButton(
+                          icon: const Icon(Icons.delete),
+                          onPressed: () {
+                            setState(() {
+                              history.removeAt(historyIndex);
+                            });
+                            _saveHistory();
+                          },
+                        ),
+                      );
+                    },
+                  ),
                 ),
-              ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              setState(() {
-                history.clear();
-                for (final tab in tabs) {
-                  tab.history.clear();
-                }
-              });
-              _saveHistory();
-              Navigator.of(context).pop();
-            },
-            child: const Text('Clear All'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                setState(() {
+                  history.clear();
+                  for (final tab in tabs) {
+                    tab.history.clear();
+                  }
+                });
+                _saveHistory();
+                Navigator.of(context).pop();
+              },
+              child: const Text('Clear All'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -2796,13 +3017,24 @@ class _BrowserPageState extends State<BrowserPage>
         }
 
         return AlertDialog(
-          title: const Text('Open URL or Search'),
+          title: Text(
+            'Open URL or Search',
+            style: Theme.of(dialogContext)
+                .textTheme
+                .titleSmall
+                ?.copyWith(fontSize: 15),
+          ),
           content: TextFormField(
             initialValue: inputValue,
             autofocus: true,
             textInputAction: TextInputAction.go,
+            style: Theme.of(dialogContext)
+                .textTheme
+                .bodyMedium
+                ?.copyWith(fontSize: 13),
             decoration: const InputDecoration(
               hintText: 'Search or enter URL',
+              isDense: true,
             ),
             onChanged: (value) {
               inputValue = value;
@@ -3297,45 +3529,49 @@ class _BrowserPageState extends State<BrowserPage>
   @override
   Widget build(BuildContext context) {
     final isMacDesktop = defaultTargetPlatform == TargetPlatform.macOS;
-    final leadingInset = (isMacDesktop && !widget.hideAppBar) ? 88.0 : 16.0;
+    final leadingInset = (isMacDesktop && !widget.hideAppBar) ? 72.0 : 16.0;
 
     final PreferredSizeWidget? appBarWidget = widget.hideAppBar
         ? null
         : AppBar(
+            toolbarHeight: 52,
             actions: [
               Container(
-                margin: const EdgeInsets.symmetric(horizontal: 4),
+                margin: const EdgeInsets.symmetric(horizontal: 2),
                 decoration: BoxDecoration(
                   color: Theme.of(context).colorScheme.surfaceContainerHigh,
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(15),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     IconButton(
-                      icon: const Icon(Icons.arrow_back_ios, size: 18),
+                      icon: const Icon(Icons.arrow_back_ios, size: 16),
                       onPressed: _goBack,
                       tooltip: 'Back',
+                      visualDensity: VisualDensity.compact,
                     ),
                     IconButton(
-                      icon: const Icon(Icons.arrow_forward_ios, size: 18),
+                      icon: const Icon(Icons.arrow_forward_ios, size: 16),
                       onPressed: _goForward,
                       tooltip: 'Forward',
+                      visualDensity: VisualDensity.compact,
                     ),
                   ],
                 ),
               ),
               IconButton(
-                icon: const Icon(Icons.add),
+                icon: const Icon(Icons.add, size: 22),
                 onPressed: _addNewTab,
                 tooltip: 'New Tab',
+                visualDensity: VisualDensity.compact,
               ),
               _buildMenuButton(),
             ],
             title: Container(
               decoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(24),
+                borderRadius: BorderRadius.circular(20),
               ),
               child: Row(
                 children: [
@@ -3343,26 +3579,26 @@ class _BrowserPageState extends State<BrowserPage>
                   Icon(
                     Icons.search,
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    size: 20,
+                    size: 18,
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: TextField(
                       controller: activeTab.urlController,
                       focusNode: activeTab.urlFocusNode,
                       style: TextStyle(
                         color: Theme.of(context).colorScheme.onSurface,
-                        fontSize: 14,
+                        fontSize: 13,
                       ),
                       decoration: InputDecoration(
                         hintText: 'Search or enter URL',
                         hintStyle: TextStyle(
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
-                          fontSize: 14,
+                          fontSize: 13,
                         ),
                         border: InputBorder.none,
                         contentPadding:
-                            const EdgeInsets.symmetric(vertical: 12),
+                            const EdgeInsets.symmetric(vertical: 10),
                       ),
                       onTap: () {
                         if (widget.aiSearchSuggestionsEnabled &&
@@ -3390,7 +3626,7 @@ class _BrowserPageState extends State<BrowserPage>
                       icon: Icon(
                         Icons.refresh,
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        size: 20,
+                        size: 18,
                       ),
                       onPressed: _refresh,
                       padding: const EdgeInsets.all(8),
@@ -3529,7 +3765,7 @@ class _BrowserPageState extends State<BrowserPage>
                     Column(
                       children: [
                         Container(
-                          height: 48,
+                          height: 42,
                           decoration: BoxDecoration(
                             color: Theme.of(context).colorScheme.surface,
                             border: Border(
@@ -3603,8 +3839,8 @@ class _BrowserPageState extends State<BrowserPage>
                                             child: Container(
                                               padding:
                                                   const EdgeInsets.symmetric(
-                                                      horizontal: 16,
-                                                      vertical: 12),
+                                                      horizontal: 12,
+                                                      vertical: 10),
                                               decoration: BoxDecoration(
                                                 border: Border(
                                                   bottom: BorderSide(
