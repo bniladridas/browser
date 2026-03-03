@@ -14,6 +14,10 @@ const String strictModeKey = 'strictMode';
 const String themeModeKey = 'themeMode';
 const String passwordManagerEnabledKey = 'passwordManagerEnabled';
 const String reorderableTabsKey = 'reorderableTabs';
+const String pageFontFamilyKey = 'pageFontFamily';
+const String pageFontOverridesKey = 'pageFontOverrides';
+const String bookmarksStorageKey = 'bookmarks';
+const String browsingHistoryKey = 'browsingHistory';
 
 const String defaultHomepageUrl = 'about:browser-home';
 
