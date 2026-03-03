@@ -41,6 +41,7 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   AppThemeMode themeMode = AppThemeMode.system;
+  AppThemeMode? previewThemeMode;
   ThemeMode adjustedThemeMode = ThemeMode.system;
   Color adjustedSeedColor = Colors.blue;
   String homepage = defaultHomepageUrl;
@@ -83,6 +84,7 @@ class _MyAppState extends State<MyApp> {
             orElse: () => AppThemeMode.system,
           );
         }
+        previewThemeMode = null;
         if (themeMode != AppThemeMode.adjust) {
           adjustedThemeMode = ThemeMode.system;
           adjustedSeedColor = Colors.blue;
@@ -91,8 +93,31 @@ class _MyAppState extends State<MyApp> {
     }
   }
 
+  void _setPreviewThemeMode(AppThemeMode mode) {
+    if (!mounted) return;
+    setState(() {
+      previewThemeMode = mode;
+      if (mode != AppThemeMode.adjust) {
+        adjustedThemeMode = ThemeMode.system;
+        adjustedSeedColor = Colors.blue;
+      }
+    });
+  }
+
+  void _clearPreviewThemeMode() {
+    if (previewThemeMode == null || !mounted) return;
+    setState(() {
+      previewThemeMode = null;
+      if (themeMode != AppThemeMode.adjust) {
+        adjustedThemeMode = ThemeMode.system;
+        adjustedSeedColor = Colors.blue;
+      }
+    });
+  }
+
   void _setAdjustedThemeMode(ThemeMode mode, Color? seedColor) {
-    if (themeMode != AppThemeMode.adjust) return;
+    final effectiveThemeMode = previewThemeMode ?? themeMode;
+    if (effectiveThemeMode != AppThemeMode.adjust) return;
     final resolvedSeed = seedColor ?? Colors.blue;
     if (adjustedThemeMode == mode && adjustedSeedColor == resolvedSeed) {
       return;
@@ -117,12 +142,14 @@ class _MyAppState extends State<MyApp> {
 
   @override
   Widget build(BuildContext context) {
-    final resolvedThemeMode = themeMode == AppThemeMode.adjust
+    final effectiveThemeMode = previewThemeMode ?? themeMode;
+    final resolvedThemeMode = effectiveThemeMode == AppThemeMode.adjust
         ? adjustedThemeMode
-        : toThemeMode(themeMode);
-    final seedColor =
-        themeMode == AppThemeMode.adjust ? adjustedSeedColor : Colors.blue;
-    final useAdjustedTheme = themeMode == AppThemeMode.adjust;
+        : toThemeMode(effectiveThemeMode);
+    final seedColor = effectiveThemeMode == AppThemeMode.adjust
+        ? adjustedSeedColor
+        : Colors.blue;
+    final useAdjustedTheme = effectiveThemeMode == AppThemeMode.adjust;
     return ScaffoldMessenger(
       child: MaterialApp(
         title: 'Browser',
@@ -149,9 +176,11 @@ class _MyAppState extends State<MyApp> {
           strictMode: strictMode,
           pageFontFamily: pageFontFamily,
           aiSearchSuggestionsEnabled: aiSearchSuggestionsEnabled,
-          themeMode: themeMode,
+          themeMode: effectiveThemeMode,
           onPageThemeChanged: _setAdjustedThemeMode,
           onSettingsChanged: _loadSettings,
+          onThemePreviewChanged: _setPreviewThemeMode,
+          onThemePreviewReset: _clearPreviewThemeMode,
         ),
       ),
     );
