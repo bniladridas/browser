@@ -44,14 +44,16 @@ jobs:
           <dict>
               <key>API_KEY</key>
               <string>dummy_api_key</string>
+              <key>BUNDLE_ID</key>
+              <string>com.example.browser</string>
               <key>GCM_SENDER_ID</key>
-              <string>dummy_sender_id</string>
+              <string>1234567890</string>
+              <key>GOOGLE_APP_ID</key>
+              <string>1:1234567890:ios:0123456789abcdef012345</string>
               <key>PROJECT_ID</key>
-              <string>dummy_project_id</string>
+              <string>dummy-project-id</string>
               <key>STORAGE_BUCKET</key>
-              <string>dummy_storage_bucket</string>
-              <key>APP_ID</key>
-              <string>dummy_app_id</string>
+              <string>dummy-project-id.appspot.com</string>
               <key>CLIENT_ID</key>
               <string>dummy_client_id</string>
               <key>REVERSED_CLIENT_ID</key>
