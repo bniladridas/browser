@@ -11,5 +11,10 @@
     "Cleaner, more compact browser UI.",
     "Stability improvements for tabs, history, and URL interactions.",
     "Updated visuals across key in-app surfaces."
+  ],
+  "1.8.0": [
+    "Highlights for this release.",
+    "UI and stability improvements.",
+    "Performance and quality fixes."
   ]
 }
