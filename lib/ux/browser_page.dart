@@ -96,6 +96,145 @@ class UrlUtils {
   }
 }
 
+class UrlSubmissionDecision {
+  const UrlSubmissionDecision({
+    required this.normalizedInput,
+    required this.shouldLoadUrl,
+    required this.shouldShowAiSuggestions,
+  });
+
+  final String normalizedInput;
+  final bool shouldLoadUrl;
+  final bool shouldShowAiSuggestions;
+}
+
+@visibleForTesting
+UrlSubmissionDecision resolveUrlSubmission({
+  required String submittedValue,
+  required bool aiSearchSuggestionsEnabled,
+}) {
+  final normalized = submittedValue.trim();
+  if (normalized.isEmpty) {
+    return UrlSubmissionDecision(
+      normalizedInput: normalized,
+      shouldLoadUrl: false,
+      shouldShowAiSuggestions: aiSearchSuggestionsEnabled,
+    );
+  }
+  return UrlSubmissionDecision(
+    normalizedInput: normalized,
+    shouldLoadUrl: true,
+    shouldShowAiSuggestions: false,
+  );
+}
+
+class FaviconUrlPolicy {
+  static String normalizeJsResult(dynamic result) {
+    if (result == null) return '';
+    if (result is String) return result.trim();
+    return result.toString().trim();
+  }
+
+  static String unescapeWrappedJson(String raw) {
+    var text = raw.trim();
+    if (text.length >= 2 &&
+        ((text.startsWith('"') && text.endsWith('"')) ||
+            (text.startsWith("'") && text.endsWith("'")))) {
+      text = text.substring(1, text.length - 1);
+    }
+    return text
+        .replaceAll(r'\"', '"')
+        .replaceAll(r"\'", "'")
+        .replaceAll(r'\\', '\\');
+  }
+
+  static String? resolveFaviconFromJsResult(dynamic result) {
+    final raw = normalizeJsResult(result);
+    if (raw.isEmpty) return null;
+    var normalized = raw;
+    final unescaped = unescapeWrappedJson(raw).trim();
+    if (unescaped.isNotEmpty) {
+      normalized = unescaped;
+    }
+    normalized = normalized.replaceAll(r'\/', '/').trim();
+    final lower = normalized.toLowerCase();
+    if (lower == 'null' || lower == 'undefined' || normalized.isEmpty) {
+      return null;
+    }
+    return normalized;
+  }
+
+  static bool isLikelyRenderableFaviconUrl(String url) {
+    final normalized = url.trim();
+    final normalizedLower = normalized.toLowerCase();
+    if (normalizedLower.isEmpty) return false;
+    if (!isSafeFaviconUrl(normalized)) return false;
+    if (normalizedLower.contains('google.com/s2/favicons')) return true;
+    if (normalizedLower.startsWith('data:')) return false;
+    return normalizedLower.endsWith('.ico') ||
+        normalizedLower.endsWith('.png') ||
+        normalizedLower.endsWith('.jpg') ||
+        normalizedLower.endsWith('.jpeg') ||
+        normalizedLower.endsWith('.gif') ||
+        normalizedLower.endsWith('.webp');
+  }
+
+  static bool isSafeFaviconUrl(String url) {
+    final uri = Uri.tryParse(url.trim());
+    if (uri == null || uri.host.isEmpty) return false;
+    final scheme = uri.scheme.toLowerCase();
+    if (scheme != 'http' && scheme != 'https') return false;
+    return !_isBlockedFaviconHost(uri.host);
+  }
+
+  static bool isSafeAndRenderableFaviconUrl(String url) {
+    final normalized = url.trim().toLowerCase();
+    if (normalized.isEmpty) return false;
+    return isSafeFaviconUrl(normalized) &&
+        isLikelyRenderableFaviconUrl(normalized);
+  }
+
+  static bool _isBlockedFaviconHost(String host) {
+    final normalizedHost = host.trim().toLowerCase();
+    if (normalizedHost.isEmpty) return true;
+    if (normalizedHost == 'localhost' ||
+        normalizedHost.endsWith('.localhost') ||
+        normalizedHost.endsWith('.local')) {
+      return true;
+    }
+    final ip = InternetAddress.tryParse(normalizedHost);
+    if (ip == null) return false;
+    if (ip.type == InternetAddressType.IPv4) {
+      final b = ip.rawAddress;
+      if (b.length != 4) return true;
+      if (b[0] == 10) return true; // 10.0.0.0/8
+      if (b[0] == 127) return true; // loopback
+      if (b[0] == 0) return true; // invalid/unspecified
+      if (b[0] == 169 && b[1] == 254)
+        return true; // link-local + metadata range
+      if (b[0] == 172 && b[1] >= 16 && b[1] <= 31) return true; // 172.16.0.0/12
+      if (b[0] == 192 && b[1] == 168) return true; // 192.168.0.0/16
+      if (b[0] == 100 && b[1] >= 64 && b[1] <= 127) return true; // CGNAT
+      if (b[0] >= 224) return true; // multicast/reserved
+      return false;
+    }
+    if (ip.type == InternetAddressType.IPv6) {
+      final b = ip.rawAddress;
+      if (b.length != 16) return true;
+      final isUnspecified = b.every((v) => v == 0);
+      if (isUnspecified) return true;
+      final isLoopback = b.sublist(0, 15).every((v) => v == 0) && b[15] == 1;
+      if (isLoopback) return true; // ::1
+      if ((b[0] & 0xFE) == 0xFC) return true; // fc00::/7 unique local
+      if (b[0] == 0xFE && (b[1] & 0xC0) == 0x80)
+        return true; // fe80::/10 link-local
+      if (b[0] == 0xFF) return true; // multicast
+      return false;
+    }
+    return true;
+  }
+}
+
 class _PageFontChoice {
   const _PageFontChoice(this.label, this.cssFamily);
 
@@ -849,7 +988,7 @@ class _BrowserPageState extends State<BrowserPage>
   } catch (_) {}
 })();
 ''';
-  final AiService _aiService = AiService();
+  AiService? _aiService;
   List<String>? _cachedAiSearchSuggestions;
   DateTime? _lastAiSuggestionFetchAt;
   final Map<String, int> _navigationCacheIndex = {};
@@ -919,6 +1058,9 @@ class _BrowserPageState extends State<BrowserPage>
     if (defaultTargetPlatform != TargetPlatform.macOS || isIntegrationTest) {
       return;
     }
+    if (!isWindowChromeReady) {
+      return;
+    }
     try {
       await windowManager.setTitleBarStyle(
         TitleBarStyle.hidden,
@@ -948,6 +1090,9 @@ class _BrowserPageState extends State<BrowserPage>
     _loadHistory();
     if (widget.adBlocking) {
       loadAdBlockers();
+    }
+    if (widget.aiAvailable && !isIntegrationTest) {
+      _aiService = AiService();
     }
   }
 
@@ -1254,22 +1399,11 @@ class _BrowserPageState extends State<BrowserPage>
   }
 
   String _normalizeJsResult(dynamic result) {
-    if (result == null) return '';
-    if (result is String) return result.trim();
-    return result.toString().trim();
+    return FaviconUrlPolicy.normalizeJsResult(result);
   }
 
   String _unescapeWrappedJson(String raw) {
-    var text = raw.trim();
-    if (text.length >= 2 &&
-        ((text.startsWith('"') && text.endsWith('"')) ||
-            (text.startsWith("'") && text.endsWith("'")))) {
-      text = text.substring(1, text.length - 1);
-    }
-    return text
-        .replaceAll(r'\"', '"')
-        .replaceAll(r"\'", "'")
-        .replaceAll(r'\\', '\\');
+    return FaviconUrlPolicy.unescapeWrappedJson(raw);
   }
 
   _ThemeTone? _toneFromProbe(Map<String, dynamic> probe) {
@@ -2120,71 +2254,12 @@ class _BrowserPageState extends State<BrowserPage>
     ).toString();
   }
 
-  bool _isLikelyRenderableFaviconUrl(String url) {
-    final normalized = url.trim();
-    final normalizedLower = normalized.toLowerCase();
-    if (normalizedLower.isEmpty) return false;
-    if (!_isSafeFaviconUrl(normalized)) return false;
-    if (normalizedLower.contains('google.com/s2/favicons')) return true;
-    if (normalizedLower.startsWith('data:')) return false;
-    return normalizedLower.endsWith('.ico') ||
-        normalizedLower.endsWith('.png') ||
-        normalizedLower.endsWith('.jpg') ||
-        normalizedLower.endsWith('.jpeg') ||
-        normalizedLower.endsWith('.gif') ||
-        normalizedLower.endsWith('.webp');
-  }
-
   bool _isSafeFaviconUrl(String url) {
-    final uri = Uri.tryParse(url.trim());
-    if (uri == null || uri.host.isEmpty) return false;
-    final scheme = uri.scheme.toLowerCase();
-    if (scheme != 'http' && scheme != 'https') return false;
-    return !_isBlockedFaviconHost(uri.host);
-  }
-
-  bool _isBlockedFaviconHost(String host) {
-    final normalizedHost = host.trim().toLowerCase();
-    if (normalizedHost.isEmpty) return true;
-    if (normalizedHost == 'localhost' ||
-        normalizedHost.endsWith('.localhost') ||
-        normalizedHost.endsWith('.local')) {
-      return true;
-    }
-    final ip = InternetAddress.tryParse(normalizedHost);
-    if (ip == null) return false;
-    if (ip.type == InternetAddressType.IPv4) {
-      final b = ip.rawAddress;
-      if (b.length != 4) return true;
-      if (b[0] == 10) return true; // 10.0.0.0/8
-      if (b[0] == 127) return true; // loopback
-      if (b[0] == 0) return true; // invalid/unspecified
-      if (b[0] == 169 && b[1] == 254) return true; // link-local + metadata range
-      if (b[0] == 172 && b[1] >= 16 && b[1] <= 31) return true; // 172.16.0.0/12
-      if (b[0] == 192 && b[1] == 168) return true; // 192.168.0.0/16
-      if (b[0] == 100 && b[1] >= 64 && b[1] <= 127) return true; // CGNAT
-      if (b[0] >= 224) return true; // multicast/reserved
-      return false;
-    }
-    if (ip.type == InternetAddressType.IPv6) {
-      final b = ip.rawAddress;
-      if (b.length != 16) return true;
-      final isUnspecified = b.every((v) => v == 0);
-      if (isUnspecified) return true;
-      final isLoopback = b.sublist(0, 15).every((v) => v == 0) && b[15] == 1;
-      if (isLoopback) return true; // ::1
-      if ((b[0] & 0xFE) == 0xFC) return true; // fc00::/7 unique local
-      if (b[0] == 0xFE && (b[1] & 0xC0) == 0x80) return true; // fe80::/10 link-local
-      if (b[0] == 0xFF) return true; // multicast
-      return false;
-    }
-    return true;
+    return FaviconUrlPolicy.isSafeFaviconUrl(url);
   }
 
   bool _isSafeAndRenderableFaviconUrl(String url) {
-    final normalized = url.trim().toLowerCase();
-    if (normalized.isEmpty) return false;
-    return _isSafeFaviconUrl(normalized) && _isLikelyRenderableFaviconUrl(normalized);
+    return FaviconUrlPolicy.isSafeAndRenderableFaviconUrl(url);
   }
 
   Future<void> _updateTabFavicon(TabData tab) async {
@@ -2248,20 +2323,7 @@ class _BrowserPageState extends State<BrowserPage>
   return null;
 })();
 ''');
-      final raw = _normalizeJsResult(result);
-      if (raw.isNotEmpty) {
-        var normalized = raw;
-        final unescaped = _unescapeWrappedJson(raw).trim();
-        if (unescaped.isNotEmpty) {
-          normalized = unescaped;
-        }
-        normalized = normalized.replaceAll(r'\/', '/').trim();
-        if (normalized.toLowerCase() != 'null' &&
-            normalized.toLowerCase() != 'undefined' &&
-            normalized.isNotEmpty) {
-          resolvedFavicon = normalized;
-        }
-      }
+      resolvedFavicon = FaviconUrlPolicy.resolveFaviconFromJsResult(result);
     } catch (_) {
       // Best effort only.
     }
@@ -3236,10 +3298,11 @@ class _BrowserPageState extends State<BrowserPage>
       suggestions = _fallbackSearchSuggestions();
     } else {
       try {
-        final response = await _aiService.generateResponse(
-          'Suggest 6 short, interesting web search ideas for a general audience. '
-          'Return only one idea per line. No numbering. No extra text.',
-        );
+        final response = await _aiService?.generateResponse(
+              'Suggest 6 short, interesting web search ideas for a general audience. '
+              'Return only one idea per line. No numbering. No extra text.',
+            ) ??
+            '';
         final parsed = _parseAiSuggestions(response);
         suggestions = parsed.isEmpty ? _fallbackSearchSuggestions() : parsed;
       } catch (_) {
@@ -3271,6 +3334,7 @@ class _BrowserPageState extends State<BrowserPage>
             }
             final suggestions = snapshot.data ?? _fallbackSearchSuggestions();
             return SizedBox(
+              key: const Key('browser.ai_suggestions_sheet'),
               height: 260,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -3278,6 +3342,7 @@ class _BrowserPageState extends State<BrowserPage>
                   Padding(
                     padding: const EdgeInsets.fromLTRB(14, 2, 14, 6),
                     child: Text(
+                      key: const Key('browser.ai_suggestions_title'),
                       'Explore with AI',
                       style: theme.textTheme.titleSmall?.copyWith(fontSize: 14),
                     ),
@@ -3390,7 +3455,8 @@ class _BrowserPageState extends State<BrowserPage>
                               icon: const Icon(Icons.delete),
                               onPressed: () {
                                 setState(() {
-                                  final removeIndex = history.lastIndexOf(entry);
+                                  final removeIndex =
+                                      history.lastIndexOf(entry);
                                   if (removeIndex >= 0 &&
                                       removeIndex < history.length) {
                                     history.removeAt(removeIndex);
@@ -4170,6 +4236,7 @@ class _BrowserPageState extends State<BrowserPage>
                       fieldViewBuilder:
                           (context, controller, focusNode, onFieldSubmitted) {
                         return TextField(
+                          key: const Key('browser.url_field'),
                           controller: controller,
                           focusNode: focusNode,
                           onTapOutside: (_) {
@@ -4201,15 +4268,17 @@ class _BrowserPageState extends State<BrowserPage>
                           onSubmitted: (value) {
                             _setUrlAutocompleteOpen(false);
                             focusNode.unfocus();
-                            final submitted = value.trim();
-                            if (submitted.isEmpty) {
-                              if (widget.aiSearchSuggestionsEnabled) {
-                                _showAiSearchSuggestionsSheet();
-                              }
-                              onFieldSubmitted();
-                              return;
+                            final decision = resolveUrlSubmission(
+                              submittedValue: value,
+                              aiSearchSuggestionsEnabled:
+                                  widget.aiSearchSuggestionsEnabled,
+                            );
+                            if (decision.shouldShowAiSuggestions) {
+                              _showAiSearchSuggestionsSheet();
                             }
-                            _loadUrl(submitted);
+                            if (decision.shouldLoadUrl) {
+                              _loadUrl(decision.normalizedInput);
+                            }
                             onFieldSubmitted();
                           },
                         );

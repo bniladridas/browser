@@ -4,6 +4,8 @@
 // Use of this source code is governed by a MIT license that can be
 // found in the LICENSE file.
 
+import 'dart:io';
+
 const String homepageKey = 'homepage';
 const String hideAppBarKey = 'hideAppBar';
 const String useModernUserAgentKey = 'useModernUserAgent';
@@ -25,5 +27,15 @@ const String whatsNewSeenVersionKey = 'whatsNewSeenVersion';
 
 const String defaultHomepageUrl = 'about:browser-home';
 
-const bool isIntegrationTest =
-    bool.fromEnvironment('INTEGRATION_TEST', defaultValue: false);
+bool get isIntegrationTest =>
+    const bool.fromEnvironment('INTEGRATION_TEST', defaultValue: false) ||
+    const bool.fromEnvironment('FLUTTER_TEST', defaultValue: false) ||
+    Platform.environment.containsKey('FLUTTER_TEST');
+
+bool _windowChromeReady = false;
+
+bool get isWindowChromeReady => _windowChromeReady;
+
+void markWindowChromeReady() {
+  _windowChromeReady = true;
+}
