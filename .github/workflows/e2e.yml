@@ -66,3 +66,14 @@ jobs:
           rm -rf build/macos
       - name: Build macOS app
         run: flutter build macos
+      - name: Run E2E integration tests
+        run: |
+          chmod +x scripts/e2e.sh
+          ./scripts/e2e.sh
+      - name: Upload E2E artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-artifacts
+          path: build/e2e-artifacts/**
+          if-no-files-found: warn
