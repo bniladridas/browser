@@ -67,19 +67,19 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  Finder _switchTileByTitle(String title) {
+  Finder switchTileByTitle(String title) {
     return find.ancestor(
       of: find.text(title),
       matching: find.byType(SwitchListTile),
     );
   }
 
-  Future<void> _setSwitchTile(
+  Future<void> setSwitchTile(
     WidgetTester tester, {
     required String title,
     required bool enabled,
   }) async {
-    final tileFinder = _switchTileByTitle(title);
+    final tileFinder = switchTileByTitle(title);
     expect(tileFinder, findsOneWidget);
     final tile = tester.widget<SwitchListTile>(tileFinder);
     if (tile.value != enabled) {
@@ -93,44 +93,10 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Settings'));
     await tester.pumpAndSettle();
-    await _setSwitchTile(tester, title: 'Git Fetch', enabled: true);
+    await setSwitchTile(tester, title: 'Git Fetch', enabled: true);
     await tester.tap(find.text('Save'));
     await tester.pumpAndSettle();
     await tester.pumpAndSettle(const Duration(seconds: 2));
-  }
-
-  Future<void> setAiSearchSuggestions(
-    WidgetTester tester, {
-    required bool enabled,
-  }) async {
-    await openOverflowMenu(tester);
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Settings'));
-    await tester.pumpAndSettle();
-
-    final aiLabel = find.text('AI Search Suggestions');
-    if (aiLabel.evaluate().isEmpty) {
-      final settingsScrollable = find.descendant(
-        of: find.byType(AlertDialog),
-        matching: find.byType(Scrollable),
-      );
-      if (settingsScrollable.evaluate().isNotEmpty) {
-        await tester.scrollUntilVisible(
-          aiLabel,
-          120,
-          scrollable: settingsScrollable.first,
-        );
-      }
-    }
-
-    await _setSwitchTile(
-      tester,
-      title: 'AI Search Suggestions',
-      enabled: enabled,
-    );
-
-    await tester.tap(find.text('Save'));
-    await tester.pumpAndSettle();
   }
 
   group('Browser App Tests', () {
@@ -223,7 +189,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Toggle private browsing (this clears cache)
-      await _setSwitchTile(
+      await setSwitchTile(
         tester,
         title: 'Private Browsing',
         enabled: true,
@@ -254,7 +220,7 @@ void main() {
       expect(find.text('Modern User Agent'), findsOneWidget);
 
       // Toggle the switch
-      await _setSwitchTile(
+      await setSwitchTile(
         tester,
         title: 'Modern User Agent',
         enabled: true,
@@ -317,14 +283,14 @@ void main() {
       expect(find.byType(ChoiceChip), findsWidgets);
 
       // Toggle private browsing
-      await _setSwitchTile(
+      await setSwitchTile(
         tester,
         title: 'Private Browsing',
         enabled: true,
       );
 
       // Toggle ad blocking
-      await _setSwitchTile(
+      await setSwitchTile(
         tester,
         title: 'Ad Blocking',
         enabled: true,

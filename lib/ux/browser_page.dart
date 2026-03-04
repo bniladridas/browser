@@ -210,8 +210,9 @@ class FaviconUrlPolicy {
       if (b[0] == 10) return true; // 10.0.0.0/8
       if (b[0] == 127) return true; // loopback
       if (b[0] == 0) return true; // invalid/unspecified
-      if (b[0] == 169 && b[1] == 254)
+      if (b[0] == 169 && b[1] == 254) {
         return true; // link-local + metadata range
+      }
       if (b[0] == 172 && b[1] >= 16 && b[1] <= 31) return true; // 172.16.0.0/12
       if (b[0] == 192 && b[1] == 168) return true; // 192.168.0.0/16
       if (b[0] == 100 && b[1] >= 64 && b[1] <= 127) return true; // CGNAT
@@ -226,8 +227,9 @@ class FaviconUrlPolicy {
       final isLoopback = b.sublist(0, 15).every((v) => v == 0) && b[15] == 1;
       if (isLoopback) return true; // ::1
       if ((b[0] & 0xFE) == 0xFC) return true; // fc00::/7 unique local
-      if (b[0] == 0xFE && (b[1] & 0xC0) == 0x80)
+      if (b[0] == 0xFE && (b[1] & 0xC0) == 0x80) {
         return true; // fe80::/10 link-local
+      }
       if (b[0] == 0xFF) return true; // multicast
       return false;
     }
