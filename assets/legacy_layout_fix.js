@@ -52,25 +52,34 @@
     root.style.removeProperty('zoom');
 
     if (isGoogleHost) {
+      const MIN_CLAMP_TARGET_SIZE_PX = 120;
+      const LEFT_CLAMP_INSET_PX = 8;
       const candidates = document.querySelectorAll(
         'iframe, [role="dialog"], [role="menu"], [aria-modal="true"]',
       );
       for (const el of candidates) {
         const rect = el.getBoundingClientRect();
-        if (rect.width < 120 || rect.height < 120) continue;
+        // Skip tiny overlays; clamp only substantial fixed/absolute surfaces.
+        if (
+          rect.width < MIN_CLAMP_TARGET_SIZE_PX ||
+          rect.height < MIN_CLAMP_TARGET_SIZE_PX
+        )
+          continue;
         const style = window.getComputedStyle(el);
         if (style.display === 'none' || style.visibility === 'hidden') continue;
         const positioned =
           style.position === 'fixed' || style.position === 'absolute';
         if (!positioned) continue;
 
-        if (rect.left < 8) {
+        // Keep overlay content from touching the left edge; preserve base
+        // transform in dataset.browserClampBaseTransform for reversible clamping.
+        if (rect.left < LEFT_CLAMP_INSET_PX) {
           if (el.dataset.browserClampBaseTransform == null) {
             el.dataset.browserClampBaseTransform =
               style.transform === 'none' ? '' : style.transform;
           }
           const base = el.dataset.browserClampBaseTransform;
-          const shift = 8 - rect.left;
+          const shift = LEFT_CLAMP_INSET_PX - rect.left;
           const nextTransform =
             (base ? base + ' ' : '') +
             'translateX(' +
@@ -104,11 +113,15 @@
   ensureViewport();
   applyFix();
   window.addEventListener('resize', scheduleFix, { passive: true });
+  // Observe all DOM subtree updates so dynamic menus/dialogs get clamped too.
   const observer = new MutationObserver(() => scheduleFix());
   observer.observe(document.documentElement, {
     childList: true,
     subtree: true,
   });
-  setTimeout(scheduleFix, 300);
-  setTimeout(scheduleFix, 1200);
+  // Run a near-term fix for initial paint, then a later pass for async inserts.
+  const INITIAL_FIX_DELAY_MS = 300;
+  const LATE_FIX_DELAY_MS = 1200;
+  setTimeout(scheduleFix, INITIAL_FIX_DELAY_MS);
+  setTimeout(scheduleFix, LATE_FIX_DELAY_MS);
 })();
