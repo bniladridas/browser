@@ -1,0 +1,15 @@
+{
+  "1.6.0": [
+    "UI refinements across browser surfaces.",
+    "Improved tab and app bar interaction behavior."
+  ],
+  "1.7.0": [
+    "More compact controls and settings presentation.",
+    "Improved consistency across dialogs and overlays."
+  ],
+  "1.7.1": [
+    "Cleaner, more compact browser UI.",
+    "Stability improvements for tabs, history, and URL interactions.",
+    "Updated visuals across key in-app surfaces."
+  ]
+}

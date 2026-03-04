@@ -8,7 +8,8 @@
 # Script to bump version in VERSION file based on latest git tag
 # Usage: ./bump_version.sh <major|minor|patch>
 # The script reads the latest tag matching "desktop/app-*", bumps the version,
-# and derives the build number from commits since the last tag.
+# derives the build number from commits since the last tag, and ensures
+# assets/whats_new.json has an entry for the new release version.
 
 set -e  # Exit on error
 
@@ -78,3 +79,62 @@ echo "Bumped version to $NEW_VERSION"
 
 # Update pubspec.yaml
 ./scripts/pubspec.sh
+
+# Ensure "What's New" notes contain an entry for this release version.
+RELEASE_VERSION="${NEW_VERSION%%+*}"
+WHATS_NEW_FILE="assets/whats_new.json"
+WHATS_NEW_TEMPLATE_FILE="assets/whats_new_template.txt"
+
+if [ ! -f "$WHATS_NEW_TEMPLATE_FILE" ]; then
+  echo "Missing template file: $WHATS_NEW_TEMPLATE_FILE"
+  exit 1
+fi
+
+build_whats_new_entry() {
+  local version=$1
+  local entry=""
+  local line
+  while IFS= read -r line || [ -n "$line" ]; do
+    # Skip blank lines in template.
+    if [ -z "${line// }" ]; then
+      continue
+    fi
+    # Escape JSON special chars used in notes.
+    line=${line//\\/\\\\}
+    line=${line//\"/\\\"}
+    if [ -n "$entry" ]; then
+      entry="${entry},\n"
+    fi
+    entry="${entry}    \"$line\""
+  done < "$WHATS_NEW_TEMPLATE_FILE"
+
+  if [ -z "$entry" ]; then
+    echo "Template file has no usable lines: $WHATS_NEW_TEMPLATE_FILE"
+    exit 1
+  fi
+
+  printf '  "%s": [\n%s\n  ]' "$version" "$entry"
+}
+if [ ! -f "$WHATS_NEW_FILE" ]; then
+  NEW_ENTRY=$(build_whats_new_entry "$RELEASE_VERSION")
+  cat > "$WHATS_NEW_FILE" <<EOF
+{
+${NEW_ENTRY}
+}
+EOF
+  echo "Created $WHATS_NEW_FILE with $RELEASE_VERSION entry"
+elif grep -q "\"$RELEASE_VERSION\"" "$WHATS_NEW_FILE"; then
+  echo "What's New entry already exists for $RELEASE_VERSION"
+else
+  NEW_ENTRY=$(build_whats_new_entry "$RELEASE_VERSION")
+  REL_VERSION="$RELEASE_VERSION" NEW_ENTRY="$NEW_ENTRY" perl -0777 -i -pe '
+    BEGIN {
+      $v = $ENV{"REL_VERSION"};
+      $entry = $ENV{"NEW_ENTRY"};
+    }
+    if (/"\Q$v\E"\s*:/s) { next; }
+    s/\{\s*\}/\{\n$entry\n\}/s and next;
+    s/\n\}\s*$/,\n$entry\n\}\n/s;
+  ' "$WHATS_NEW_FILE"
+  echo "Added What's New placeholder entry for $RELEASE_VERSION"
+fi
