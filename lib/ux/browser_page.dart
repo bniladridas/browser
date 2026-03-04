@@ -34,7 +34,6 @@ import '../features/webauthn_script.dart';
 import '../features/webauthn_service.dart';
 import '../browser_state.dart';
 
-import '../features/video_manager.dart';
 import '../logging/logger.dart';
 import '../logging/network_monitor.dart';
 import '../utils/string_utils.dart';
@@ -822,11 +821,32 @@ class _BrowserPageState extends State<BrowserPage>
   static const int _maxNavigationCacheEntries = 200;
   static const int _navigationCachePrewarmCount = 8;
   static const Duration _navigationCachePrewarmTimeout = Duration(seconds: 3);
-  static const double _kMacOsLeadingInsetWithTrafficLights = 72.0;
+  static const double _kMacOsLeadingInsetWithTrafficLights = 16.0;
+  static const double _kMacOsAddressBarLeftOffset = 60.0;
   static const double _kDefaultLeadingInset = 16.0;
-  static const double _kMacOsTopToolbarInset = 24.0;
+  static const double _kMacOsTopToolbarInset = 8.0;
   static const String _legacyLayoutFixScriptAsset =
       'assets/legacy_layout_fix.js';
+  static const String _disablePagePointerEventsScript = '''
+(() => {
+  try {
+    const blockerId = '__browserPointerBlockerStyle';
+    if (!document.getElementById(blockerId)) {
+      const style = document.createElement('style');
+      style.id = blockerId;
+      style.textContent = 'html, body, body * { pointer-events: none !important; }';
+      document.documentElement.appendChild(style);
+    }
+  } catch (_) {}
+})();
+''';
+  static const String _restorePagePointerEventsScript = '''
+(() => {
+  try {
+    document.getElementById('__browserPointerBlockerStyle')?.remove();
+  } catch (_) {}
+})();
+''';
   final AiService _aiService = AiService();
   List<String>? _cachedAiSearchSuggestions;
   DateTime? _lastAiSuggestionFetchAt;
@@ -835,6 +855,7 @@ class _BrowserPageState extends State<BrowserPage>
   Timer? _overflowMenuCloseTimer;
   bool _isOverflowTriggerHovered = false;
   bool _isOverflowMenuHovered = false;
+  bool _urlAutocompleteOpen = false;
   final Map<String, String> _faviconCacheByHost = {};
   String? _legacyLayoutFixScript;
 
@@ -917,8 +938,7 @@ class _BrowserPageState extends State<BrowserPage>
     _loadReorderableTabs();
     _loadFontOverrides();
     _loadNavigationCacheIndex();
-    tabs.add(
-        TabData(widget.initialUrl, displayUrl: _displayUrl(widget.initialUrl)));
+    tabs.add(_createTab(widget.initialUrl));
     tabController = TabController(length: 1, vsync: this);
     previousTabIndex = 0;
     tabController.addListener(_onTabChanged);
@@ -926,6 +946,48 @@ class _BrowserPageState extends State<BrowserPage>
     _loadHistory();
     if (widget.adBlocking) {
       loadAdBlockers();
+    }
+  }
+
+  TabData _createTab(String initialUrl) {
+    final tab = TabData(initialUrl, displayUrl: _displayUrl(initialUrl));
+    tab.urlFocusNode.addListener(() => _onUrlFocusChanged(tab));
+    return tab;
+  }
+
+  void _onUrlFocusChanged(TabData tab) {
+    if (!mounted || tab.isClosed) return;
+    if (!tab.urlFocusNode.hasFocus && _urlAutocompleteOpen) {
+      _setUrlAutocompleteOpen(false);
+    }
+    _syncPagePointerEvents(tab);
+  }
+
+  void _setUrlAutocompleteOpen(bool open) {
+    if (_urlAutocompleteOpen == open) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _urlAutocompleteOpen == open) return;
+      setState(() => _urlAutocompleteOpen = open);
+      _syncPagePointerEvents(activeTab);
+    });
+  }
+
+  void _syncPagePointerEvents(TabData tab) {
+    if (tab.isClosed) return;
+    final shouldBlock = identical(tab, activeTab) && _urlAutocompleteOpen;
+    unawaited(_setTabPointerEventsEnabled(tab, !shouldBlock));
+  }
+
+  Future<void> _setTabPointerEventsEnabled(TabData tab, bool enabled) async {
+    final controller = tab.webViewController;
+    if (controller == null || tab.isClosed) return;
+    final script = enabled
+        ? _restorePagePointerEventsScript
+        : _disablePagePointerEventsScript;
+    try {
+      await controller.runJavaScript(script);
+    } catch (_) {
+      // Best effort only.
     }
   }
 
@@ -1366,18 +1428,6 @@ class _BrowserPageState extends State<BrowserPage>
   }
 
   void _onTabChanged() {
-    if (previousTabIndex != tabController.index) {
-      // Pause videos on previous tab
-      final prevTab = tabs[previousTabIndex];
-      if (prevTab.webViewController != null) {
-        VideoManager.pauseVideos(prevTab.webViewController!);
-      }
-      // Resume videos on current tab
-      final currTab = tabs[tabController.index];
-      if (currTab.webViewController != null) {
-        VideoManager.resumeVideos(currTab.webViewController!);
-      }
-    }
     previousTabIndex = tabController.index;
     _applyThemeForTab(tabs[tabController.index]);
     if (mounted) {
@@ -1936,8 +1986,7 @@ class _BrowserPageState extends State<BrowserPage>
   void _addNewTab() {
     if (mounted) {
       setState(() {
-        tabs.add(TabData(widget.initialUrl,
-            displayUrl: _displayUrl(widget.initialUrl)));
+        tabs.add(_createTab(widget.initialUrl));
         tabController
             .dispose(); // Dispose the old controller to prevent memory leaks.
         tabController = TabController(
@@ -2065,12 +2114,27 @@ class _BrowserPageState extends State<BrowserPage>
     final uri = Uri.tryParse(url);
     if (uri == null || uri.host.isEmpty) return null;
     if (uri.scheme != 'http' && uri.scheme != 'https') return null;
-    return Uri(
-      scheme: uri.scheme,
-      host: uri.host,
-      port: uri.hasPort ? uri.port : null,
-      path: '/favicon.ico',
+    return Uri.https(
+      'www.google.com',
+      '/s2/favicons',
+      <String, String>{
+        'domain': uri.host,
+        'sz': '64',
+      },
     ).toString();
+  }
+
+  bool _isLikelyRenderableFaviconUrl(String url) {
+    final normalized = url.trim().toLowerCase();
+    if (normalized.isEmpty) return false;
+    if (normalized.contains('google.com/s2/favicons')) return true;
+    if (normalized.startsWith('data:')) return false;
+    return normalized.endsWith('.ico') ||
+        normalized.endsWith('.png') ||
+        normalized.endsWith('.jpg') ||
+        normalized.endsWith('.jpeg') ||
+        normalized.endsWith('.gif') ||
+        normalized.endsWith('.webp');
   }
 
   Future<void> _updateTabFavicon(TabData tab) async {
@@ -2093,23 +2157,59 @@ class _BrowserPageState extends State<BrowserPage>
     try {
       final result = await controller.runJavaScriptReturningResult('''
 (() => {
-  const links = Array.from(document.querySelectorAll('link[rel]'));
-  const candidates = links.filter((link) => {
-    const rel = (link.getAttribute('rel') || '').toLowerCase();
-    return rel.includes('icon');
-  });
-  for (const link of candidates) {
-    const href = link.getAttribute('href');
-    if (!href) continue;
-    try {
-      return new URL(href, window.location.href).href;
-    } catch (_) {}
-  }
+  const toAbs = (href) => {
+    try { return new URL(href, window.location.href).href; } catch (_) { return null; }
+  };
+  const relScore = (rel) => {
+    if (rel === 'icon' || rel === 'shortcut icon') return 0;
+    if (rel.includes('apple-touch-icon')) return 1;
+    if (rel.includes('icon')) return 2;
+    return 9;
+  };
+  const extScore = (href) => {
+    const h = href.toLowerCase();
+    if (h.endsWith('.ico')) return 0;
+    if (h.endsWith('.png')) return 1;
+    if (h.endsWith('.jpg') || h.endsWith('.jpeg')) return 2;
+    if (h.endsWith('.gif') || h.endsWith('.webp')) return 3;
+    if (h.endsWith('.svg')) return 9;
+    return 4;
+  };
+
+  const links = Array.from(document.querySelectorAll('link[rel][href]'));
+  const candidates = links
+    .map((link) => {
+      const rel = (link.getAttribute('rel') || '').toLowerCase().trim();
+      const href = (link.getAttribute('href') || '').trim();
+      if (!href || href.startsWith('data:')) return null;
+      if (rel.includes('mask-icon')) return null;
+      if (!rel.includes('icon')) return null;
+      const abs = toAbs(href);
+      if (!abs) return null;
+      return { abs, rel, relOrder: relScore(rel), extOrder: extScore(abs) };
+    })
+    .filter(Boolean)
+    .sort((a, b) => {
+      if (a.relOrder !== b.relOrder) return a.relOrder - b.relOrder;
+      return a.extOrder - b.extOrder;
+    });
+
+  if (candidates.length > 0) return candidates[0].abs;
   return null;
 })();
 ''');
       if (result is String && result.trim().isNotEmpty) {
-        resolvedFavicon = result.trim();
+        var normalized = result.trim();
+        if ((normalized.startsWith('"') && normalized.endsWith('"')) ||
+            (normalized.startsWith("'") && normalized.endsWith("'"))) {
+          normalized = normalized.substring(1, normalized.length - 1);
+        }
+        normalized = normalized.replaceAll(r'\/', '/').trim();
+        if (normalized.toLowerCase() != 'null' &&
+            normalized.toLowerCase() != 'undefined' &&
+            normalized.isNotEmpty) {
+          resolvedFavicon = normalized;
+        }
       }
     } catch (_) {
       // Best effort only.
@@ -2117,10 +2217,17 @@ class _BrowserPageState extends State<BrowserPage>
     resolvedFavicon ??= _defaultFaviconUrlFor(tab.currentUrl);
     if (resolvedFavicon != null &&
         resolvedFavicon.isNotEmpty &&
+        !_isLikelyRenderableFaviconUrl(resolvedFavicon)) {
+      // Keep current working favicon when page reports non-renderable icons.
+      resolvedFavicon = tab.faviconUrl ?? _defaultFaviconUrlFor(tab.currentUrl);
+    }
+    if (resolvedFavicon != null &&
+        resolvedFavicon.isNotEmpty &&
         host != null &&
         host.isNotEmpty) {
       _faviconCacheByHost[host] = resolvedFavicon;
     }
+    if (resolvedFavicon == null || resolvedFavicon.isEmpty) return;
     if (resolvedFavicon == tab.faviconUrl || !mounted || tab.isClosed) return;
     setState(() {
       tab.faviconUrl = resolvedFavicon;
@@ -3188,65 +3295,76 @@ class _BrowserPageState extends State<BrowserPage>
       context: context,
       builder: (context) {
         final theme = Theme.of(context);
-        return AlertDialog(
-          title: Text(
-            'History',
-            style: theme.textTheme.titleSmall?.copyWith(fontSize: 15),
-          ),
-          content: history.isEmpty
-              ? const Text('No history')
-              : SizedBox(
-                  width: double.maxFinite,
-                  height: 300,
-                  child: ListView.builder(
-                    itemCount: history.length,
-                    itemBuilder: (context, index) {
-                      final historyIndex = history.length - 1 - index;
-                      return ListTile(
-                        dense: true,
-                        visualDensity:
-                            const VisualDensity(horizontal: -2, vertical: -2),
-                        title: Text(
-                          history[historyIndex],
-                          style: theme.textTheme.bodyMedium
-                              ?.copyWith(fontSize: 12),
-                        ),
-                        onTap: () {
-                          Navigator.of(context).pop();
-                          _loadUrl(history[historyIndex]);
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            final displayHistory = history.reversed.toList(growable: false);
+            return AlertDialog(
+              title: Text(
+                'History',
+                style: theme.textTheme.titleSmall?.copyWith(fontSize: 15),
+              ),
+              content: history.isEmpty
+                  ? const Text('No history')
+                  : SizedBox(
+                      width: double.maxFinite,
+                      height: 300,
+                      child: ListView.builder(
+                        itemCount: displayHistory.length,
+                        itemBuilder: (context, index) {
+                          final entry = displayHistory[index];
+                          return ListTile(
+                            dense: true,
+                            visualDensity: const VisualDensity(
+                                horizontal: -2, vertical: -2),
+                            title: Text(
+                              entry,
+                              style: theme.textTheme.bodyMedium
+                                  ?.copyWith(fontSize: 12),
+                            ),
+                            onTap: () {
+                              Navigator.of(context).pop();
+                              _loadUrl(entry);
+                            },
+                            trailing: IconButton(
+                              icon: const Icon(Icons.delete),
+                              onPressed: () {
+                                setState(() {
+                                  final removeIndex = history.lastIndexOf(entry);
+                                  if (removeIndex >= 0 &&
+                                      removeIndex < history.length) {
+                                    history.removeAt(removeIndex);
+                                  }
+                                });
+                                setDialogState(() {});
+                                _saveHistory();
+                              },
+                            ),
+                          );
                         },
-                        trailing: IconButton(
-                          icon: const Icon(Icons.delete),
-                          onPressed: () {
-                            setState(() {
-                              history.removeAt(historyIndex);
-                            });
-                            _saveHistory();
-                          },
-                        ),
-                      );
-                    },
-                  ),
+                      ),
+                    ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    setState(() {
+                      history.clear();
+                      for (final tab in tabs) {
+                        tab.history.clear();
+                      }
+                    });
+                    setDialogState(() {});
+                    _saveHistory();
+                    Navigator.of(context).pop();
+                  },
+                  child: const Text('Clear All'),
                 ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                setState(() {
-                  history.clear();
-                  for (final tab in tabs) {
-                    tab.history.clear();
-                  }
-                });
-                _saveHistory();
-                Navigator.of(context).pop();
-              },
-              child: const Text('Clear All'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Close'),
-            ),
-          ],
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Close'),
+                ),
+              ],
+            );
+          },
         );
       },
     );
@@ -3342,6 +3460,10 @@ class _BrowserPageState extends State<BrowserPage>
   }
 
   Future<void> _loadUrl(String url) async {
+    if (_urlAutocompleteOpen && mounted) {
+      setState(() => _urlAutocompleteOpen = false);
+      _syncPagePointerEvents(activeTab);
+    }
     final processedUrl = UrlUtils.processUrl(url);
     if (!UrlUtils.isValidUrl(processedUrl)) {
       logger.w('Invalid or unsafe URL: $processedUrl');
@@ -3419,16 +3541,6 @@ class _BrowserPageState extends State<BrowserPage>
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    'Search Torry',
-                    style: theme.textTheme.headlineSmall?.copyWith(
-                      color: colorScheme.primary,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 28,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
                     'Private search via torry.io.',
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: colorScheme.onSurfaceVariant,
@@ -3450,6 +3562,7 @@ class _BrowserPageState extends State<BrowserPage>
                       controller: tab.torrySearchController,
                       focusNode: tab.torrySearchFocusNode,
                       textInputAction: TextInputAction.search,
+                      textAlignVertical: TextAlignVertical.center,
                       style: theme.textTheme.bodyMedium?.copyWith(fontSize: 13),
                       onSubmitted: (s) => _performTorrySearch(tab, s),
                       decoration: InputDecoration(
@@ -3522,6 +3635,7 @@ class _BrowserPageState extends State<BrowserPage>
   Widget _buildErrorView(TabData tab) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final errorActionColor = colorScheme.onSurface;
     final errorMessage = tab.state is BrowserError
         ? (tab.state as BrowserError).message
         : 'We could not load that page.';
@@ -3593,6 +3707,10 @@ class _BrowserPageState extends State<BrowserPage>
                   ),
                 OutlinedButton.icon(
                   style: OutlinedButton.styleFrom(
+                    foregroundColor: errorActionColor,
+                    side: BorderSide(
+                      color: errorActionColor.withValues(alpha: 0.45),
+                    ),
                     visualDensity: VisualDensity.compact,
                   ),
                   onPressed: () {
@@ -3651,6 +3769,9 @@ class _BrowserPageState extends State<BrowserPage>
         if (tab.urlFocusNode.hasFocus) {
           tab.urlFocusNode.unfocus();
         }
+        if (_urlAutocompleteOpen) {
+          _setUrlAutocompleteOpen(false);
+        }
       });
       tab.webViewController!.addJavaScriptChannel('LoginDetector',
           onMessageReceived: (JavaScriptMessage message) async {
@@ -3701,12 +3822,16 @@ class _BrowserPageState extends State<BrowserPage>
                 tab.detectedBrightness = null;
                 tab.detectedSeedColor = null;
                 final host = _hostFromUrl(url);
-                tab.faviconUrl = host != null
+                final nextFavicon = host != null
                     ? (_faviconCacheByHost[host] ?? _defaultFaviconUrlFor(url))
                     : _defaultFaviconUrlFor(url);
+                if (nextFavicon != null && nextFavicon.isNotEmpty) {
+                  tab.faviconUrl = nextFavicon;
+                }
                 _recordHistory(tab, tab.currentUrl);
               });
             }
+            _syncPagePointerEvents(tab);
           }
         },
         onPageFinished: (url) {
@@ -3755,6 +3880,7 @@ class _BrowserPageState extends State<BrowserPage>
             // Attempt autofill if credentials available
             _attemptAutofill(tab);
           }
+          _syncPagePointerEvents(tab);
           _updateThemeFromTab(tab);
           Future.delayed(const Duration(milliseconds: 400), () {
             if (!mounted) return;
@@ -3800,6 +3926,7 @@ class _BrowserPageState extends State<BrowserPage>
           _handleLoadError(tab, 'HTTP ${error.response?.statusCode}');
         },
       ));
+      _syncPagePointerEvents(tab);
       _loadInitialRequestForTab(tab);
     }
 
@@ -3855,10 +3982,14 @@ class _BrowserPageState extends State<BrowserPage>
     final leadingInset = (isMacDesktop && !widget.hideAppBar)
         ? _kMacOsLeadingInsetWithTrafficLights
         : _kDefaultLeadingInset;
+    final addressBarLeftOffset = (isMacDesktop && !widget.hideAppBar)
+        ? _kMacOsAddressBarLeftOffset
+        : 0.0;
 
     final PreferredSizeWidget? appBarWidget = widget.hideAppBar
         ? null
         : AppBar(
+            primary: false,
             toolbarHeight: 52,
             actions: [
               Container(
@@ -3894,6 +4025,7 @@ class _BrowserPageState extends State<BrowserPage>
               _buildMenuButton(),
             ],
             title: Container(
+              margin: EdgeInsets.only(left: addressBarLeftOffset),
               decoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.surfaceContainerHighest,
                 borderRadius: BorderRadius.circular(20),
@@ -3913,17 +4045,27 @@ class _BrowserPageState extends State<BrowserPage>
                       textEditingController: activeTab.urlController,
                       optionsBuilder: (value) =>
                           _historyUrlSuggestions(value.text),
-                      onSelected: _loadUrl,
+                      onSelected: (value) {
+                        _setUrlAutocompleteOpen(false);
+                        _loadUrl(value);
+                      },
                       optionsViewBuilder: (context, onSelected, options) {
                         final optionList = options.toList(growable: false);
-                        if (optionList.isEmpty) return const SizedBox.shrink();
+                        if (optionList.isEmpty) {
+                          _setUrlAutocompleteOpen(false);
+                          return const SizedBox.shrink();
+                        }
+                        _setUrlAutocompleteOpen(true);
                         final theme = Theme.of(context);
                         return Stack(
                           children: [
                             Positioned.fill(
                               child: GestureDetector(
-                                behavior: HitTestBehavior.translucent,
-                                onTap: () => activeTab.urlFocusNode.unfocus(),
+                                behavior: HitTestBehavior.opaque,
+                                onTap: () {
+                                  activeTab.urlFocusNode.unfocus();
+                                  _setUrlAutocompleteOpen(false);
+                                },
                                 child: const SizedBox.expand(),
                               ),
                             ),
@@ -3977,7 +4119,10 @@ class _BrowserPageState extends State<BrowserPage>
                         return TextField(
                           controller: controller,
                           focusNode: focusNode,
-                          onTapOutside: (_) => focusNode.unfocus(),
+                          onTapOutside: (_) {
+                            focusNode.unfocus();
+                            _setUrlAutocompleteOpen(false);
+                          },
                           style: TextStyle(
                             color: Theme.of(context).colorScheme.onSurface,
                             fontSize: 13,
@@ -4000,7 +4145,11 @@ class _BrowserPageState extends State<BrowserPage>
                               _showAiSearchSuggestionsSheet();
                             }
                           },
-                          onSubmitted: (_) => onFieldSubmitted(),
+                          onSubmitted: (_) {
+                            _setUrlAutocompleteOpen(false);
+                            focusNode.unfocus();
+                            _loadUrl(controller.text);
+                          },
                         );
                       },
                     ),
@@ -4161,7 +4310,7 @@ class _BrowserPageState extends State<BrowserPage>
                     Column(
                       children: [
                         Container(
-                          height: 42,
+                          height: 34,
                           decoration: BoxDecoration(
                             color: Theme.of(context).colorScheme.surface,
                             border: Border(
@@ -4236,7 +4385,7 @@ class _BrowserPageState extends State<BrowserPage>
                                               padding:
                                                   const EdgeInsets.symmetric(
                                                       horizontal: 12,
-                                                      vertical: 10),
+                                                      vertical: 4),
                                               decoration: BoxDecoration(
                                                 border: Border(
                                                   bottom: BorderSide(
@@ -4260,6 +4409,8 @@ class _BrowserPageState extends State<BrowserPage>
                                   : TabBar(
                                       controller: tabController,
                                       isScrollable: true,
+                                      tabAlignment: TabAlignment.start,
+                                      padding: EdgeInsets.zero,
                                       indicatorColor: widget.themeMode ==
                                               AppThemeMode.adjust
                                           ? Colors.transparent
@@ -4286,6 +4437,7 @@ class _BrowserPageState extends State<BrowserPage>
                                         final isSelected =
                                             tabController.index == index;
                                         return Tab(
+                                          height: 30,
                                           child: _buildTabItem(
                                               tab, index, isSelected),
                                         );
@@ -4295,19 +4447,23 @@ class _BrowserPageState extends State<BrowserPage>
                           ),
                         ),
                         Expanded(
-                          child: _reorderableTabs
-                              ? IndexedStack(
-                                  index: tabController.index,
-                                  children: tabs
-                                      .map((tab) => _buildTabBody(tab))
-                                      .toList(),
-                                )
-                              : TabBarView(
-                                  controller: tabController,
-                                  children: tabs
-                                      .map((tab) => _buildTabBody(tab))
-                                      .toList(),
-                                ),
+                          child: IgnorePointer(
+                            ignoring: activeTab.urlFocusNode.hasFocus ||
+                                _urlAutocompleteOpen,
+                            child: _reorderableTabs
+                                ? IndexedStack(
+                                    index: tabController.index,
+                                    children: tabs
+                                        .map((tab) => _buildTabBody(tab))
+                                        .toList(),
+                                  )
+                                : TabBarView(
+                                    controller: tabController,
+                                    children: tabs
+                                        .map((tab) => _buildTabBody(tab))
+                                        .toList(),
+                                  ),
+                          ),
                         ),
                       ],
                     ),
