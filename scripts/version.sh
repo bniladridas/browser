@@ -84,57 +84,39 @@ echo "Bumped version to $NEW_VERSION"
 RELEASE_VERSION="${NEW_VERSION%%+*}"
 WHATS_NEW_FILE="assets/whats_new.json"
 WHATS_NEW_TEMPLATE_FILE="assets/whats_new_template.txt"
+WHATS_NEW_TMP_FILE="${WHATS_NEW_FILE}.tmp"
 
 if [ ! -f "$WHATS_NEW_TEMPLATE_FILE" ]; then
   echo "Missing template file: $WHATS_NEW_TEMPLATE_FILE"
   exit 1
 fi
 
-build_whats_new_entry() {
-  local version=$1
-  local entry=""
-  local line
-  while IFS= read -r line || [ -n "$line" ]; do
-    # Skip blank lines in template.
-    if [ -z "${line// }" ]; then
-      continue
-    fi
-    # Escape JSON special chars used in notes.
-    line=${line//\\/\\\\}
-    line=${line//\"/\\\"}
-    if [ -n "$entry" ]; then
-      entry="${entry},\n"
-    fi
-    entry="${entry}    \"$line\""
-  done < "$WHATS_NEW_TEMPLATE_FILE"
+if ! command -v jq >/dev/null 2>&1; then
+  echo "Missing required dependency: jq"
+  echo "Install jq to enable automatic updates for $WHATS_NEW_FILE"
+  exit 1
+fi
 
-  if [ -z "$entry" ]; then
-    echo "Template file has no usable lines: $WHATS_NEW_TEMPLATE_FILE"
-    exit 1
-  fi
+build_whats_new_notes_json() {
+  jq -Rsc 'split("\n") | map(gsub("^[[:space:]]+|[[:space:]]+$";"")) | map(select(length > 0))' \
+    "$WHATS_NEW_TEMPLATE_FILE"
+}
 
-  printf '  "%s": [\n%s\n  ]' "$version" "$entry"
-}
-if [ ! -f "$WHATS_NEW_FILE" ]; then
-  NEW_ENTRY=$(build_whats_new_entry "$RELEASE_VERSION")
-  cat > "$WHATS_NEW_FILE" <<EOF
-{
-${NEW_ENTRY}
-}
-EOF
-  echo "Created $WHATS_NEW_FILE with $RELEASE_VERSION entry"
-elif grep -q "\"$RELEASE_VERSION\"" "$WHATS_NEW_FILE"; then
+NOTES_JSON=$(build_whats_new_notes_json)
+if [ "$NOTES_JSON" = "[]" ]; then
+  echo "Template file has no usable lines: $WHATS_NEW_TEMPLATE_FILE"
+  exit 1
+fi
+
+if [ ! -f "$WHATS_NEW_FILE" ] || [ ! -s "$WHATS_NEW_FILE" ]; then
+  echo "{}" > "$WHATS_NEW_FILE"
+fi
+
+if jq -e --arg version "$RELEASE_VERSION" 'has($version)' "$WHATS_NEW_FILE" >/dev/null; then
   echo "What's New entry already exists for $RELEASE_VERSION"
 else
-  NEW_ENTRY=$(build_whats_new_entry "$RELEASE_VERSION")
-  REL_VERSION="$RELEASE_VERSION" NEW_ENTRY="$NEW_ENTRY" perl -0777 -i -pe '
-    BEGIN {
-      $v = $ENV{"REL_VERSION"};
-      $entry = $ENV{"NEW_ENTRY"};
-    }
-    if (/"\Q$v\E"\s*:/s) { next; }
-    s/\{\s*\}/\{\n$entry\n\}/s and next;
-    s/\n\}\s*$/,\n$entry\n\}\n/s;
-  ' "$WHATS_NEW_FILE"
-  echo "Added What's New placeholder entry for $RELEASE_VERSION"
+  jq --arg version "$RELEASE_VERSION" --argjson notes "$NOTES_JSON" \
+    '. + {($version): $notes}' "$WHATS_NEW_FILE" > "$WHATS_NEW_TMP_FILE"
+  mv "$WHATS_NEW_TMP_FILE" "$WHATS_NEW_FILE"
+  echo "Added What's New placeholder entry for $RELEASE_VERSION using jq"
 fi

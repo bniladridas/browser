@@ -160,8 +160,12 @@ class _MyAppState extends State<MyApp> {
           if (notes.isNotEmpty) return notes;
         }
       }
-    } catch (_) {
-      // Fallback below.
+    } catch (e, s) {
+      logger.w(
+        "Failed to load or parse What's New notes",
+        error: e,
+        stackTrace: s,
+      );
     }
     return const <String>['Minor improvements and fixes.'];
   }
