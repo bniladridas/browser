@@ -32,6 +32,19 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
     log_contains_foreground_failure() {
         grep -q "Failed to foreground app; open returned 1" "$1"
     }
+    log_contains_startup_attach_failure() {
+        grep -q "Error waiting for a debug connection" "$1" || \
+            grep -q "Unable to start the app on the device" "$1" || \
+            grep -q "The log reader stopped unexpectedly, or never started" "$1"
+    }
+    prepare_retry_environment() {
+        # Best-effort cleanup for flaky macOS startup/attach failures in CI.
+        /usr/bin/pkill -x browser >/dev/null 2>&1 || true
+        /usr/bin/pkill -f "FlutterTester" >/dev/null 2>&1 || true
+        /usr/bin/pkill -f "xcodebuild" >/dev/null 2>&1 || true
+        rm -rf build/macos/Build/Intermediates.noindex/XCBuildData || true
+        sleep 2
+    }
     run_e2e() {
         local attempt_label="$1"
         shift
@@ -59,8 +72,9 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
         rm -f "$log_file"
         exit 0
     fi
-    if log_contains_foreground_failure "$log_file"; then
-        echo "Foreground failed. Attempting to clear quarantine and retry once..."
+    if log_contains_foreground_failure "$log_file" || log_contains_startup_attach_failure "$log_file"; then
+        echo "Detected app startup/attach instability. Attempting one retry..."
+        prepare_retry_environment
         app_path="build/macos/Build/Products/Debug/browser.app"
         if [[ -d "$app_path" ]]; then
             xattr -dr com.apple.quarantine "$app_path" || true
