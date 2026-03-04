@@ -714,7 +714,8 @@ class BrowserPage extends StatefulWidget {
       this.onSettingsChanged,
       this.onPageThemeChanged,
       this.onThemePreviewChanged,
-      this.onThemePreviewReset});
+      this.onThemePreviewReset,
+      this.onShowWhatsNew});
 
   final String initialUrl;
   final bool hideAppBar;
@@ -732,6 +733,7 @@ class BrowserPage extends StatefulWidget {
   final void Function(ThemeMode mode, Color? seedColor)? onPageThemeChanged;
   final void Function(AppThemeMode mode)? onThemePreviewChanged;
   final void Function()? onThemePreviewReset;
+  final void Function()? onShowWhatsNew;
 
   @override
   State<BrowserPage> createState() => _BrowserPageState();
@@ -2918,6 +2920,9 @@ class _BrowserPageState extends State<BrowserPage>
       case 'network_debug':
         _showNetworkDebug();
         break;
+      case 'whats_new':
+        widget.onShowWhatsNew?.call();
+        break;
     }
   }
 
@@ -3011,6 +3016,12 @@ class _BrowserPageState extends State<BrowserPage>
         value: 'settings',
         icon: Icons.settings,
         label: 'Settings',
+      ),
+      _buildMenuItem(
+        context,
+        value: 'whats_new',
+        icon: Icons.new_releases_outlined,
+        label: "What's New",
       ),
       _buildMenuItem(
         context,

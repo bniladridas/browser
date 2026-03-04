@@ -23,6 +23,13 @@ Use this file for repeatable Codex-assisted tasks and checklists.
   - `gh pr create`
   - `gh pr merge`
 
+## PR Impact Validation (Required)
+
+- Before running `gh pr create` or `gh pr edit`, review `## Impact`.
+- Check only categories directly supported by `## Summary` bullets.
+- If a box cannot be justified from `## Summary`, uncheck it.
+- Re-run this validation after any PR description update.
+
 ## Version Bump (Manual)
 
 - Update `VERSION` to `X.Y.Z+N`.
