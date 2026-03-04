@@ -9,6 +9,7 @@ echo "Running integration tests..."
 
 test_target="integration_test/"
 artifact_dir="${E2E_ARTIFACT_DIR:-build/e2e-artifacts}"
+app_bundle_id="${E2E_APP_BUNDLE_ID:-com.example.browser}"
 mkdir -p "$artifact_dir"
 
 persist_e2e_log() {
@@ -42,6 +43,7 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
         /usr/bin/pkill -x browser >/dev/null 2>&1 || true
         /usr/bin/pkill -f "FlutterTester" >/dev/null 2>&1 || true
         /usr/bin/pkill -f "xcodebuild" >/dev/null 2>&1 || true
+        rm -rf "$HOME/Library/Saved Application State/${app_bundle_id}.savedState" || true
         rm -rf build/macos/Build/Intermediates.noindex/XCBuildData || true
         sleep 2
     }
@@ -54,7 +56,11 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
             sleep 1
         fi
         E2E_LOG_FILE="$(mktemp -t flutter-e2e.XXXXXX.log)"
-        flutter test -d macos --dart-define=INTEGRATION_TEST=true $test_target "$@" 2>&1 | tee "$E2E_LOG_FILE"
+        rm -rf "$HOME/Library/Saved Application State/${app_bundle_id}.savedState" || true
+        # Prevent macOS state-restoration modal from blocking app startup after crashes.
+        ApplePersistenceIgnoreState=YES \
+            flutter test -d macos --dart-define=INTEGRATION_TEST=true $test_target "$@" \
+            2>&1 | tee "$E2E_LOG_FILE"
         local status=${PIPESTATUS[0]}
         persist_e2e_log "$E2E_LOG_FILE" "integration-${attempt_label}.log"
         if [[ $status -eq 0 ]]; then
