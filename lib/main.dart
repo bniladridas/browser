@@ -5,14 +5,17 @@
 // found in the LICENSE file.
 
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:flutter/services.dart';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'logging/logger.dart';
@@ -40,6 +43,8 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
+  static const String _whatsNewAssetPath = 'assets/whats_new.json';
+
   AppThemeMode themeMode = AppThemeMode.system;
   AppThemeMode? previewThemeMode;
   ThemeMode adjustedThemeMode = ThemeMode.system;
@@ -54,11 +59,111 @@ class _MyAppState extends State<MyApp> {
   String pageFontFamily = '';
   bool aiSearchSuggestionsEnabled = false;
   bool advancedCacheEnabled = false;
+  bool _didCheckWhatsNew = false;
+  final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
 
   @override
   void initState() {
     super.initState();
     _loadSettings();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _maybeShowWhatsNew();
+    });
+  }
+
+  Future<void> _maybeShowWhatsNew() async {
+    await _showWhatsNewDialog(ignoreSeenVersion: false);
+  }
+
+  Future<void> _showWhatsNewDialog({required bool ignoreSeenVersion}) async {
+    if ((!ignoreSeenVersion && _didCheckWhatsNew) ||
+        !mounted ||
+        isIntegrationTest) {
+      return;
+    }
+    if (!ignoreSeenVersion) {
+      _didCheckWhatsNew = true;
+    }
+    final prefs = await SharedPreferences.getInstance();
+    final info = await PackageInfo.fromPlatform();
+    final currentVersion = info.version.trim();
+    if (currentVersion.isEmpty) return;
+    final seenVersion = prefs.getString(whatsNewSeenVersionKey);
+    if (!ignoreSeenVersion && seenVersion == currentVersion) return;
+
+    final notes = await _loadWhatsNewNotes(currentVersion);
+
+    if (!mounted || _navigatorKey.currentContext == null) return;
+    await showDialog<void>(
+      context: _navigatorKey.currentContext!,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        final theme = Theme.of(dialogContext);
+        return AlertDialog(
+          title: Text(
+            "What's New",
+            style: theme.textTheme.titleSmall?.copyWith(fontSize: 15),
+          ),
+          content: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 420),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Version $currentVersion',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    fontSize: 12,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                ...notes.map(
+                  (note) => Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Text(
+                      '• $note',
+                      style: theme.textTheme.bodyMedium?.copyWith(fontSize: 13),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () async {
+                await prefs.setString(whatsNewSeenVersionKey, currentVersion);
+                if (dialogContext.mounted) {
+                  Navigator.of(dialogContext).pop();
+                }
+              },
+              child: const Text('Continue'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<List<String>> _loadWhatsNewNotes(String version) async {
+    try {
+      final raw = await rootBundle.loadString(_whatsNewAssetPath);
+      final decoded = jsonDecode(raw);
+      if (decoded is Map<String, dynamic>) {
+        final entry = decoded[version];
+        if (entry is List) {
+          final notes = entry
+              .map((e) => e.toString().trim())
+              .where((e) => e.isNotEmpty)
+              .toList(growable: false);
+          if (notes.isNotEmpty) return notes;
+        }
+      }
+    } catch (_) {
+      // Fallback below.
+    }
+    return const <String>['Minor improvements and fixes.'];
   }
 
   Future<void> _loadSettings() async {
@@ -154,6 +259,7 @@ class _MyAppState extends State<MyApp> {
     final useAdjustedTheme = effectiveThemeMode == AppThemeMode.adjust;
     return ScaffoldMessenger(
       child: MaterialApp(
+        navigatorKey: _navigatorKey,
         title: 'Browser',
         debugShowCheckedModeBanner: false,
         theme: _buildThemeData(
@@ -184,6 +290,9 @@ class _MyAppState extends State<MyApp> {
           onSettingsChanged: _loadSettings,
           onThemePreviewChanged: _setPreviewThemeMode,
           onThemePreviewReset: _clearPreviewThemeMode,
+          onShowWhatsNew: () {
+            _showWhatsNewDialog(ignoreSeenVersion: true);
+          },
         ),
       ),
     );

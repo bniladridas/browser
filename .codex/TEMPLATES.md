@@ -15,13 +15,24 @@ Examples:
 - Bullet point descriptions of changes
 
 ## Impact
+- [ ] New feature
+- [ ] Bug fix
+- [ ] Breaking change
 - [ ] Build / CI
 - [ ] Refactor / cleanup
 - [ ] Documentation
+- [ ] Tests
+- [ ] Performance
+- [ ] Security
+
+Impact validation rule (required):
+- Before PR create/edit, verify each checked category has at least one matching Summary bullet.
+- If no concrete change supports a category, keep it unchecked.
+- Never skip this validation step.
 
 ## Related Items
-- Resolves issues: #[issue-number]
-- Closes PRs: #[pr-number]
+- Resolves #[issue-number]
+- Closes #[pr-number]
 - Resources: [PRs tab](../../pulls), [Issues tab](../../issues)
 
 ## Notes for reviewers
