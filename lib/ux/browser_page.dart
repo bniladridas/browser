@@ -1062,13 +1062,7 @@ class _BrowserPageState extends State<BrowserPage>
   }
 
   bool _isMissingPluginException(PlatformException e) {
-    final combined = [
-      e.code,
-      e.message ?? '',
-      e.details?.toString() ?? '',
-      e.toString(),
-    ].join(' ');
-    return combined.contains('MissingPluginException');
+    return e.code == 'MissingPluginException';
   }
 
   void _applyThemeForTab(TabData tab) {
@@ -2127,16 +2121,70 @@ class _BrowserPageState extends State<BrowserPage>
   }
 
   bool _isLikelyRenderableFaviconUrl(String url) {
+    final normalized = url.trim();
+    final normalizedLower = normalized.toLowerCase();
+    if (normalizedLower.isEmpty) return false;
+    if (!_isSafeFaviconUrl(normalized)) return false;
+    if (normalizedLower.contains('google.com/s2/favicons')) return true;
+    if (normalizedLower.startsWith('data:')) return false;
+    return normalizedLower.endsWith('.ico') ||
+        normalizedLower.endsWith('.png') ||
+        normalizedLower.endsWith('.jpg') ||
+        normalizedLower.endsWith('.jpeg') ||
+        normalizedLower.endsWith('.gif') ||
+        normalizedLower.endsWith('.webp');
+  }
+
+  bool _isSafeFaviconUrl(String url) {
+    final uri = Uri.tryParse(url.trim());
+    if (uri == null || uri.host.isEmpty) return false;
+    final scheme = uri.scheme.toLowerCase();
+    if (scheme != 'http' && scheme != 'https') return false;
+    return !_isBlockedFaviconHost(uri.host);
+  }
+
+  bool _isBlockedFaviconHost(String host) {
+    final normalizedHost = host.trim().toLowerCase();
+    if (normalizedHost.isEmpty) return true;
+    if (normalizedHost == 'localhost' ||
+        normalizedHost.endsWith('.localhost') ||
+        normalizedHost.endsWith('.local')) {
+      return true;
+    }
+    final ip = InternetAddress.tryParse(normalizedHost);
+    if (ip == null) return false;
+    if (ip.type == InternetAddressType.IPv4) {
+      final b = ip.rawAddress;
+      if (b.length != 4) return true;
+      if (b[0] == 10) return true; // 10.0.0.0/8
+      if (b[0] == 127) return true; // loopback
+      if (b[0] == 0) return true; // invalid/unspecified
+      if (b[0] == 169 && b[1] == 254) return true; // link-local + metadata range
+      if (b[0] == 172 && b[1] >= 16 && b[1] <= 31) return true; // 172.16.0.0/12
+      if (b[0] == 192 && b[1] == 168) return true; // 192.168.0.0/16
+      if (b[0] == 100 && b[1] >= 64 && b[1] <= 127) return true; // CGNAT
+      if (b[0] >= 224) return true; // multicast/reserved
+      return false;
+    }
+    if (ip.type == InternetAddressType.IPv6) {
+      final b = ip.rawAddress;
+      if (b.length != 16) return true;
+      final isUnspecified = b.every((v) => v == 0);
+      if (isUnspecified) return true;
+      final isLoopback = b.sublist(0, 15).every((v) => v == 0) && b[15] == 1;
+      if (isLoopback) return true; // ::1
+      if ((b[0] & 0xFE) == 0xFC) return true; // fc00::/7 unique local
+      if (b[0] == 0xFE && (b[1] & 0xC0) == 0x80) return true; // fe80::/10 link-local
+      if (b[0] == 0xFF) return true; // multicast
+      return false;
+    }
+    return true;
+  }
+
+  bool _isSafeAndRenderableFaviconUrl(String url) {
     final normalized = url.trim().toLowerCase();
     if (normalized.isEmpty) return false;
-    if (normalized.contains('google.com/s2/favicons')) return true;
-    if (normalized.startsWith('data:')) return false;
-    return normalized.endsWith('.ico') ||
-        normalized.endsWith('.png') ||
-        normalized.endsWith('.jpg') ||
-        normalized.endsWith('.jpeg') ||
-        normalized.endsWith('.gif') ||
-        normalized.endsWith('.webp');
+    return _isSafeFaviconUrl(normalized) && _isLikelyRenderableFaviconUrl(normalized);
   }
 
   Future<void> _updateTabFavicon(TabData tab) async {
@@ -2163,19 +2211,19 @@ class _BrowserPageState extends State<BrowserPage>
     try { return new URL(href, window.location.href).href; } catch (_) { return null; }
   };
   const relScore = (rel) => {
-    if (rel === 'icon' || rel === 'shortcut icon') return 0;
-    if (rel.includes('apple-touch-icon')) return 1;
-    if (rel.includes('icon')) return 2;
-    return 9;
+    if (rel === 'icon' || rel === 'shortcut icon') return 0; // Primary favicon rel
+    if (rel.includes('apple-touch-icon')) return 1; // High-quality fallback icon
+    if (rel.includes('icon')) return 2; // Other icon rel variants
+    return 9; // Lowest priority / unknown rel
   };
   const extScore = (href) => {
     const h = href.toLowerCase();
-    if (h.endsWith('.ico')) return 0;
-    if (h.endsWith('.png')) return 1;
-    if (h.endsWith('.jpg') || h.endsWith('.jpeg')) return 2;
-    if (h.endsWith('.gif') || h.endsWith('.webp')) return 3;
-    if (h.endsWith('.svg')) return 9;
-    return 4;
+    if (h.endsWith('.ico')) return 0; // Best compatibility for favicon rendering
+    if (h.endsWith('.png')) return 1; // Preferred raster fallback
+    if (h.endsWith('.jpg') || h.endsWith('.jpeg')) return 2; // Acceptable raster fallback
+    if (h.endsWith('.gif') || h.endsWith('.webp')) return 3; // Lower priority raster types
+    if (h.endsWith('.svg')) return 9; // Lowest priority (often not renderable in tab favicon path)
+    return 4; // Unknown extension
   };
 
   const links = Array.from(document.querySelectorAll('link[rel][href]'));
@@ -2200,11 +2248,12 @@ class _BrowserPageState extends State<BrowserPage>
   return null;
 })();
 ''');
-      if (result is String && result.trim().isNotEmpty) {
-        var normalized = result.trim();
-        if ((normalized.startsWith('"') && normalized.endsWith('"')) ||
-            (normalized.startsWith("'") && normalized.endsWith("'"))) {
-          normalized = normalized.substring(1, normalized.length - 1);
+      final raw = _normalizeJsResult(result);
+      if (raw.isNotEmpty) {
+        var normalized = raw;
+        final unescaped = _unescapeWrappedJson(raw).trim();
+        if (unescaped.isNotEmpty) {
+          normalized = unescaped;
         }
         normalized = normalized.replaceAll(r'\/', '/').trim();
         if (normalized.toLowerCase() != 'null' &&
@@ -2219,12 +2268,13 @@ class _BrowserPageState extends State<BrowserPage>
     resolvedFavicon ??= _defaultFaviconUrlFor(tab.currentUrl);
     if (resolvedFavicon != null &&
         resolvedFavicon.isNotEmpty &&
-        !_isLikelyRenderableFaviconUrl(resolvedFavicon)) {
+        !_isSafeAndRenderableFaviconUrl(resolvedFavicon)) {
       // Keep current working favicon when page reports non-renderable icons.
       resolvedFavicon = tab.faviconUrl ?? _defaultFaviconUrlFor(tab.currentUrl);
     }
     if (resolvedFavicon != null &&
         resolvedFavicon.isNotEmpty &&
+        _isSafeFaviconUrl(resolvedFavicon) &&
         host != null &&
         host.isNotEmpty) {
       _faviconCacheByHost[host] = resolvedFavicon;
@@ -3945,15 +3995,7 @@ class _BrowserPageState extends State<BrowserPage>
       return KeepAliveWrapper(
         child: Stack(
           children: [
-            Listener(
-              behavior: HitTestBehavior.translucent,
-              onPointerDown: (_) {
-                if (tab.urlFocusNode.hasFocus) {
-                  tab.urlFocusNode.unfocus();
-                }
-              },
-              child: WebViewWidget(controller: tab.webViewController!),
-            ),
+            WebViewWidget(controller: tab.webViewController!),
             if (tab.state is Loading)
               Positioned(
                 top: 0,
@@ -4156,10 +4198,19 @@ class _BrowserPageState extends State<BrowserPage>
                               _showAiSearchSuggestionsSheet();
                             }
                           },
-                          onSubmitted: (_) {
+                          onSubmitted: (value) {
                             _setUrlAutocompleteOpen(false);
                             focusNode.unfocus();
-                            _loadUrl(controller.text);
+                            final submitted = value.trim();
+                            if (submitted.isEmpty) {
+                              if (widget.aiSearchSuggestionsEnabled) {
+                                _showAiSearchSuggestionsSheet();
+                              }
+                              onFieldSubmitted();
+                              return;
+                            }
+                            _loadUrl(submitted);
+                            onFieldSubmitted();
                           },
                         );
                       },
