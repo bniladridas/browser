@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>browser</title>
+  <title>Handmade - browser</title>
   <link rel="stylesheet" href="styles.css">
 </head>
-<body class="sidebar-hidden">
+<body>
   <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
 
   <aside class="sidebar">
@@ -33,16 +33,27 @@
     </ul>
   </aside>
 
-  <main class="main centered">
-    <div class="loader"></div>
-    <img src="image.png" width="400" onload="setTimeout(() => document.body.classList.add('loaded'), 500)">
-    <h1>browser</h1>
-    <div class="home-links">
-      <a href="https://github.com/bniladridas/browser/releases/latest/download/browser.dmg">download</a>
-      <span>·</span>
-      <a href="blog-get-started.html">get started</a>
-      <span>·</span>
-      <a href="https://browserflutter.medium.com/notes-520da32fc748">notes</a>
+  <main class="main">
+    <div class="content">
+      <div class="section">
+        <h3>Handmade Rituals</h3>
+        <p>Some releases of browser may begin with a pencil, a whiteboard, and a quiet morning. We sometimes map flows by hand before code is written.</p>
+      </div>
+
+      <div class="section">
+        <h3>Purposeful Borders</h3>
+        <p>The UI attempts to be shaped by the way people might hold their devices. Rounded cards, generous spacing, and gentle contrasts aim to give the design the breathing room of craftwork.</p>
+      </div>
+
+      <div class="section">
+        <h3>Manual Notes</h3>
+        <p>Rough notes can become a reference point. Some sections of the app and site may be reviewed manually, with handwritten annotations sometimes guiding layout tweaks so the experience may feel intentionally stitched together.</p>
+      </div>
+
+      <div class="section">
+        <h3>Soft Motion</h3>
+        <p>Micro-interactions try to be tuned like the movement of a slow hand brush stroke - possibly deliberate, calm, and somewhat considerate of focus.</p>
+      </div>
     </div>
   </main>
 
@@ -54,7 +65,6 @@
     }
 
     (function () {
-      document.body.classList.add('loaded');
       const toggleBtn = document.querySelector('.sidebar-toggle');
       if (!toggleBtn) return;
       const getScrollPosition = () => window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
