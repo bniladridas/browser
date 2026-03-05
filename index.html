@@ -7,10 +7,6 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body class="sidebar-hidden">
-  <video class="page-bg-video" autoplay loop playsinline preload="auto" muted aria-hidden="true" tabindex="-1">
-    <source src="grok-video-21f8cb7e-6054-4837-8dd0-08c0cc6cb11a.mp4" type="video/mp4">
-  </video>
-
   <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
 
   <aside class="sidebar">
@@ -57,16 +53,7 @@
     }
 
     (function () {
-      const bgVideo = document.querySelector('.page-bg-video');
-      if (!bgVideo) return;
-      let hidden = false;
-      const hide = () => {
-        if (hidden) return;
-        hidden = true;
-        bgVideo.classList.add('video-hidden');
-        setTimeout(() => bgVideo.pause(), 600);
-      };
-      bgVideo.addEventListener('playing', () => setTimeout(hide, 3000), { once: true });
+      document.body.classList.add('loaded');
     })();
   </script>
 </body>

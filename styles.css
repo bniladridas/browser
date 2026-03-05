@@ -12,27 +12,20 @@ body {
   min-height: 100vh;
   display: flex;
   font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-  background: transparent;
+  background: linear-gradient(180deg, #f7f7f9 0%, #ebedf1 60%, #e1e3e8 100%);
   color: var(--text);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }
 
-.page-bg-video {
+body::before {
+  content: "";
   position: fixed;
   inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transform: scale(1.0);
-  transform-origin: center;
-  z-index: -1;
+  background: rgba(255, 255, 255, 0.6);
+  mix-blend-mode: lighten;
   pointer-events: none;
-  transition: opacity 0.6s ease;
-}
-
-.page-bg-video.video-hidden {
-  opacity: 0;
+  z-index: -2;
 }
 
 .sidebar-toggle {
