@@ -28,6 +28,7 @@ import '../features/theme_utils.dart';
 import '../features/bookmark_manager.dart';
 import '../features/password_prompt.dart';
 import '../features/password_storage.dart';
+import '../features/connectivity_service.dart';
 import '../features/password_autofill.dart';
 import '../features/login_detection.dart';
 import '../features/webauthn_script.dart';
@@ -949,6 +950,9 @@ class _BrowserPageState extends State<BrowserPage>
   final bookmarkManager = BookmarkManager();
   late int previousTabIndex;
   List<RegExp> adBlockerPatterns = [];
+  bool _isOnline = true;
+  final ConnectivityService _connectivityService = ConnectivityService();
+  StreamSubscription<bool>? _connectivitySubscription;
   final Set<String> _downloadableExtensions = {
     'dmg',
     'zip',
@@ -1145,6 +1149,23 @@ class _BrowserPageState extends State<BrowserPage>
     if (widget.aiAvailable && !isIntegrationTest) {
       _aiService = AiService();
     }
+    _initConnectivity();
+  }
+
+  void _initConnectivity() async {
+    _isOnline = await _connectivityService.checkConnectivity();
+    if (mounted) {
+      setState(() {}); // Update UI with initial state
+    }
+
+    _connectivitySubscription =
+        _connectivityService.onConnectivityChanged.listen((isOnline) {
+      if (mounted && _isOnline != isOnline) {
+        setState(() {
+          _isOnline = isOnline;
+        });
+      }
+    });
   }
 
   TabData _createTab(String initialUrl) {
@@ -2452,6 +2473,7 @@ class _BrowserPageState extends State<BrowserPage>
 
   @override
   void dispose() {
+    _connectivitySubscription?.cancel();
     _overflowMenuCloseTimer?.cancel();
     _windowButtonsSyncRetryTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
@@ -4758,6 +4780,42 @@ class _BrowserPageState extends State<BrowserPage>
                                 ),
                               ),
                             ],
+                          ),
+                        ),
+                      ),
+                    if (!_isOnline)
+                      Positioned(
+                        top: widget.hideAppBar ? 16 : 0,
+                        left: 0,
+                        right: 0,
+                        child: Material(
+                          color: Theme.of(context).colorScheme.errorContainer,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 8,
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.wifi_off,
+                                  size: 16,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onErrorContainer,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'No internet connection',
+                                  style: TextStyle(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onErrorContainer,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ),
