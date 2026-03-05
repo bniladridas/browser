@@ -30,5 +30,8 @@
   ],
   "1.8.4": [
     "Pinned DMG workflow defaults."
+  ],
+  "1.9.0": [
+    "Added offline indicator when internet connection is lost."
   ]
 }
