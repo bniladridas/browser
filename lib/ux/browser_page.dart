@@ -248,6 +248,11 @@ class FaviconUrlPolicy {
       if (isUnspecified) return true;
       final isLoopback = b.sublist(0, 15).every((v) => v == 0) && b[15] == 1;
       if (isLoopback) return true; // ::1
+      final isIpv4Mapped =
+          b.sublist(0, 10).every((v) => v == 0) &&
+          b[10] == 0xFF &&
+          b[11] == 0xFF;
+      if (isIpv4Mapped) return true; // ::ffff:x.x.x.x
       if ((b[0] & 0xFE) == 0xFC) return true; // fc00::/7 unique local
       if (b[0] == 0xFE && (b[1] & 0xC0) == 0x80) return true; // fe80::/10 link-local
       if (b[0] == 0xFF) return true; // multicast
@@ -1020,6 +1025,7 @@ class _BrowserPageState extends State<BrowserPage>
   bool _isOverflowMenuHovered = false;
   bool _urlAutocompleteOpen = false;
   bool _windowButtonsSyncRetryQueued = false;
+  Timer? _windowButtonsSyncRetryTimer;
   final Map<String, String> _faviconCacheByHost = {};
   final Map<String, bool> _faviconHostSafetyCache = {};
   String? _legacyLayoutFixScript;
@@ -1085,14 +1091,26 @@ class _BrowserPageState extends State<BrowserPage>
     if (!isWindowChromeReady) {
       if (allowRetry && !_windowButtonsSyncRetryQueued) {
         _windowButtonsSyncRetryQueued = true;
-        WidgetsBinding.instance.addPostFrameCallback((_) {
+        _windowButtonsSyncRetryTimer?.cancel();
+        _windowButtonsSyncRetryTimer = Timer.periodic(
+            const Duration(milliseconds: 120), (timer) {
+          if (!mounted) {
+            _windowButtonsSyncRetryQueued = false;
+            _windowButtonsSyncRetryTimer = null;
+            timer.cancel();
+            return;
+          }
+          if (!isWindowChromeReady) return;
           _windowButtonsSyncRetryQueued = false;
-          if (!mounted) return;
+          _windowButtonsSyncRetryTimer = null;
+          timer.cancel();
           _syncMacWindowButtonsVisibility(allowRetry: false);
         });
       }
       return;
     }
+    _windowButtonsSyncRetryTimer?.cancel();
+    _windowButtonsSyncRetryTimer = null;
     _windowButtonsSyncRetryQueued = false;
     try {
       await windowManager.setTitleBarStyle(
@@ -2293,11 +2311,11 @@ class _BrowserPageState extends State<BrowserPage>
     final host = uri?.host.toLowerCase() ?? '';
     if (host.isNotEmpty) {
       final cached = _faviconHostSafetyCache[host];
-      if (cached != null) return cached;
+      if (cached == false) return false;
     }
     final safe = await FaviconUrlPolicy.isSafeFaviconUrlWithDns(normalized);
-    if (host.isNotEmpty) {
-      _faviconHostSafetyCache[host] = safe;
+    if (host.isNotEmpty && !safe) {
+      _faviconHostSafetyCache[host] = false;
     }
     return safe;
   }
@@ -2435,6 +2453,7 @@ class _BrowserPageState extends State<BrowserPage>
   @override
   void dispose() {
     _overflowMenuCloseTimer?.cancel();
+    _windowButtonsSyncRetryTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     _keyboardFocusNode.dispose();
     for (final tab in tabs) {
@@ -3516,7 +3535,7 @@ class _BrowserPageState extends State<BrowserPage>
                               onPressed: () {
                                 setState(() {
                                   final removeIndex =
-                                      history.lastIndexOf(entry);
+                                      history.length - 1 - index;
                                   if (removeIndex >= 0 &&
                                       removeIndex < history.length) {
                                     history.removeAt(removeIndex);
