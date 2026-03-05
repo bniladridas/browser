@@ -27,5 +27,8 @@
   ],
   "1.8.3": [
     "Hardened DMG script parsing."
+  ],
+  "1.8.4": [
+    "Pinned DMG workflow defaults."
   ]
 }
