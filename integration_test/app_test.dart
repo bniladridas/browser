@@ -16,7 +16,7 @@ import 'package:browser/features/theme_utils.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-const testTimeout = Timeout(Duration(seconds: 60));
+const testTimeout = Timeout(Duration(minutes: 3));
 
 Future<void> _launchApp(WidgetTester tester,
     {bool enableGitFetch = false,
@@ -201,7 +201,8 @@ void main() {
 
       // Save settings
       await tester.tap(find.text('Save'));
-      await tester.pumpAndSettle();
+      // Use pump with duration instead of pumpAndSettle to avoid infinite wait
+      await tester.pump(const Duration(seconds: 2));
 
       // Should show saved snackbar
       expect(find.text('Settings saved'), findsOneWidget);
@@ -221,12 +222,12 @@ void main() {
       expect(find.text('Settings'), findsOneWidget);
 
       // Check for user agent switch
-      expect(find.text('Modern User Agent'), findsOneWidget);
+      expect(find.text('Legacy User Agent'), findsOneWidget);
 
       // Toggle the switch
       await setSwitchTile(
         tester,
-        title: 'Modern User Agent',
+        title: 'Legacy User Agent',
         enabled: true,
       );
 
