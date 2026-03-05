@@ -94,8 +94,9 @@ hdiutil create \
   "${rw_dmg_path}"
 
 attach_out="$(hdiutil attach -readwrite -noverify -noautoopen "${rw_dmg_path}")"
-device="$(echo "${attach_out}" | awk '/Apple_HFS/ {print $1; exit}')"
-mount_point="$(echo "${attach_out}" | grep -o '/Volumes/.*' | head -n1)"
+hfs_line="$(echo "${attach_out}" | grep 'Apple_HFS' | head -n1)"
+device="$(echo "${hfs_line}" | awk '{print $1}')"
+mount_point="$(echo "${hfs_line}" | grep -o '/Volumes/.*')"
 
 if [[ -z "${device}" || -z "${mount_point}" ]]; then
   echo "Failed to mount temporary DMG for customization." >&2
