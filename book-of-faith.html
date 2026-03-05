@@ -36,57 +36,164 @@
     <div class="content">
       <div class="section">
         <h3>Why Browser</h3>
-        <p>I open browser and I remember why I started.</p>
+        <p id="notes-status">Loading notes...</p>
+      </div>
+      <div id="notes-container"></div>
+
+      <div class="section" id="admin-controls" style="display:none;">
+        <h3>Admin</h3>
+        <p style="margin-bottom:0.6rem;">Edit one note per line.</p>
+        <textarea id="notes-editor" rows="10" style="width:100%; resize:vertical;"></textarea>
+        <div style="margin-top:0.6rem; display:flex; gap:0.5rem; flex-wrap:wrap;">
+          <button id="save-notes">Save</button>
+          <button id="logout-notes" type="button">Logout</button>
+        </div>
       </div>
 
-      <div class="section">
-        <p>I wanted less noise. Less chrome. Less ceremony. Just a clear place to think, read, and build.</p>
-      </div>
-
-      <div class="section">
-        <p>So I kept cutting.</p>
-      </div>
-
-      <div class="section">
-        <p>I removed what looked impressive but felt heavy. I kept what I reached for every day.</p>
-      </div>
-
-      <div class="section">
-        <p>Tabs. History. Bookmarks. A clean bar. A fast way back to focus.</p>
-      </div>
-
-      <div class="section">
-        <p>Then I added AI, but carefully.</p>
-      </div>
-
-      <div class="section">
-        <p>Not as a loud assistant. Not as a gimmick. More like a quiet second mind when I need a summary, a quick explanation, or a fresh angle on a page I’m reading.</p>
-      </div>
-
-      <div class="section">
-        <p>When I move through pages, it should disappear. When I open settings, it should be obvious. When I switch tabs, it should feel immediate. When I close the app, my mind should stay clear.</p>
-      </div>
-
-      <div class="section">
-        <p>I think of browser as a tool for attention. Not just a tool for internet.</p>
-      </div>
-
-      <div class="section">
-        <p>One less distracting detail.</p>
-      </div>
-
-      <div class="section">
-        <p>I’m not trying to make the loudest browser. I’m trying to make one I trust every morning. A browser that gets out of the way, and lets me do real work.</p>
+      <div class="section" id="admin-login" style="display:none;">
+        <h3>Admin</h3>
+        <p>Sign in to edit notes.</p>
+        <a id="login-link" href="#">Login with GitHub</a>
       </div>
     </div>
   </main>
 
   <script>
+    const fallbackNotes = [
+      'I open browser and I remember why I started.',
+      'I wanted less noise. Less chrome. Less ceremony. Just a clear place to think, read, and build.',
+      'So I kept cutting.',
+      'I removed what looked impressive but felt heavy. I kept what I reached for every day.',
+      'Tabs. History. Bookmarks. A clean bar. A fast way back to focus.',
+      'Then I added AI, but carefully.',
+      'Not as a loud assistant. Not as a gimmick. More like a quiet second mind when I need a summary, a quick explanation, or a fresh angle on a page I’m reading.',
+      'When I move through pages, it should disappear. When I open settings, it should be obvious. When I switch tabs, it should feel immediate. When I close the app, my mind should stay clear.',
+      'I think of browser as a tool for attention. Not just a tool for internet.',
+      'One less distracting detail.',
+      'I’m not trying to make the loudest browser. I’m trying to make one I trust every morning. A browser that gets out of the way, and lets me do real work.'
+    ];
+
+    const API_BASE = window.NOTES_API_BASE || '';
+    const DEFAULT_NOTES_API_BASE = 'https://your-notes-api.vercel.app';
+    const RESOLVED_API_BASE = API_BASE || DEFAULT_NOTES_API_BASE;
+
+    function escapeHtml(input) {
+      return String(input)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/\"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function renderNotes(notes) {
+      const container = document.getElementById('notes-container');
+      container.innerHTML = '';
+      for (const note of notes) {
+        const card = document.createElement('div');
+        card.className = 'section';
+        card.innerHTML = `<p>${escapeHtml(note)}</p>`;
+        container.appendChild(card);
+      }
+    }
+
+    function getTokenFromHash() {
+      const hash = window.location.hash.startsWith('#') ? window.location.hash.substring(1) : '';
+      const params = new URLSearchParams(hash);
+      const token = params.get('admin_token');
+      if (token) {
+        localStorage.setItem('bf_admin_token', token);
+        params.delete('admin_token');
+        params.delete('admin_user');
+        const nextHash = params.toString();
+        const nextUrl = `${window.location.pathname}${window.location.search}${nextHash ? `#${nextHash}` : ''}`;
+        history.replaceState({}, '', nextUrl);
+      }
+      return localStorage.getItem('bf_admin_token') || '';
+    }
+
+    function clearToken() {
+      localStorage.removeItem('bf_admin_token');
+    }
+
+    function authHeaders(token) {
+      return token ? { Authorization: `Bearer ${token}` } : {};
+    }
+
+    function updateLoginLink() {
+      const loginLink = document.getElementById('login-link');
+      const returnTo = `${window.location.origin}${window.location.pathname}`;
+      loginLink.href = `${RESOLVED_API_BASE}/api/auth/github/start?return_to=${encodeURIComponent(returnTo)}`;
+    }
+
+    async function loadNotes() {
+      const status = document.getElementById('notes-status');
+      const adminControls = document.getElementById('admin-controls');
+      const adminLogin = document.getElementById('admin-login');
+      const editor = document.getElementById('notes-editor');
+      const token = getTokenFromHash();
+      try {
+        const res = await fetch(`${RESOLVED_API_BASE}/api/notes`, {
+          headers: authHeaders(token),
+        });
+        const data = await res.json();
+        const notes = Array.isArray(data.notes) ? data.notes : [];
+        renderNotes(notes);
+        status.textContent = notes.length ? 'Live notes' : 'No notes yet.';
+        if (data.isAdmin) {
+          adminControls.style.display = 'block';
+          adminLogin.style.display = 'none';
+          editor.value = notes.join('\n');
+        } else {
+          adminControls.style.display = 'none';
+          adminLogin.style.display = 'block';
+        }
+      } catch (e) {
+        renderNotes(fallbackNotes);
+        status.textContent = 'Offline notes';
+      }
+    }
+
+    async function saveNotes() {
+      const status = document.getElementById('notes-status');
+      const editor = document.getElementById('notes-editor');
+      const token = getTokenFromHash();
+      const notes = editor.value
+        .split('\n')
+        .map((line) => line.trim())
+        .filter(Boolean);
+      try {
+        const res = await fetch(`${RESOLVED_API_BASE}/api/notes`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...authHeaders(token) },
+          body: JSON.stringify({ notes }),
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.error || 'Save failed');
+        }
+        status.textContent = 'Saved.';
+        await loadNotes();
+      } catch (e) {
+        status.textContent = e.message || 'Save failed.';
+      }
+    }
+
     function toggleSidebar() {
       document.body.classList.toggle('sidebar-hidden');
       document.querySelector('.sidebar-toggle').textContent =
         document.body.classList.contains('sidebar-hidden') ? '☰' : '✕';
     }
+
+    function logoutNotes() {
+      clearToken();
+      loadNotes();
+    }
+
+    document.getElementById('save-notes').addEventListener('click', saveNotes);
+    document.getElementById('logout-notes').addEventListener('click', logoutNotes);
+    updateLoginLink();
+    loadNotes();
   </script>
 </body>
 </html>
