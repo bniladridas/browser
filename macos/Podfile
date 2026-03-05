@@ -52,7 +52,7 @@ post_install do |installer|
 
     # Suppress warnings for certain pods
     # These are harmless deprecation and unused variable warnings
-    if ['PromisesObjC', 'PromisesObjC-FBLPromises_Privacy', 'PromisesSwift', 'PromisesSwift-Promises_Privacy', 'firebase_auth', 'firebase_core', 'firebase_app_check', 'FirebaseAuth', 'FirebaseCore', 'FirebaseAppCheck', 'passkeys_darwin'].include?(target.name)
+    if ['PromisesObjC', 'PromisesObjC-FBLPromises_Privacy', 'PromisesSwift', 'PromisesSwift-Promises_Privacy', 'firebase_auth', 'firebase_core', 'firebase_app_check', 'FirebaseAuth', 'FirebaseCore', 'FirebaseAppCheck', 'passkeys_darwin', 'webview_flutter_wkwebview', 'file_selector_macos'].include?(target.name)
       target.build_configurations.each do |config|
         config.build_settings['GCC_WARN_INHIBIT_ALL_WARNINGS'] = 'YES'
         config.build_settings['SWIFT_SUPPRESS_WARNINGS'] = 'YES'
