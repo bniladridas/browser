@@ -9,6 +9,7 @@ ALLOW_UNSIGNED="${ALLOW_UNSIGNED:-}"
 DMG_WINDOW_BOUNDS="${DMG_WINDOW_BOUNDS:-100,100,640,420}"
 DMG_ICON_SIZE="${DMG_ICON_SIZE:-128}"
 DMG_BACKGROUND_IMAGE="${DMG_BACKGROUND_IMAGE:-assets/dmg/background.png}"
+DMG_HEADROOM_MB="${DMG_HEADROOM_MB:-50}"
 
 unsigned_release=false
 
@@ -82,7 +83,11 @@ fi
 
 # Include extra headroom for metadata, icon layout and optional background.
 size_mb="$(du -sm "${dmg_root}" | awk '{print $1}')"
-size_mb="$((size_mb + 200))"
+if [[ ! "${DMG_HEADROOM_MB}" =~ ^[0-9]+$ ]]; then
+  echo "Invalid DMG_HEADROOM_MB: ${DMG_HEADROOM_MB} (expected integer)." >&2
+  exit 1
+fi
+size_mb="$((size_mb + DMG_HEADROOM_MB))"
 
 hdiutil create \
   -volname "${VOLUME_NAME}" \
@@ -94,8 +99,9 @@ hdiutil create \
   "${rw_dmg_path}"
 
 attach_out="$(hdiutil attach -readwrite -noverify -noautoopen "${rw_dmg_path}")"
-device="$(echo "${attach_out}" | awk '/Apple_HFS/ {print $1; exit}')"
-mount_point="$(echo "${attach_out}" | awk '/Apple_HFS/ {print $NF; exit}')"
+hfs_line="$(echo "${attach_out}" | grep 'Apple_HFS' | head -n1)"
+device="$(echo "${hfs_line}" | awk '{print $1}')"
+mount_point="$(echo "${hfs_line}" | grep -o '/Volumes/.*')"
 
 if [[ -z "${device}" || -z "${mount_point}" ]]; then
   echo "Failed to mount temporary DMG for customization." >&2
@@ -110,32 +116,66 @@ if [[ -f "${volume_icon_path}" ]]; then
   fi
 fi
 
-if command -v osascript >/dev/null 2>&1; then
-  osascript <<EOF || echo "Warning: Finder layout customization skipped." >&2
-tell application "Finder"
-  tell disk "${VOLUME_NAME}"
-    open
-    tell container window
-      set current view to icon view
-      set toolbar visible to false
-      set statusbar visible to false
-      set bounds to {${DMG_WINDOW_BOUNDS}}
-    end tell
-    tell icon view options of container window
-      set arrangement to not arranged
-      set icon size to ${DMG_ICON_SIZE}
-      if exists file ".background:background.png" then
-        set background picture to file ".background:background.png"
-      end if
-    end tell
-    set position of item "${app_name}" to {160, 200}
-    set position of item "Applications" to {460, 200}
-    close
-    open
-    update without registering applications
-    delay 1
+# Prefer a native macOS alias for Applications so Finder shows the expected icon.
+app_link_path="${mount_point}/Applications"
+if command -v osascript >/dev/null 2>&1 && [[ -L "${app_link_path}" ]]; then
+  mv "${app_link_path}" "${app_link_path}.symlink"
+  if osascript - "${mount_point}" >/dev/null 2>&1 <<'EOF'
+on run argv
+  set targetFolderPath to item 1 of argv
+  tell application "Finder"
+    set targetFolder to POSIX file targetFolderPath as alias
+    set appAlias to make new alias file at targetFolder to POSIX file "/Applications"
+    set name of appAlias to "Applications"
   end tell
-end tell
+end run
+EOF
+  then
+    rm -f "${app_link_path}.symlink"
+  else
+    mv "${app_link_path}.symlink" "${app_link_path}"
+    echo "Warning: failed to create Applications alias. Using symlink fallback." >&2
+  fi
+fi
+
+if command -v osascript >/dev/null 2>&1; then
+  osascript - "${VOLUME_NAME}" "${DMG_WINDOW_BOUNDS}" "${DMG_ICON_SIZE}" "${app_name}" <<'EOF' \
+    || echo "Warning: Finder layout customization skipped." >&2
+on run argv
+  set volumeName to item 1 of argv
+  set windowBounds to item 2 of argv
+  set iconSize to (item 3 of argv) as integer
+  set appName to item 4 of argv
+  set oldDelimiters to AppleScript's text item delimiters
+  set AppleScript's text item delimiters to ","
+  set boundsList to text items of windowBounds
+  set AppleScript's text item delimiters to oldDelimiters
+
+  tell application "Finder"
+    tell disk volumeName
+      open
+      tell container window
+        set current view to icon view
+        set toolbar visible to false
+        set statusbar visible to false
+        set bounds to {item 1 of boundsList as integer, item 2 of boundsList as integer, item 3 of boundsList as integer, item 4 of boundsList as integer}
+      end tell
+      tell icon view options of container window
+        set arrangement to not arranged
+        set icon size to iconSize
+        if exists file ".background:background.png" then
+          set background picture to file ".background:background.png"
+        end if
+      end tell
+      set position of item appName to {160, 200}
+      set position of item "Applications" to {460, 200}
+      close
+      open
+      update without registering applications
+      delay 1
+    end tell
+  end tell
+end run
 EOF
 fi
 
