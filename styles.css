@@ -12,10 +12,22 @@ body {
   min-height: 100vh;
   display: flex;
   font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-  background: var(--bg);
+  background: transparent;
   color: var(--text);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+}
+
+.page-bg-video {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scale(0.92);
+  transform-origin: center;
+  z-index: 0;
+  pointer-events: none;
 }
 
 .sidebar-toggle {
@@ -34,7 +46,7 @@ body {
   font-size: 17px;
   font-weight: 400;
   color: var(--text-muted);
-  z-index: 100;
+  z-index: 120;
   transition: left 0.2s ease, color 0.15s ease, opacity 0.15s ease;
 }
 .sidebar-toggle:hover { color: var(--text); opacity: 1; }
@@ -43,7 +55,7 @@ body:not(.sidebar-hidden) .sidebar-toggle { left: calc(var(--sidebar-width) + 0.
 
 .sidebar {
   width: var(--sidebar-width);
-  background: var(--bg);
+  background: rgba(255, 255, 255, 0.9);
   border-right: 1px solid var(--border);
   padding: 3.5rem 1.25rem 2rem;
   display: flex;
@@ -51,6 +63,7 @@ body:not(.sidebar-hidden) .sidebar-toggle { left: calc(var(--sidebar-width) + 0.
   position: fixed;
   height: 100vh;
   overflow-y: auto;
+  z-index: 110;
   transition: transform 0.2s ease;
 }
 body.sidebar-hidden .sidebar { transform: translateX(-100%); }
@@ -68,6 +81,8 @@ body.sidebar-hidden .sidebar { transform: translateX(-100%); }
   padding: 3rem 2rem;
   transition: margin 0.2s ease;
   max-width: 560px;
+  z-index: 100;
+  position: relative;
 }
 body.sidebar-hidden .main { margin: 0 auto; }
 .main.centered {
@@ -142,7 +157,6 @@ a:active {
 .home-links a { color: var(--text-muted); }
 .home-links a:hover { color: var(--text); }
 .home-links span { color: var(--border); }
-
 .breadcrumb { display: flex; align-items: center; gap: 0.35rem; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1.25rem; }
 .breadcrumb a { color: var(--text-muted); }
 .breadcrumb a:hover { color: var(--text); }
