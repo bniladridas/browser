@@ -110,6 +110,25 @@ if [[ -f "${volume_icon_path}" ]]; then
   fi
 fi
 
+# Prefer a native macOS alias for Applications so Finder shows the expected icon.
+app_link_path="${mount_point}/Applications"
+if command -v osascript >/dev/null 2>&1 && [[ -L "${app_link_path}" ]]; then
+  mv "${app_link_path}" "${app_link_path}.symlink"
+  if osascript <<EOF >/dev/null 2>&1
+tell application "Finder"
+  set targetFolder to POSIX file "${mount_point}" as alias
+  set appAlias to make new alias file at targetFolder to POSIX file "/Applications"
+  set name of appAlias to "Applications"
+end tell
+EOF
+  then
+    rm -f "${app_link_path}.symlink"
+  else
+    mv "${app_link_path}.symlink" "${app_link_path}"
+    echo "Warning: failed to create Applications alias. Using symlink fallback." >&2
+  fi
+fi
+
 if command -v osascript >/dev/null 2>&1; then
   osascript <<EOF || echo "Warning: Finder layout customization skipped." >&2
 tell application "Finder"
