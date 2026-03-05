@@ -15,7 +15,7 @@ on:
 
 jobs:
   e2e:
-    runs-on: macos-15
+    runs-on: macos-26
     if: github.repository_owner == 'bniladridas'
 
     steps:
@@ -68,6 +68,10 @@ jobs:
           rm -rf build/macos
       - name: Build macOS app
         run: flutter build macos
+      - name: Run yamllint
+        run: |
+          python3 -m pip install --user yamllint
+          python3 -m yamllint .github/workflows
       - name: Run E2E integration tests
         run: |
           chmod +x scripts/e2e.sh

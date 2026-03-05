@@ -42,7 +42,11 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
     capture_startup_diagnostics() {
         local attempt_label="$1"
         local crash_log
-        crash_log="$(ls -t "$HOME/Library/Logs/DiagnosticReports"/browser*.crash 2>/dev/null | head -n1 || true)"
+        local crash_prefix="${app_bundle_id##*.}"
+        if [[ -z "$crash_prefix" || "$crash_prefix" == "$app_bundle_id" ]]; then
+            crash_prefix="browser"
+        fi
+        crash_log="$(ls -t "$HOME/Library/Logs/DiagnosticReports"/"${crash_prefix}"*.crash 2>/dev/null | head -n1 || true)"
         if [[ -n "$crash_log" && -f "$crash_log" ]]; then
             persist_e2e_log "$crash_log" "diagnostic-${attempt_label}.crash"
         fi
@@ -50,11 +54,15 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
             --predicate 'process == "browser" OR process == "FlutterTester"' \
             > "$artifact_dir/diagnostic-${attempt_label}.log" 2>/dev/null || true
     }
-    prepare_retry_environment() {
-        # Best-effort cleanup for flaky macOS startup/attach failures in CI.
+    prepare_initial_environment() {
         /usr/bin/pkill -x browser >/dev/null 2>&1 || true
         /usr/bin/pkill -f "FlutterTester" >/dev/null 2>&1 || true
-        /usr/bin/pkill -f "xcodebuild" >/dev/null 2>&1 || true
+        sleep 1
+    }
+    prepare_retry_environment() {
+        # Retry-only cleanup for flaky macOS startup/attach failures in CI.
+        prepare_initial_environment
+        /usr/bin/pkill -P "$$" -x "xcodebuild" >/dev/null 2>&1 || true
         rm -rf "$HOME/Library/Saved Application State/${app_bundle_id}.savedState" || true
         rm -rf build/macos/Build/Intermediates.noindex/XCBuildData || true
         sleep 2
@@ -68,7 +76,6 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
             sleep 1
         fi
         E2E_LOG_FILE="$(mktemp -t flutter-e2e.XXXXXX.log)"
-        rm -rf "$HOME/Library/Saved Application State/${app_bundle_id}.savedState" || true
         # Prevent macOS state-restoration modal from blocking app startup after crashes.
         ApplePersistenceIgnoreState=YES \
             flutter test --no-pub -d macos --dart-define=INTEGRATION_TEST=true $test_target "$@" \
@@ -88,7 +95,7 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
         exit 2
     fi
 
-    prepare_retry_environment
+    prepare_initial_environment
     attempt=1
     while (( attempt <= max_startup_retries )); do
         attempt_label="attempt-${attempt}"
@@ -104,7 +111,7 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
             rm -f "$log_file"
             exit 0
         fi
-        if log_contains_startup_attach_failure "$log_file"; then
+        if [[ -s "$log_file" ]] && log_contains_startup_attach_failure "$log_file"; then
             capture_startup_diagnostics "$attempt_label"
             if (( attempt < max_startup_retries )); then
                 prepare_retry_environment
@@ -116,7 +123,7 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
             rm -f "$log_file"
             exit $test_status
         fi
-        if log_contains_foreground_failure "$log_file"; then
+        if [[ -s "$log_file" ]] && log_contains_foreground_failure "$log_file"; then
             echo "E2E requires a foregrounded macOS GUI session. Run from a desktop session."
         fi
         rm -f "$log_file"

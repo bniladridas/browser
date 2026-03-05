@@ -168,7 +168,6 @@ class FaviconUrlPolicy {
     final normalized = url.trim();
     final normalizedLower = normalized.toLowerCase();
     if (normalizedLower.isEmpty) return false;
-    if (!isSafeFaviconUrl(normalized)) return false;
     if (normalizedLower.contains('google.com/s2/favicons')) return true;
     if (normalizedLower.startsWith('data:')) return false;
     return normalizedLower.endsWith('.ico') ||
@@ -185,6 +184,27 @@ class FaviconUrlPolicy {
     final scheme = uri.scheme.toLowerCase();
     if (scheme != 'http' && scheme != 'https') return false;
     return !_isBlockedFaviconHost(uri.host);
+  }
+
+  static Future<bool> isSafeFaviconUrlWithDns(String url) async {
+    final uri = Uri.tryParse(url.trim());
+    if (uri == null || uri.host.isEmpty) return false;
+    final scheme = uri.scheme.toLowerCase();
+    if (scheme != 'http' && scheme != 'https') return false;
+    if (_isBlockedFaviconHost(uri.host)) return false;
+    try {
+      final addresses = await InternetAddress.lookup(uri.host);
+      if (addresses.isEmpty) return false;
+      for (final address in addresses) {
+        if (_isBlockedAddress(address)) {
+          return false;
+        }
+      }
+      return true;
+    } catch (_) {
+      // Fail closed on DNS errors for SSRF-sensitive URL validation.
+      return false;
+    }
   }
 
   static bool isSafeAndRenderableFaviconUrl(String url) {
@@ -204,15 +224,17 @@ class FaviconUrlPolicy {
     }
     final ip = InternetAddress.tryParse(normalizedHost);
     if (ip == null) return false;
+    return _isBlockedAddress(ip);
+  }
+
+  static bool _isBlockedAddress(InternetAddress ip) {
     if (ip.type == InternetAddressType.IPv4) {
       final b = ip.rawAddress;
       if (b.length != 4) return true;
       if (b[0] == 10) return true; // 10.0.0.0/8
       if (b[0] == 127) return true; // loopback
       if (b[0] == 0) return true; // invalid/unspecified
-      if (b[0] == 169 && b[1] == 254) {
-        return true; // link-local + metadata range
-      }
+      if (b[0] == 169 && b[1] == 254) return true; // link-local + metadata range
       if (b[0] == 172 && b[1] >= 16 && b[1] <= 31) return true; // 172.16.0.0/12
       if (b[0] == 192 && b[1] == 168) return true; // 192.168.0.0/16
       if (b[0] == 100 && b[1] >= 64 && b[1] <= 127) return true; // CGNAT
@@ -227,9 +249,7 @@ class FaviconUrlPolicy {
       final isLoopback = b.sublist(0, 15).every((v) => v == 0) && b[15] == 1;
       if (isLoopback) return true; // ::1
       if ((b[0] & 0xFE) == 0xFC) return true; // fc00::/7 unique local
-      if (b[0] == 0xFE && (b[1] & 0xC0) == 0x80) {
-        return true; // fe80::/10 link-local
-      }
+      if (b[0] == 0xFE && (b[1] & 0xC0) == 0x80) return true; // fe80::/10 link-local
       if (b[0] == 0xFF) return true; // multicast
       return false;
     }
@@ -999,7 +1019,9 @@ class _BrowserPageState extends State<BrowserPage>
   bool _isOverflowTriggerHovered = false;
   bool _isOverflowMenuHovered = false;
   bool _urlAutocompleteOpen = false;
+  bool _windowButtonsSyncRetryQueued = false;
   final Map<String, String> _faviconCacheByHost = {};
+  final Map<String, bool> _faviconHostSafetyCache = {};
   String? _legacyLayoutFixScript;
 
   static const String _themeProbeScript = '''
@@ -1056,13 +1078,22 @@ class _BrowserPageState extends State<BrowserPage>
 
   String _displayUrl(String url) => url == defaultHomepageUrl ? '' : url;
 
-  Future<void> _syncMacWindowButtonsVisibility() async {
+  Future<void> _syncMacWindowButtonsVisibility({bool allowRetry = true}) async {
     if (defaultTargetPlatform != TargetPlatform.macOS || isIntegrationTest) {
       return;
     }
     if (!isWindowChromeReady) {
+      if (allowRetry && !_windowButtonsSyncRetryQueued) {
+        _windowButtonsSyncRetryQueued = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _windowButtonsSyncRetryQueued = false;
+          if (!mounted) return;
+          _syncMacWindowButtonsVisibility(allowRetry: false);
+        });
+      }
       return;
     }
+    _windowButtonsSyncRetryQueued = false;
     try {
       await windowManager.setTitleBarStyle(
         TitleBarStyle.hidden,
@@ -2256,12 +2287,28 @@ class _BrowserPageState extends State<BrowserPage>
     ).toString();
   }
 
-  bool _isSafeFaviconUrl(String url) {
-    return FaviconUrlPolicy.isSafeFaviconUrl(url);
+  Future<bool> _isSafeFaviconUrl(String url) async {
+    final normalized = url.trim();
+    final uri = Uri.tryParse(normalized);
+    final host = uri?.host.toLowerCase() ?? '';
+    if (host.isNotEmpty) {
+      final cached = _faviconHostSafetyCache[host];
+      if (cached != null) return cached;
+    }
+    final safe = await FaviconUrlPolicy.isSafeFaviconUrlWithDns(normalized);
+    if (host.isNotEmpty) {
+      _faviconHostSafetyCache[host] = safe;
+    }
+    return safe;
   }
 
-  bool _isSafeAndRenderableFaviconUrl(String url) {
-    return FaviconUrlPolicy.isSafeAndRenderableFaviconUrl(url);
+  Future<bool> _isSafeAndRenderableFaviconUrl(String url) async {
+    final normalized = url.trim().toLowerCase();
+    if (normalized.isEmpty) return false;
+    if (!FaviconUrlPolicy.isLikelyRenderableFaviconUrl(normalized)) {
+      return false;
+    }
+    return _isSafeFaviconUrl(normalized);
   }
 
   Future<void> _updateTabFavicon(TabData tab) async {
@@ -2330,15 +2377,23 @@ class _BrowserPageState extends State<BrowserPage>
       // Best effort only.
     }
     resolvedFavicon ??= _defaultFaviconUrlFor(tab.currentUrl);
+    final isResolvedFaviconSafeAndRenderable =
+        resolvedFavicon != null && resolvedFavicon.isNotEmpty
+            ? await _isSafeAndRenderableFaviconUrl(resolvedFavicon)
+            : false;
     if (resolvedFavicon != null &&
         resolvedFavicon.isNotEmpty &&
-        !_isSafeAndRenderableFaviconUrl(resolvedFavicon)) {
+        !isResolvedFaviconSafeAndRenderable) {
       // Keep current working favicon when page reports non-renderable icons.
       resolvedFavicon = tab.faviconUrl ?? _defaultFaviconUrlFor(tab.currentUrl);
     }
+    final isResolvedFaviconSafe =
+        resolvedFavicon != null && resolvedFavicon.isNotEmpty
+            ? await _isSafeFaviconUrl(resolvedFavicon)
+            : false;
     if (resolvedFavicon != null &&
         resolvedFavicon.isNotEmpty &&
-        _isSafeFaviconUrl(resolvedFavicon) &&
+        isResolvedFaviconSafe &&
         host != null &&
         host.isNotEmpty) {
       _faviconCacheByHost[host] = resolvedFavicon;
@@ -2400,6 +2455,9 @@ class _BrowserPageState extends State<BrowserPage>
   }
 
   void _scheduleOverflowMenuClose() {
+    if (isIntegrationTest) {
+      return;
+    }
     _cancelOverflowMenuClose();
     _overflowMenuCloseTimer = Timer(const Duration(milliseconds: 140), () {
       if (!mounted) return;

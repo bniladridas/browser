@@ -13,6 +13,7 @@ import 'package:integration_test/integration_test.dart';
 import 'package:browser/main.dart';
 import 'package:browser/constants.dart';
 import 'package:browser/features/theme_utils.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 const testTimeout = Timeout(Duration(seconds: 60));
@@ -23,6 +24,7 @@ Future<void> _launchApp(WidgetTester tester,
     bool resetPrefs = true}) async {
   if (resetPrefs) {
     final prefs = await SharedPreferences.getInstance();
+    await prefs.clear();
     await prefs.setBool(hideAppBarKey, false);
     await prefs.setBool(useModernUserAgentKey, false);
     await prefs.setBool(enableGitFetchKey, enableGitFetch);
@@ -34,6 +36,8 @@ Future<void> _launchApp(WidgetTester tester,
     await prefs.setBool(aiSearchSuggestionsEnabledKey, aiSuggestionsEnabled);
     await prefs.setBool(advancedCacheEnabledKey, false);
     await prefs.setString(themeModeKey, AppThemeMode.system.name);
+    final info = await PackageInfo.fromPlatform();
+    await prefs.setString(whatsNewSeenVersionKey, info.version.trim());
   }
 
   await tester
@@ -313,12 +317,12 @@ void main() {
       await tester.tap(darkThemeChip, warnIfMissed: false);
       await tester.pumpAndSettle();
 
-      // Close settings dialog if it remains open.
-      final cancelButton = find.text('Cancel');
-      if (cancelButton.evaluate().isNotEmpty) {
-        await tester.tap(cancelButton);
-        await tester.pumpAndSettle();
-      }
+      // Save settings.
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+
+      // Should show saved snackbar.
+      expect(find.text('Settings saved'), findsOneWidget);
     }, timeout: testTimeout);
 
     testWidgets('URL submit loads non-empty value',
@@ -344,13 +348,13 @@ void main() {
 
       await _launchApp(tester, aiSuggestionsEnabled: true);
 
-      final urlFieldElements =
-          urlFieldFinder().hitTestable().evaluate().toList();
-      final anyFieldElements =
-          find.byType(TextField).hitTestable().evaluate().toList();
+      final urlFieldElements = urlFieldFinder().evaluate().toList();
+      final anyFieldElements = find.byType(TextField).evaluate().toList();
       if (urlFieldElements.isEmpty && anyFieldElements.isEmpty) {
-        // Some desktop configurations may not expose a Flutter text field here.
-        return;
+        fail(
+          'No text field found for URL submission. '
+          'Expected browser URL field or any TextField in widget tree.',
+        );
       }
       final entryElement = urlFieldElements.isNotEmpty
           ? urlFieldElements.first
@@ -380,12 +384,13 @@ void main() {
         (WidgetTester tester) async {
       await _launchApp(tester, aiSuggestionsEnabled: true);
 
-      final urlFieldElements =
-          urlFieldFinder().hitTestable().evaluate().toList();
-      final anyFieldElements =
-          find.byType(TextField).hitTestable().evaluate().toList();
+      final urlFieldElements = urlFieldFinder().evaluate().toList();
+      final anyFieldElements = find.byType(TextField).evaluate().toList();
       if (urlFieldElements.isEmpty && anyFieldElements.isEmpty) {
-        return;
+        fail(
+          'No text field found for AI suggestions flow. '
+          'Expected browser URL field or any TextField in widget tree.',
+        );
       }
       final entryElement = urlFieldElements.isNotEmpty
           ? urlFieldElements.first
@@ -404,7 +409,8 @@ void main() {
       await tester.sendKeyEvent(LogicalKeyboardKey.escape);
       await tester.pumpAndSettle();
 
-      final aiSuggestionsTitle = find.byKey(const Key('browser.ai_suggestions_title'));
+      final aiSuggestionsTitle =
+          find.byKey(const Key('browser.ai_suggestions_title'));
       if (aiSuggestionsTitle.evaluate().isNotEmpty) {
         // Desktop key dispatch can be flaky in CI; tap modal barrier as fallback.
         await tester.tapAt(const Offset(8, 8));
