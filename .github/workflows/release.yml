@@ -114,6 +114,8 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           MACOS_CODE_SIGN_IDENTITY: ${{ secrets.MACOS_CODE_SIGN_IDENTITY }}
+          DMG_BACKGROUND_IMAGE: assets/dmg/background.png
+          DMG_HEADROOM_MB: '50'
         run: |
           chmod +x ./scripts/macos_release_dmg.sh
           if [ "${{ steps.check-cert.outputs.available }}" == "true" ] && ./scripts/macos_release_dmg.sh; then
