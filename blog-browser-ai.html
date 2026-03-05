@@ -58,6 +58,21 @@
       document.querySelector('.sidebar-toggle').textContent =
         document.body.classList.contains('sidebar-hidden') ? '☰' : '✕';
     }
+
+    (function () {
+      const toggleBtn = document.querySelector('.sidebar-toggle');
+      if (!toggleBtn) return;
+      const getScrollPosition = () => window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
+      const handleScroll = () => {
+        if (getScrollPosition() > 0) {
+          toggleBtn.classList.add('scroll-hide');
+        } else {
+          toggleBtn.classList.remove('scroll-hide');
+        }
+      };
+      window.addEventListener('scroll', handleScroll, { passive: true });
+      handleScroll();
+    })();
   </script>
 </body>
 </html>

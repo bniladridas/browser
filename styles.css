@@ -47,6 +47,12 @@ body::before {
   z-index: 120;
   transition: left 0.2s ease, color 0.15s ease, opacity 0.15s ease;
 }
+.sidebar-toggle.scroll-hide {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-10px);
+}
+.sidebar-toggle.scroll-hide { opacity: 0; pointer-events: none; }
 .sidebar-toggle:hover { color: var(--text); opacity: 1; }
 body.sidebar-hidden .sidebar-toggle { left: 0.9rem; }
 body:not(.sidebar-hidden) .sidebar-toggle { left: calc(var(--sidebar-width) + 0.9rem); }
