@@ -28,6 +28,7 @@ import '../features/theme_utils.dart';
 import '../features/bookmark_manager.dart';
 import '../features/password_prompt.dart';
 import '../features/password_storage.dart';
+import 'clickable_icon.dart';
 import '../features/connectivity_service.dart';
 import '../features/password_autofill.dart';
 import '../features/login_detection.dart';
@@ -38,7 +39,7 @@ import '../browser_state.dart';
 import '../logging/logger.dart';
 import '../logging/network_monitor.dart';
 import '../utils/string_utils.dart';
-import '../utils/platform_utils.dart';
+import '../utils/keyboard_utils.dart';
 import 'package:pkg/ai_chat_widget.dart';
 import 'package:pkg/ai_service.dart';
 import 'network_debug_dialog.dart';
@@ -66,10 +67,10 @@ const _userAgents = {
   },
 };
 
-String _getUserAgent(bool modern) {
+String _getUserAgent(bool useLegacy) {
   final platformAgents =
       _userAgents[defaultTargetPlatform] ?? _userAgents[TargetPlatform.macOS]!;
-  final agentType = modern ? 'modern' : 'legacy';
+  final agentType = useLegacy ? 'legacy' : 'modern';
   return platformAgents[agentType]!;
 }
 
@@ -440,47 +441,77 @@ class SettingsDialog extends HookWidget {
                       isDense: true,
                     ),
                   ),
-                  SwitchListTile(
-                    title: const Text('Hide App Bar'),
-                    value: hideAppBar.value,
-                    onChanged: (value) => hideAppBar.value = value,
+                  MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: SwitchListTile(
+                      title: const Text('Hide App Bar'),
+                      value: hideAppBar.value,
+                      onChanged: (value) => hideAppBar.value = value,
+                      hoverColor: Colors.transparent,
+                    ),
                   ),
-                  SwitchListTile(
-                    title: const Text('Modern User Agent'),
-                    value: useModernUserAgent.value,
-                    onChanged: (value) => useModernUserAgent.value = value,
+                  MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: SwitchListTile(
+                      title: const Text('Legacy User Agent'),
+                      value: useModernUserAgent.value,
+                      onChanged: (value) => useModernUserAgent.value = value,
+                      hoverColor: Colors.transparent,
+                    ),
                   ),
-                  SwitchListTile(
-                    title: const Text('Git Fetch'),
-                    value: enableGitFetch.value,
-                    onChanged: (value) => enableGitFetch.value = value,
+                  MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: SwitchListTile(
+                      title: const Text('Git Fetch'),
+                      value: enableGitFetch.value,
+                      onChanged: (value) => enableGitFetch.value = value,
+                      hoverColor: Colors.transparent,
+                    ),
                   ),
-                  SwitchListTile(
-                    title: const Text('Private Browsing'),
-                    value: privateBrowsing.value,
-                    onChanged: (value) => privateBrowsing.value = value,
+                  MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: SwitchListTile(
+                      title: const Text('Private Browsing'),
+                      value: privateBrowsing.value,
+                      onChanged: (value) => privateBrowsing.value = value,
+                      hoverColor: Colors.transparent,
+                    ),
                   ),
-                  SwitchListTile(
-                    title: const Text('Ad Blocking'),
-                    value: adBlocking.value,
-                    onChanged: (value) => adBlocking.value = value,
+                  MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: SwitchListTile(
+                      title: const Text('Ad Blocking'),
+                      value: adBlocking.value,
+                      onChanged: (value) => adBlocking.value = value,
+                      hoverColor: Colors.transparent,
+                    ),
                   ),
-                  SwitchListTile(
-                    title: const Text('Strict Mode'),
-                    value: strictMode.value,
-                    onChanged: (value) => strictMode.value = value,
+                  MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: SwitchListTile(
+                      title: const Text('Strict Mode'),
+                      value: strictMode.value,
+                      onChanged: (value) => strictMode.value = value,
+                      hoverColor: Colors.transparent,
+                    ),
                   ),
-                  SwitchListTile(
-                    title: const Text('Password Manager'),
-                    value: passwordManagerEnabled.value,
-                    onChanged: (value) => passwordManagerEnabled.value = value,
+                  MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: SwitchListTile(
+                      title: const Text('Password Manager'),
+                      value: passwordManagerEnabled.value,
+                      onChanged: (value) => passwordManagerEnabled.value = value,
+                      hoverColor: Colors.transparent,
+                    ),
                   ),
                   if (passwordManagerEnabled.value)
-                    ListTile(
-                      leading: const Icon(Icons.lock),
-                      title: const Text('Manage Passwords'),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () {
+                    MouseRegion(
+                      cursor: SystemMouseCursors.click,
+                      child: ListTile(
+                        leading: const Icon(Icons.lock),
+                        title: const Text('Manage Passwords'),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () {
                         Navigator.of(context).pop();
                         Navigator.of(context).push(
                           MaterialPageRoute(
@@ -489,21 +520,34 @@ class SettingsDialog extends HookWidget {
                         );
                       },
                     ),
-                  SwitchListTile(
-                    title: const Text('Reorderable Tabs'),
-                    value: reorderableTabs.value,
-                    onChanged: (value) => reorderableTabs.value = value,
                   ),
-                  SwitchListTile(
-                    title: const Text('AI Search Suggestions'),
-                    value: aiSearchSuggestionsEnabled.value,
-                    onChanged: (value) =>
-                        aiSearchSuggestionsEnabled.value = value,
+                  MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: SwitchListTile(
+                      title: const Text('Reorderable Tabs'),
+                      value: reorderableTabs.value,
+                      onChanged: (value) => reorderableTabs.value = value,
+                      hoverColor: Colors.transparent,
+                    ),
                   ),
-                  SwitchListTile(
-                    title: const Text('Advanced Cache'),
-                    value: advancedCacheEnabled.value,
-                    onChanged: (value) => advancedCacheEnabled.value = value,
+                  MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: SwitchListTile(
+                      title: const Text('AI Search Suggestions'),
+                      value: aiSearchSuggestionsEnabled.value,
+                      onChanged: (value) =>
+                          aiSearchSuggestionsEnabled.value = value,
+                      hoverColor: Colors.transparent,
+                    ),
+                  ),
+                  MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: SwitchListTile(
+                      title: const Text('Advanced Cache'),
+                      value: advancedCacheEnabled.value,
+                      onChanged: (value) => advancedCacheEnabled.value = value,
+                      hoverColor: Colors.transparent,
+                    ),
                   ),
                   Align(
                     alignment: Alignment.centerLeft,
@@ -690,6 +734,7 @@ class TabData {
   Color? detectedSeedColor;
   SavePasswordPromptData? pendingPasswordPrompt;
   String? faviconUrl;
+  String? forwardUrl; // URL to go forward to when on home page
 
   TabData(this.currentUrl, {String? displayUrl})
       : urlController = TextEditingController(text: displayUrl ?? currentUrl),
@@ -744,6 +789,13 @@ class GitFetchDialog extends HookWidget {
     final isLoading = useState(false);
     final repoData = useState<Map<String, dynamic>?>(null);
     final errorMessage = useState<String?>(null);
+    final isDisposed = useRef(false);
+
+    useEffect(() {
+      return () {
+        isDisposed.value = true;
+      };
+    }, []);
 
     Future<void> fetchRepo() async {
       final repo = repoController.text.trim();
@@ -751,22 +803,28 @@ class GitFetchDialog extends HookWidget {
 
       final parts = repo.split('/');
       if (parts.length != 2) {
-        errorMessage.value = 'Invalid format. Use owner/repo';
+        if (!isDisposed.value) errorMessage.value = 'Invalid format. Use owner/repo';
         return;
       }
 
-      isLoading.value = true;
-      errorMessage.value = null;
-      repoData.value = null;
+      if (!isDisposed.value) {
+        isLoading.value = true;
+        errorMessage.value = null;
+        repoData.value = null;
+      }
 
       try {
         final url = 'https://api.github.com/repos/${parts[0]}/${parts[1]}';
         final response = await _fetchGitHubRepo(url);
-        isLoading.value = false;
-        repoData.value = response;
+        if (!isDisposed.value) {
+          isLoading.value = false;
+          repoData.value = response;
+        }
       } catch (e) {
-        isLoading.value = false;
-        errorMessage.value = 'Failed to fetch repo: $e';
+        if (!isDisposed.value) {
+          isLoading.value = false;
+          errorMessage.value = 'Failed to fetch repo: $e';
+        }
       }
     }
 
@@ -953,6 +1011,7 @@ class _BrowserPageState extends State<BrowserPage>
   bool _isOnline = true;
   final ConnectivityService _connectivityService = ConnectivityService();
   StreamSubscription<bool>? _connectivitySubscription;
+  late AnimationController _refreshIconController;
   final Set<String> _downloadableExtensions = {
     'dmg',
     'zip',
@@ -1133,6 +1192,11 @@ class _BrowserPageState extends State<BrowserPage>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _syncMacWindowButtonsVisibility();
     });
+    HardwareKeyboard.instance.addHandler(_handleKeyEvent);
+    _refreshIconController = AnimationController(
+      duration: const Duration(milliseconds: 500),
+      vsync: this,
+    );
     _pageFontFamily = widget.pageFontFamily;
     _loadReorderableTabs();
     _loadFontOverrides();
@@ -1150,6 +1214,67 @@ class _BrowserPageState extends State<BrowserPage>
       _aiService = AiService();
     }
     _initConnectivity();
+  }
+
+  bool _handleKeyEvent(KeyEvent event) {
+    if (event is! KeyDownEvent) return false;
+
+    // Check if ANY text input is focused (including dialog fields)
+    final primaryFocus = FocusManager.instance.primaryFocus;
+    final isTextInputFocused = primaryFocus != null &&
+        primaryFocus.context != null &&
+        primaryFocus.context!.widget is EditableText;
+
+    // Check tab switching first (more specific: Cmd+Option+Arrow)
+    if (KeyboardUtils.isPreviousTabKey(event)) {
+      if (tabController.index > 0) {
+        tabController.animateTo(tabController.index - 1);
+      }
+      return true;
+    } else if (KeyboardUtils.isNextTabKey(event)) {
+      if (tabController.index < tabs.length - 1) {
+        tabController.animateTo(tabController.index + 1);
+      }
+      return true;
+    }
+
+    // Then check back/forward (Cmd+[ and Cmd+])
+    if (!isTextInputFocused && KeyboardUtils.isBackKey(event)) {
+      _goBack();
+      return true;
+    } else if (!isTextInputFocused && KeyboardUtils.isForwardKey(event)) {
+      _goForward();
+      return true;
+    }
+
+    if (KeyboardUtils.isNewTabKey(event)) {
+      _addNewTab();
+      return true;
+    } else if (KeyboardUtils.isCloseTabKey(event)) {
+      _closeTab(tabController.index);
+      return true;
+    } else if (KeyboardUtils.isFontPickerKey(event)) {
+      _showFontPicker();
+      return true;
+    } else if (KeyboardUtils.isFocusUrlKey(event)) {
+      activeTab.urlFocusNode.requestFocus();
+      return true;
+    } else if (KeyboardUtils.isEscapeKey(event)) {
+      if (isTextInputFocused) {
+        FocusScope.of(context).unfocus();
+        return true;
+      }
+      return false;
+    }
+
+    if (isTextInputFocused) return false;
+
+    if (KeyboardUtils.isRefreshKey(event)) {
+      _refresh();
+      return true;
+    }
+
+    return false;
   }
 
   void _initConnectivity() async {
@@ -1385,7 +1510,7 @@ class _BrowserPageState extends State<BrowserPage>
   }
 
   Future<void> _applyLegacyLayoutFix(TabData tab) async {
-    if (widget.useModernUserAgent || widget.strictMode) return;
+    if (!widget.useModernUserAgent || widget.strictMode) return;
     final controller = tab.webViewController;
     if (controller == null) return;
     final script = await _loadLegacyLayoutFixScript();
@@ -2473,7 +2598,9 @@ class _BrowserPageState extends State<BrowserPage>
 
   @override
   void dispose() {
+    HardwareKeyboard.instance.removeHandler(_handleKeyEvent);
     _connectivitySubscription?.cancel();
+    _refreshIconController.dispose();
     _overflowMenuCloseTimer?.cancel();
     _windowButtonsSyncRetryTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
@@ -2720,6 +2847,20 @@ class _BrowserPageState extends State<BrowserPage>
     try {
       if (await activeTab.webViewController?.canGoBack() ?? false) {
         await activeTab.webViewController?.goBack();
+        activeTab.forwardUrl = null; // Clear forward URL when using WebView history
+      } else {
+        // If can't go back, show the home page and save current URL for forward
+        if (mounted) {
+          setState(() {
+            // Only save forward URL if we're not already on home page
+            if (activeTab.currentUrl != widget.initialUrl) {
+              activeTab.forwardUrl = activeTab.currentUrl;
+            }
+            activeTab.currentUrl = widget.initialUrl;
+            activeTab.urlController.text = _displayUrl(widget.initialUrl);
+            activeTab.state = BrowserState.success(widget.initialUrl);
+          });
+        }
       }
     } on PlatformException catch (e, s) {
       if (!_isMissingPluginException(e)) {
@@ -2731,7 +2872,11 @@ class _BrowserPageState extends State<BrowserPage>
 
   Future<void> _goForward() async {
     try {
-      if (await activeTab.webViewController?.canGoForward() ?? false) {
+      // If on home page and have a forward URL, load it
+      if (activeTab.currentUrl == widget.initialUrl && activeTab.forwardUrl != null) {
+        _loadUrl(activeTab.forwardUrl!);
+        activeTab.forwardUrl = null;
+      } else if (await activeTab.webViewController?.canGoForward() ?? false) {
         await activeTab.webViewController?.goForward();
       }
     } on PlatformException catch (e, s) {
@@ -2743,6 +2888,7 @@ class _BrowserPageState extends State<BrowserPage>
   }
 
   Future<void> _refresh() async {
+    _refreshIconController.forward(from: 0.0);
     try {
       await activeTab.webViewController?.reload();
     } on PlatformException catch (e, s) {
@@ -2811,33 +2957,34 @@ class _BrowserPageState extends State<BrowserPage>
                                             Navigator.of(context).pop();
                                             _loadUrl(url);
                                           },
-                                          trailing: IconButton(
-                                            icon: const Icon(Icons.delete),
-                                            onPressed: () async {
-                                              final confirm =
-                                                  await showDialog<bool>(
-                                                context: context,
-                                                builder: (context) =>
-                                                    AlertDialog(
-                                                  title: const Text(
-                                                      'Delete Bookmark?'),
-                                                  content: Text(
-                                                      'Remove "$url" from ${entry.key}?'),
-                                                  actions: [
-                                                    TextButton(
-                                                      onPressed: () =>
-                                                          Navigator.of(context)
-                                                              .pop(false),
-                                                      child:
-                                                          const Text('Cancel'),
-                                                    ),
-                                                    TextButton(
-                                                      onPressed: () =>
-                                                          Navigator.of(context)
-                                                              .pop(true),
-                                                      child:
-                                                          const Text('Delete'),
-                                                    ),
+                                          trailing: MouseRegion(
+                                            cursor: SystemMouseCursors.click,
+                                            child: GestureDetector(
+                                              onTap: () async {
+                                                final confirm =
+                                                    await showDialog<bool>(
+                                                  context: context,
+                                                  builder: (context) =>
+                                                      AlertDialog(
+                                                    title: const Text(
+                                                        'Delete Bookmark?'),
+                                                    content: Text(
+                                                        'Remove "$url" from ${entry.key}?'),
+                                                    actions: [
+                                                      TextButton(
+                                                        onPressed: () =>
+                                                            Navigator.of(context)
+                                                                .pop(false),
+                                                        child:
+                                                            const Text('Cancel'),
+                                                      ),
+                                                      TextButton(
+                                                        onPressed: () =>
+                                                            Navigator.of(context)
+                                                                .pop(true),
+                                                        child:
+                                                            const Text('Delete'),
+                                                      ),
                                                   ],
                                                 ),
                                               );
@@ -2849,6 +2996,12 @@ class _BrowserPageState extends State<BrowserPage>
                                                 _saveBookmarks();
                                               }
                                             },
+                                            child: Padding(
+                                              padding: const EdgeInsets.all(8),
+                                              child: Icon(Icons.delete,
+                                                color: Theme.of(context).colorScheme.onSurfaceVariant),
+                                            ),
+                                          ),
                                           ),
                                         ))
                                     .toList(),
@@ -3147,6 +3300,7 @@ class _BrowserPageState extends State<BrowserPage>
   }) {
     final theme = Theme.of(context);
     return MouseRegion(
+      cursor: SystemMouseCursors.click,
       onEnter: (_) {
         _isOverflowMenuHovered = true;
         _cancelOverflowMenuClose();
@@ -3155,30 +3309,26 @@ class _BrowserPageState extends State<BrowserPage>
         _isOverflowMenuHovered = false;
         _scheduleOverflowMenuClose();
       },
-      child: MenuItemButton(
-        style: ButtonStyle(
-          minimumSize: WidgetStateProperty.all(const Size.fromHeight(32)),
-          padding: WidgetStateProperty.all(
-            const EdgeInsets.symmetric(horizontal: 10),
-          ),
-          visualDensity: VisualDensity.compact,
-        ),
-        onPressed: () {
+      child: GestureDetector(
+        onTap: () {
           _overflowMenuController.close();
           _handleMenuSelection(value);
         },
-        child: Row(
-          children: [
-            Icon(icon, size: 16),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          child: Row(
+            children: [
+              Icon(icon, size: 16, color: theme.colorScheme.onSurfaceVariant),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -3274,15 +3424,22 @@ class _BrowserPageState extends State<BrowserPage>
             _isOverflowTriggerHovered = false;
             _scheduleOverflowMenuClose();
           },
-          child: IconButton(
-            icon: Icon(Icons.more_vert, size: iconSize),
-            onPressed: () {
-              if (controller.isOpen) {
-                controller.close();
-                return;
-              }
-              controller.open();
-            },
+          child: MouseRegion(
+            cursor: SystemMouseCursors.click,
+            child: GestureDetector(
+              onTap: () {
+                if (controller.isOpen) {
+                  controller.close();
+                  return;
+                }
+                controller.open();
+              },
+              child: Padding(
+                padding: const EdgeInsets.all(8),
+                child: Icon(Icons.more_vert, size: iconSize,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant),
+              ),
+            ),
           ),
         );
       },
@@ -3552,20 +3709,27 @@ class _BrowserPageState extends State<BrowserPage>
                               Navigator.of(context).pop();
                               _loadUrl(entry);
                             },
-                            trailing: IconButton(
-                              icon: const Icon(Icons.delete),
-                              onPressed: () {
-                                setState(() {
-                                  final removeIndex =
-                                      history.length - 1 - index;
-                                  if (removeIndex >= 0 &&
-                                      removeIndex < history.length) {
-                                    history.removeAt(removeIndex);
-                                  }
-                                });
-                                setDialogState(() {});
-                                _saveHistory();
-                              },
+                            trailing: MouseRegion(
+                              cursor: SystemMouseCursors.click,
+                              child: GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    final removeIndex =
+                                        history.length - 1 - index;
+                                    if (removeIndex >= 0 &&
+                                        removeIndex < history.length) {
+                                      history.removeAt(removeIndex);
+                                    }
+                                  });
+                                  setDialogState(() {});
+                                  _saveHistory();
+                                },
+                                child: Padding(
+                                  padding: const EdgeInsets.all(8),
+                                  child: Icon(Icons.delete,
+                                    color: Theme.of(context).colorScheme.onSurfaceVariant),
+                                ),
+                              ),
                             ),
                           );
                         },
@@ -3692,7 +3856,46 @@ class _BrowserPageState extends State<BrowserPage>
       setState(() => _urlAutocompleteOpen = false);
       _syncPagePointerEvents(activeTab);
     }
+
+    // Clear forward URL when loading a new URL
+    activeTab.forwardUrl = null;
+
+    // Handle about: URLs with strict allowlist
+    if (url.startsWith('about:')) {
+      // Only allow trusted internal about: URLs
+      const allowedAboutUrls = {
+        'about:browser-home',
+        'about:blank',
+      };
+
+      if (!allowedAboutUrls.contains(url)) {
+        logger.w('Blocked invalid about: URL: $url');
+        if (mounted) {
+          setState(() {
+            activeTab.currentUrl = url;
+            activeTab.urlController.text = url;
+            activeTab.state = const BrowserState.error('Invalid internal URL.');
+          });
+        }
+        return;
+      }
+
+      // Only about:browser-home is internal-only; about:blank loads in WebView
+      if (url == 'about:browser-home') {
+        if (mounted) {
+          setState(() {
+            activeTab.currentUrl = url;
+            activeTab.urlController.text = _displayUrl(url);
+            activeTab.state = BrowserState.success(url);
+          });
+        }
+        return;
+      }
+      // about:blank falls through to normal WebView load
+    }
+
     final processedUrl = UrlUtils.processUrl(url);
+
     if (!UrlUtils.isValidUrl(processedUrl)) {
       logger.w('Invalid or unsafe URL: $processedUrl');
       if (mounted) {
@@ -3706,7 +3909,7 @@ class _BrowserPageState extends State<BrowserPage>
       return;
     }
     activeTab.currentUrl = processedUrl;
-    activeTab.urlController.text = processedUrl;
+    activeTab.urlController.text = _displayUrl(processedUrl);
     if (activeTab.webViewController == null && mounted) {
       setState(() {});
     }
@@ -3806,14 +4009,19 @@ class _BrowserPageState extends State<BrowserPage>
                         ),
                         prefixIconConstraints:
                             const BoxConstraints(minHeight: 36, minWidth: 42),
-                        suffixIcon: IconButton(
-                          onPressed: () => _performTorrySearch(tab),
-                          icon: Icon(
-                            Icons.arrow_forward,
-                            color: colorScheme.primary,
-                            size: 22,
+                        suffixIcon: MouseRegion(
+                          cursor: SystemMouseCursors.click,
+                          child: GestureDetector(
+                            onTap: () => _performTorrySearch(tab),
+                            child: Padding(
+                              padding: const EdgeInsets.all(8),
+                              child: Icon(
+                                Icons.arrow_forward,
+                                color: colorScheme.primary,
+                                size: 22,
+                              ),
+                            ),
                           ),
-                          visualDensity: VisualDensity.compact,
                         ),
                       ),
                     ),
@@ -4221,26 +4429,23 @@ class _BrowserPageState extends State<BrowserPage>
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    IconButton(
-                      icon: const Icon(Icons.arrow_back_ios, size: 16),
-                      onPressed: _goBack,
-                      tooltip: 'Back',
-                      visualDensity: VisualDensity.compact,
+                    ClickableIcon(
+                      icon: Icons.arrow_back_ios,
+                      size: 16,
+                      onTap: _goBack,
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.arrow_forward_ios, size: 16),
-                      onPressed: _goForward,
-                      tooltip: 'Forward',
-                      visualDensity: VisualDensity.compact,
+                    ClickableIcon(
+                      icon: Icons.arrow_forward_ios,
+                      size: 16,
+                      onTap: _goForward,
                     ),
                   ],
                 ),
               ),
-              IconButton(
-                icon: const Icon(Icons.add, size: 22),
-                onPressed: _addNewTab,
-                tooltip: 'New Tab',
-                visualDensity: VisualDensity.compact,
+              ClickableIcon(
+                icon: Icons.add,
+                size: 22,
+                onTap: _addNewTab,
               ),
               _buildMenuButton(),
             ],
@@ -4253,10 +4458,31 @@ class _BrowserPageState extends State<BrowserPage>
               child: Row(
                 children: [
                   SizedBox(width: leadingInset),
-                  Icon(
-                    Icons.search,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    size: 18,
+                  MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: GestureDetector(
+                      onTap: () {
+                        final text = activeTab.urlController.text;
+                        if (text.isNotEmpty) {
+                          final decision = resolveUrlSubmission(
+                            submittedValue: text,
+                          aiSearchSuggestionsEnabled:
+                              widget.aiSearchSuggestionsEnabled,
+                        );
+                        if (decision.shouldShowAiSuggestions) {
+                          _showAiSearchSuggestionsSheet();
+                        }
+                        if (decision.shouldLoadUrl) {
+                          _loadUrl(decision.normalizedInput);
+                        }
+                      }
+                    },
+                    child: Icon(
+                      Icons.search,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      size: 18,
+                    ),
+                  ),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
@@ -4266,6 +4492,7 @@ class _BrowserPageState extends State<BrowserPage>
                       optionsBuilder: (value) =>
                           _historyUrlSuggestions(value.text),
                       onSelected: (value) {
+                        activeTab.urlFocusNode.unfocus();
                         _setUrlAutocompleteOpen(false);
                         _loadUrl(value);
                       },
@@ -4386,29 +4613,23 @@ class _BrowserPageState extends State<BrowserPage>
                       },
                     ),
                   ),
-                  if (activeTab.state is Loading)
-                    Padding(
-                      padding: const EdgeInsets.only(right: 12),
-                      child: SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Theme.of(context).colorScheme.primary,
+                  Padding(
+                    padding: EdgeInsets.only(right: leadingInset),
+                    child: MouseRegion(
+                      cursor: SystemMouseCursors.click,
+                      child: GestureDetector(
+                        onTap: _refresh,
+                        child: RotationTransition(
+                          turns: _refreshIconController,
+                          child: Icon(
+                            Icons.refresh,
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            size: 18,
+                          ),
                         ),
                       ),
-                    )
-                  else
-                    IconButton(
-                      icon: Icon(
-                        Icons.refresh,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        size: 18,
-                      ),
-                      onPressed: _refresh,
-                      padding: const EdgeInsets.all(8),
-                      constraints: const BoxConstraints(),
                     ),
+                  ),
                 ],
               ),
             ),
@@ -4416,98 +4637,7 @@ class _BrowserPageState extends State<BrowserPage>
     final double topToolbarInset =
         (isMacDesktop && !widget.hideAppBar) ? _kMacOsTopToolbarInset : 0.0;
 
-    return KeyboardListener(
-      focusNode: _keyboardFocusNode,
-      autofocus: true,
-      onKeyEvent: (event) {
-        if (event is KeyDownEvent) {
-          final isCommandOrControl =
-              (isCommandKey && HardwareKeyboard.instance.isMetaPressed) ||
-                  (isControlKey && HardwareKeyboard.instance.isControlPressed);
-
-          if (isCommandOrControl) {
-            if (event.logicalKey == LogicalKeyboardKey.keyT) {
-              _addNewTab();
-            } else if (event.logicalKey == LogicalKeyboardKey.keyW) {
-              _closeTab(tabController.index);
-            } else if (event.logicalKey == LogicalKeyboardKey.keyL) {
-              activeTab.urlFocusNode.requestFocus();
-            } else if (event.logicalKey == LogicalKeyboardKey.keyR) {
-              _refresh();
-            } else if (event.logicalKey == LogicalKeyboardKey.keyF &&
-                HardwareKeyboard.instance.isShiftPressed) {
-              _showFontPicker();
-            }
-          } else if (HardwareKeyboard.instance.isAltPressed) {
-            if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
-              _goBack();
-            } else if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
-              _goForward();
-            }
-          }
-        }
-      },
-      child: Shortcuts(
-        shortcuts: {
-          SingleActivator(LogicalKeyboardKey.keyL,
-              control: isControlKey, meta: isCommandKey): FocusUrlIntent(),
-          SingleActivator(LogicalKeyboardKey.keyR,
-              control: isControlKey, meta: isCommandKey): RefreshIntent(),
-          SingleActivator(LogicalKeyboardKey.keyT,
-              control: isControlKey, meta: isCommandKey): NewTabIntent(),
-          SingleActivator(LogicalKeyboardKey.keyW,
-              control: isControlKey, meta: isCommandKey): CloseTabIntent(),
-          SingleActivator(LogicalKeyboardKey.keyN,
-              control: isControlKey, meta: isCommandKey): NewWindowIntent(),
-          SingleActivator(LogicalKeyboardKey.keyF,
-              control: isControlKey,
-              meta: isCommandKey,
-              shift: true): PageFontIntent(),
-          const SingleActivator(LogicalKeyboardKey.arrowLeft, alt: true):
-              GoBackIntent(),
-          const SingleActivator(LogicalKeyboardKey.arrowRight, alt: true):
-              GoForwardIntent(),
-        },
-        child: FocusableActionDetector(
-          autofocus: true,
-          shortcuts: const {},
-          actions: const {},
-          child: Actions(
-            actions: {
-              FocusUrlIntent: CallbackAction<FocusUrlIntent>(
-                onInvoke: (intent) => activeTab.urlFocusNode.requestFocus(),
-              ),
-              RefreshIntent: CallbackAction<RefreshIntent>(
-                onInvoke: (intent) => _refresh(),
-              ),
-              NewTabIntent: CallbackAction<NewTabIntent>(
-                onInvoke: (intent) => _addNewTab(),
-              ),
-              CloseTabIntent: CallbackAction<CloseTabIntent>(
-                onInvoke: (intent) => _closeTab(tabController.index),
-              ),
-              NewWindowIntent: CallbackAction<NewWindowIntent>(
-                onInvoke: (intent) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('New window not supported in desktop app'),
-                      duration: Duration(seconds: 2),
-                    ),
-                  );
-                  return null;
-                },
-              ),
-              PageFontIntent: CallbackAction<PageFontIntent>(
-                onInvoke: (intent) => _showFontPicker(),
-              ),
-              GoBackIntent: CallbackAction<GoBackIntent>(
-                onInvoke: (intent) => _goBack(),
-              ),
-              GoForwardIntent: CallbackAction<GoForwardIntent>(
-                onInvoke: (intent) => _goForward(),
-              ),
-            },
-            child: DropTarget(
+    return DropTarget(
               onDragEntered: (details) => setState(() => _dragging = true),
               onDragExited: (details) => setState(() => _dragging = false),
               onDragDone: (details) async {
@@ -4610,59 +4740,69 @@ class _BrowserPageState extends State<BrowserPage>
                                         return ReorderableDragStartListener(
                                           key: ObjectKey(tab),
                                           index: index,
-                                          child: InkWell(
-                                            onTap: () => setState(() =>
-                                                tabController.index = index),
-                                            child: Container(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                      horizontal: 12,
-                                                      vertical: 4),
-                                              decoration: BoxDecoration(
-                                                border: Border(
-                                                  bottom: BorderSide(
-                                                    color: isSelected
-                                                        ? Theme.of(context)
-                                                            .colorScheme
-                                                            .primary
-                                                        : Colors.transparent,
-                                                    width: 2,
+                                          child: MouseRegion(
+                                            cursor: SystemMouseCursors.click,
+                                            child: GestureDetector(
+                                              onTap: () => setState(() =>
+                                                  tabController.index = index),
+                                              child: Container(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                        horizontal: 12,
+                                                        vertical: 4),
+                                                decoration: BoxDecoration(
+                                                  border: Border(
+                                                    bottom: BorderSide(
+                                                      color: isSelected
+                                                          ? Theme.of(context)
+                                                              .colorScheme
+                                                              .primary
+                                                          : Colors.transparent,
+                                                      width: 2,
+                                                    ),
                                                   ),
                                                 ),
+                                                child: _buildTabItem(
+                                                    tab, index, isSelected,
+                                                    showDragHandle: true),
                                               ),
-                                              child: _buildTabItem(
-                                                  tab, index, isSelected,
-                                                  showDragHandle: true),
                                             ),
                                           ),
                                         );
                                       },
                                     )
-                                  : TabBar(
-                                      controller: tabController,
-                                      isScrollable: true,
-                                      tabAlignment: TabAlignment.start,
-                                      padding: EdgeInsets.zero,
-                                      indicatorColor: widget.themeMode ==
-                                              AppThemeMode.adjust
-                                          ? Colors.transparent
-                                          : Theme.of(context)
-                                              .colorScheme
-                                              .primary,
-                                      dividerColor: widget.themeMode ==
-                                              AppThemeMode.adjust
-                                          ? Colors.transparent
-                                          : Theme.of(context)
-                                              .colorScheme
-                                              .outline
-                                              .withValues(alpha: 0.2),
-                                      labelColor: Theme.of(context)
-                                          .colorScheme
-                                          .onSurface,
-                                      unselectedLabelColor: Theme.of(context)
-                                          .colorScheme
-                                          .onSurface
-                                          .withValues(alpha: 0.6),
+                                  : Theme(
+                                      data: Theme.of(context).copyWith(
+                                        hoverColor: Colors.transparent,
+                                        splashColor: Colors.transparent,
+                                        highlightColor: Colors.transparent,
+                                      ),
+                                      child: TabBar(
+                                        controller: tabController,
+                                        isScrollable: true,
+                                        tabAlignment: TabAlignment.start,
+                                        padding: EdgeInsets.zero,
+                                        overlayColor: WidgetStateProperty.all(Colors.transparent),
+                                        indicatorColor: widget.themeMode ==
+                                                AppThemeMode.adjust
+                                            ? Colors.transparent
+                                            : Theme.of(context)
+                                                .colorScheme
+                                                .primary,
+                                        dividerColor: widget.themeMode ==
+                                                AppThemeMode.adjust
+                                            ? Colors.transparent
+                                            : Theme.of(context)
+                                                .colorScheme
+                                                .outline
+                                                .withValues(alpha: 0.2),
+                                        labelColor: Theme.of(context)
+                                            .colorScheme
+                                            .onSurface,
+                                        unselectedLabelColor: Theme.of(context)
+                                            .colorScheme
+                                            .onSurface
+                                            .withValues(alpha: 0.6),
                                       tabs: tabs.asMap().entries.map((entry) {
                                         final index = entry.key;
                                         final tab = entry.value;
@@ -4674,6 +4814,7 @@ class _BrowserPageState extends State<BrowserPage>
                                               tab, index, isSelected),
                                         );
                                       }).toList(),
+                                    ),
                                     ),
                             ),
                           ),
@@ -4719,37 +4860,71 @@ class _BrowserPageState extends State<BrowserPage>
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              IconButton(
-                                icon:
-                                    const Icon(Icons.arrow_back_ios, size: 18),
-                                onPressed: _goBack,
-                                tooltip: 'Back',
+                              MouseRegion(
+                                cursor: SystemMouseCursors.click,
+                                child: GestureDetector(
+                                  onTap: _goBack,
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(8),
+                                    child: Icon(Icons.arrow_back_ios, size: 18,
+                                      color: Theme.of(context).colorScheme.onSurfaceVariant),
+                                  ),
+                                ),
                               ),
-                              IconButton(
-                                icon: const Icon(Icons.arrow_forward_ios,
-                                    size: 18),
-                                onPressed: _goForward,
-                                tooltip: 'Forward',
+                              MouseRegion(
+                                cursor: SystemMouseCursors.click,
+                                child: GestureDetector(
+                                  onTap: _goForward,
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(8),
+                                    child: Icon(Icons.arrow_forward_ios, size: 18,
+                                      color: Theme.of(context).colorScheme.onSurfaceVariant),
+                                  ),
+                                ),
                               ),
-                              IconButton(
-                                icon: const Icon(Icons.search, size: 18),
-                                onPressed: _showQuickUrlPrompt,
-                                tooltip: 'Search or URL',
+                              MouseRegion(
+                                cursor: SystemMouseCursors.click,
+                                child: GestureDetector(
+                                  onTap: _showQuickUrlPrompt,
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(8),
+                                    child: Icon(Icons.search, size: 18,
+                                      color: Theme.of(context).colorScheme.onSurfaceVariant),
+                                  ),
+                                ),
                               ),
-                              IconButton(
-                                icon: const Icon(Icons.refresh, size: 18),
-                                onPressed: _refresh,
-                                tooltip: 'Refresh',
+                              MouseRegion(
+                                cursor: SystemMouseCursors.click,
+                                child: GestureDetector(
+                                  onTap: _refresh,
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(8),
+                                    child: Icon(Icons.refresh, size: 18,
+                                      color: Theme.of(context).colorScheme.onSurfaceVariant),
+                                  ),
+                                ),
                               ),
-                              IconButton(
-                                icon: const Icon(Icons.add, size: 18),
-                                onPressed: _addNewTab,
-                                tooltip: 'New Tab',
+                              MouseRegion(
+                                cursor: SystemMouseCursors.click,
+                                child: GestureDetector(
+                                  onTap: _addNewTab,
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(8),
+                                    child: Icon(Icons.add, size: 18,
+                                      color: Theme.of(context).colorScheme.onSurfaceVariant),
+                                  ),
+                                ),
                               ),
-                              IconButton(
-                                icon: const Icon(Icons.settings, size: 18),
-                                onPressed: _showSettings,
-                                tooltip: 'Settings',
+                              MouseRegion(
+                                cursor: SystemMouseCursors.click,
+                                child: GestureDetector(
+                                  onTap: _showSettings,
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(8),
+                                    child: Icon(Icons.settings, size: 18,
+                                      color: Theme.of(context).colorScheme.onSurfaceVariant),
+                                  ),
+                                ),
                               ),
                               _buildMenuButton(iconSize: 18),
                             ],
@@ -4822,10 +4997,6 @@ class _BrowserPageState extends State<BrowserPage>
                   ],
                 ),
               ),
-            ),
-          ),
-        ),
-      ),
-    );
+            );
   }
 }

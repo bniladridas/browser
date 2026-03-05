@@ -79,17 +79,25 @@ jobs:
           fi
 
           # Update size label by total changed lines.
-          for size_label in size/s size/m size/l size/xl; do
-            remove_label_if_present "$size_label"
-          done
           if [ "$CHANGED_LINES" -le 49 ]; then
-            add_label_if_available "size/s"
+            NEW_SIZE_LABEL="size/s"
           elif [ "$CHANGED_LINES" -le 199 ]; then
-            add_label_if_available "size/m"
+            NEW_SIZE_LABEL="size/m"
           elif [ "$CHANGED_LINES" -le 499 ]; then
-            add_label_if_available "size/l"
+            NEW_SIZE_LABEL="size/l"
           else
-            add_label_if_available "size/xl"
+            NEW_SIZE_LABEL="size/xl"
+          fi
+
+          # Only update if size label changed
+          CURRENT_SIZE_LABEL=$(echo "$CURRENT_LABELS" | grep -E '^size/' || echo "")
+          if [ "$CURRENT_SIZE_LABEL" != "$NEW_SIZE_LABEL" ]; then
+            # Remove old size labels
+            for size_label in size/s size/m size/l size/xl; do
+              remove_label_if_present "$size_label"
+            done
+            # Add new size label
+            add_label_if_available "$NEW_SIZE_LABEL"
           fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

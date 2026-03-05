@@ -79,7 +79,7 @@ void main() {
         _dialogHost(aiAvailable: false),
       );
 
-      expect(_readSwitchTile(tester, 'Modern User Agent').value, isTrue);
+      expect(_readSwitchTile(tester, 'Legacy User Agent').value, isTrue);
       expect(_readSwitchTile(tester, 'Git Fetch').value, isTrue);
       expect(_readSwitchTile(tester, 'AI Search Suggestions').value, isTrue);
 
@@ -108,7 +108,7 @@ void main() {
         ),
       );
 
-      await tester.tap(_switchTileByTitle('Modern User Agent'));
+      await tester.tap(_switchTileByTitle('Legacy User Agent'));
       await tester.pumpAndSettle();
       await tester.tap(_switchTileByTitle('AI Search Suggestions'));
       await tester.pumpAndSettle();
@@ -154,7 +154,7 @@ void main() {
         ),
       );
 
-      await tester.tap(_switchTileByTitle('Modern User Agent'));
+      await tester.tap(_switchTileByTitle('Legacy User Agent'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Cancel'));
       await tester.pumpAndSettle();
