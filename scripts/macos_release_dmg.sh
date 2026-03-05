@@ -9,6 +9,7 @@ ALLOW_UNSIGNED="${ALLOW_UNSIGNED:-}"
 DMG_WINDOW_BOUNDS="${DMG_WINDOW_BOUNDS:-100,100,640,420}"
 DMG_ICON_SIZE="${DMG_ICON_SIZE:-128}"
 DMG_BACKGROUND_IMAGE="${DMG_BACKGROUND_IMAGE:-assets/dmg/background.png}"
+DMG_HEADROOM_MB="${DMG_HEADROOM_MB:-50}"
 
 unsigned_release=false
 
@@ -82,7 +83,11 @@ fi
 
 # Include extra headroom for metadata, icon layout and optional background.
 size_mb="$(du -sm "${dmg_root}" | awk '{print $1}')"
-size_mb="$((size_mb + 50))"
+if [[ ! "${DMG_HEADROOM_MB}" =~ ^[0-9]+$ ]]; then
+  echo "Invalid DMG_HEADROOM_MB: ${DMG_HEADROOM_MB} (expected integer)." >&2
+  exit 1
+fi
+size_mb="$((size_mb + DMG_HEADROOM_MB))"
 
 hdiutil create \
   -volname "${VOLUME_NAME}" \
