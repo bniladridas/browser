@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Browser AI - browser</title>
+  <title>AI - browser</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <button class="sidebar-toggle" onclick="toggleSidebar()">≡</button>
+  <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
 
   <aside class="sidebar">
     <img src="https://avatars.githubusercontent.com/u/258653415?s=200&v=4" class="sidebar-logo" style="width: 32px; height: 32px; border-radius: 6px; margin-bottom: 0.5rem;">
@@ -27,34 +27,27 @@
     <ul class="sidebar-nav">
       <li><a href="blog-get-started.html">Get Started</a></li>
       <li><a href="blog-fundamentals.html">Fundamentals</a></li>
-      <li><a href="blog-browser-ai.html">Browser AI</a></li>
+      <li><a href="blog-browser-ai.html">AI</a></li>
+      <li><a href="book-of-faith.html">Faith</a></li>
     </ul>
   </aside>
 
-  <main class="main centered">
+  <main class="main">
     <div class="content">
       <div class="section">
-        <h3>Summaries</h3>
         <p>One-click page overview.</p>
       </div>
 
       <div class="section">
-        <h3>Context</h3>
         <p>Highlight text for explanations.</p>
       </div>
 
       <div class="section">
-        <h3>Quick Questions</h3>
-        <p>Type <code>?</code> in chat bar.</p>
-        <ul>
-          <li><code>? what is this</code></li>
-          <li><code>? summarize</code></li>
-        </ul>
+        <p>Ask in AI chat.</p>
       </div>
 
       <div class="section">
-        <h3>Privacy</h3>
-        <p>All processing local. Nothing leaves your Mac.</p>
+        <p>AI requests use configured provider services.</p>
       </div>
     </div>
   </main>
@@ -63,7 +56,7 @@
     function toggleSidebar() {
       document.body.classList.toggle('sidebar-hidden');
       document.querySelector('.sidebar-toggle').textContent =
-        document.body.classList.contains('sidebar-hidden') ? '☰' : '←';
+        document.body.classList.contains('sidebar-hidden') ? '☰' : '✕';
     }
   </script>
 </body>
