@@ -206,9 +206,15 @@ Use this sequence for version bump work:
 2. Switch to the version bump branch (for example, `version-bump-X.Y.Z`) or create it if needed.
 3. Run the project version bump script/process for that release target.
 4. Validate generated version changes and run required checks.
-5. Commit and push the version bump branch.
-6. Create or update the version bump PR using the template above.
-7. Ensure PR `## Related Items` uses GitHub keyword syntax (`Resolves #<id>`, `Closes #<id>` as applicable).
+5. Normalize the `assets/whats_new.json` entry for the target release to a minimal sentence when needed (for example):
+   ```bash
+   jq '.\"X.Y.Z\" = [\"<minimal release note sentence>\"]' assets/whats_new.json > /tmp/whats_new.json \
+     && mv /tmp/whats_new.json assets/whats_new.json
+   ```
+6. Re-validate `VERSION`, `pubspec.yaml`, and `assets/whats_new.json` are in sync.
+7. Commit and push the version bump branch.
+8. Create or update the version bump PR using the template above.
+9. Ensure PR `## Related Items` uses GitHub keyword syntax (`Resolves #<id>`, `Closes #<id>` as applicable).
 
 This keeps release/version PRs repeatable and reviewable.
 
