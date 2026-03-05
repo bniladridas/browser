@@ -82,7 +82,7 @@ fi
 
 # Include extra headroom for metadata, icon layout and optional background.
 size_mb="$(du -sm "${dmg_root}" | awk '{print $1}')"
-size_mb="$((size_mb + 200))"
+size_mb="$((size_mb + 50))"
 
 hdiutil create \
   -volname "${VOLUME_NAME}" \
@@ -95,7 +95,7 @@ hdiutil create \
 
 attach_out="$(hdiutil attach -readwrite -noverify -noautoopen "${rw_dmg_path}")"
 device="$(echo "${attach_out}" | awk '/Apple_HFS/ {print $1; exit}')"
-mount_point="$(echo "${attach_out}" | awk '/Apple_HFS/ {print $NF; exit}')"
+mount_point="$(echo "${attach_out}" | grep -o '/Volumes/.*' | head -n1)"
 
 if [[ -z "${device}" || -z "${mount_point}" ]]; then
   echo "Failed to mount temporary DMG for customization." >&2
@@ -114,12 +114,15 @@ fi
 app_link_path="${mount_point}/Applications"
 if command -v osascript >/dev/null 2>&1 && [[ -L "${app_link_path}" ]]; then
   mv "${app_link_path}" "${app_link_path}.symlink"
-  if osascript <<EOF >/dev/null 2>&1
-tell application "Finder"
-  set targetFolder to POSIX file "${mount_point}" as alias
-  set appAlias to make new alias file at targetFolder to POSIX file "/Applications"
-  set name of appAlias to "Applications"
-end tell
+  if osascript - "${mount_point}" >/dev/null 2>&1 <<'EOF'
+on run argv
+  set targetFolderPath to item 1 of argv
+  tell application "Finder"
+    set targetFolder to POSIX file targetFolderPath as alias
+    set appAlias to make new alias file at targetFolder to POSIX file "/Applications"
+    set name of appAlias to "Applications"
+  end tell
+end run
 EOF
   then
     rm -f "${app_link_path}.symlink"
@@ -130,31 +133,43 @@ EOF
 fi
 
 if command -v osascript >/dev/null 2>&1; then
-  osascript <<EOF || echo "Warning: Finder layout customization skipped." >&2
-tell application "Finder"
-  tell disk "${VOLUME_NAME}"
-    open
-    tell container window
-      set current view to icon view
-      set toolbar visible to false
-      set statusbar visible to false
-      set bounds to {${DMG_WINDOW_BOUNDS}}
+  osascript - "${VOLUME_NAME}" "${DMG_WINDOW_BOUNDS}" "${DMG_ICON_SIZE}" "${app_name}" <<'EOF' \
+    || echo "Warning: Finder layout customization skipped." >&2
+on run argv
+  set volumeName to item 1 of argv
+  set windowBounds to item 2 of argv
+  set iconSize to (item 3 of argv) as integer
+  set appName to item 4 of argv
+  set oldDelimiters to AppleScript's text item delimiters
+  set AppleScript's text item delimiters to ","
+  set boundsList to text items of windowBounds
+  set AppleScript's text item delimiters to oldDelimiters
+
+  tell application "Finder"
+    tell disk volumeName
+      open
+      tell container window
+        set current view to icon view
+        set toolbar visible to false
+        set statusbar visible to false
+        set bounds to {item 1 of boundsList as integer, item 2 of boundsList as integer, item 3 of boundsList as integer, item 4 of boundsList as integer}
+      end tell
+      tell icon view options of container window
+        set arrangement to not arranged
+        set icon size to iconSize
+        if exists file ".background:background.png" then
+          set background picture to file ".background:background.png"
+        end if
+      end tell
+      set position of item appName to {160, 200}
+      set position of item "Applications" to {460, 200}
+      close
+      open
+      update without registering applications
+      delay 1
     end tell
-    tell icon view options of container window
-      set arrangement to not arranged
-      set icon size to ${DMG_ICON_SIZE}
-      if exists file ".background:background.png" then
-        set background picture to file ".background:background.png"
-      end if
-    end tell
-    set position of item "${app_name}" to {160, 200}
-    set position of item "Applications" to {460, 200}
-    close
-    open
-    update without registering applications
-    delay 1
   end tell
-end tell
+end run
 EOF
 fi
 
