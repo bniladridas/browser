@@ -6,6 +6,9 @@ DMG_PATH="${DMG_PATH:-build/macos/Build/Products/Release/browser.dmg}"
 VOLUME_NAME="${VOLUME_NAME:-Browser}"
 TMP_ROOT="${TMP_ROOT:-}"
 ALLOW_UNSIGNED="${ALLOW_UNSIGNED:-}"
+DMG_WINDOW_BOUNDS="${DMG_WINDOW_BOUNDS:-100,100,640,420}"
+DMG_ICON_SIZE="${DMG_ICON_SIZE:-128}"
+DMG_BACKGROUND_IMAGE="${DMG_BACKGROUND_IMAGE:-}"
 
 unsigned_release=false
 
@@ -68,8 +71,81 @@ fi
 
 cp -R "${APP_PATH}" "${dmg_root}/"
 ln -s /Applications "${dmg_root}/Applications"
+app_name="$(basename "${APP_PATH}")"
+app_name="${app_name%.app}"
+rw_dmg_path="${DMG_PATH%.dmg}-rw.dmg"
 
-hdiutil create -volname "${VOLUME_NAME}" -srcfolder "${dmg_root}" -ov -format UDZO "${DMG_PATH}"
+if [[ -n "${DMG_BACKGROUND_IMAGE}" && -f "${DMG_BACKGROUND_IMAGE}" ]]; then
+  mkdir -p "${dmg_root}/.background"
+  cp "${DMG_BACKGROUND_IMAGE}" "${dmg_root}/.background/background.png"
+fi
+
+# Include extra headroom for metadata, icon layout and optional background.
+size_mb="$(du -sm "${dmg_root}" | awk '{print $1}')"
+size_mb="$((size_mb + 200))"
+
+hdiutil create \
+  -volname "${VOLUME_NAME}" \
+  -srcfolder "${dmg_root}" \
+  -ov \
+  -fs HFS+ \
+  -format UDRW \
+  -size "${size_mb}m" \
+  "${rw_dmg_path}"
+
+attach_out="$(hdiutil attach -readwrite -noverify -noautoopen "${rw_dmg_path}")"
+device="$(echo "${attach_out}" | awk '/Apple_HFS/ {print $1; exit}')"
+mount_point="$(echo "${attach_out}" | awk '/Apple_HFS/ {print $NF; exit}')"
+
+if [[ -z "${device}" || -z "${mount_point}" ]]; then
+  echo "Failed to mount temporary DMG for customization." >&2
+  exit 1
+fi
+
+volume_icon_path="${APP_PATH}/Contents/Resources/AppIcon.icns"
+if [[ -f "${volume_icon_path}" ]]; then
+  cp "${volume_icon_path}" "${mount_point}/.VolumeIcon.icns"
+  if command -v SetFile >/dev/null 2>&1; then
+    SetFile -a C "${mount_point}" || true
+  fi
+fi
+
+if command -v osascript >/dev/null 2>&1; then
+  osascript <<EOF || echo "Warning: Finder layout customization skipped." >&2
+tell application "Finder"
+  tell disk "${VOLUME_NAME}"
+    open
+    tell container window
+      set current view to icon view
+      set toolbar visible to false
+      set statusbar visible to false
+      set bounds to {${DMG_WINDOW_BOUNDS}}
+    end tell
+    tell icon view options of container window
+      set arrangement to not arranged
+      set icon size to ${DMG_ICON_SIZE}
+      if exists file ".background:background.png" then
+        set background picture to file ".background:background.png"
+      end if
+    end tell
+    set position of item "${app_name}" to {160, 200}
+    set position of item "Applications" to {460, 200}
+    close
+    open
+    update without registering applications
+    delay 1
+  end tell
+end tell
+EOF
+fi
+
+hdiutil detach "${device}" -quiet || {
+  sleep 2
+  hdiutil detach "${device}" -force -quiet
+}
+
+hdiutil convert "${rw_dmg_path}" -ov -format UDZO -o "${DMG_PATH}"
+rm -f "${rw_dmg_path}"
 
 if [[ "${unsigned_release}" == "false" ]]; then
   echo "Signing DMG..."
