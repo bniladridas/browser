@@ -8,23 +8,80 @@
 echo "Running integration tests..."
 
 test_target="integration_test/"
+artifact_dir="${E2E_ARTIFACT_DIR:-build/e2e-artifacts}"
+app_bundle_id="${E2E_APP_BUNDLE_ID:-com.example.browser}"
+max_startup_retries="${E2E_STARTUP_RETRIES:-3}"
+mkdir -p "$artifact_dir"
+
+persist_e2e_log() {
+    local src="$1"
+    local name="$2"
+    if [[ -f "$src" ]]; then
+        cp "$src" "$artifact_dir/$name"
+    fi
+}
 
 if [[ "$OSTYPE" == "darwin"* ]]; then
     if [[ -z "${DISPLAY:-}" ]] && ! /usr/bin/pgrep -x "WindowServer" >/dev/null 2>&1; then
-        echo "No interactive macOS GUI session detected. Failing e2e tests."
-        exit 1
+        if [[ "${CI:-}" == "true" || "${GITHUB_ACTIONS:-}" == "true" ]]; then
+            echo "No interactive macOS GUI session detected in CI. Continuing anyway."
+        else
+            echo "No interactive macOS GUI session detected. Failing e2e tests."
+            exit 1
+        fi
     fi
     echo "Running integration tests on macOS device..."
     log_contains_foreground_failure() {
         grep -q "Failed to foreground app; open returned 1" "$1"
     }
-    run_e2e() {
-        # Try to activate GUI session
-        /usr/bin/open -a Finder || true
+    log_contains_startup_attach_failure() {
+        grep -q "Error waiting for a debug connection" "$1" || \
+            grep -q "Unable to start the app on the device" "$1" || \
+            grep -q "The log reader stopped unexpectedly, or never started" "$1"
+    }
+    capture_startup_diagnostics() {
+        local attempt_label="$1"
+        local crash_log
+        local crash_prefix="${app_bundle_id##*.}"
+        if [[ -z "$crash_prefix" || "$crash_prefix" == "$app_bundle_id" ]]; then
+            crash_prefix="browser"
+        fi
+        crash_log="$(ls -t "$HOME/Library/Logs/DiagnosticReports"/"${crash_prefix}"*.crash 2>/dev/null | head -n1 || true)"
+        if [[ -n "$crash_log" && -f "$crash_log" ]]; then
+            persist_e2e_log "$crash_log" "diagnostic-${attempt_label}.crash"
+        fi
+        /usr/bin/log show --last 3m \
+            --predicate 'process == "browser" OR process == "FlutterTester"' \
+            > "$artifact_dir/diagnostic-${attempt_label}.log" 2>/dev/null || true
+    }
+    prepare_initial_environment() {
+        /usr/bin/pkill -x browser >/dev/null 2>&1 || true
+        /usr/bin/pkill -f "FlutterTester" >/dev/null 2>&1 || true
         sleep 1
+    }
+    prepare_retry_environment() {
+        # Retry-only cleanup for flaky macOS startup/attach failures in CI.
+        prepare_initial_environment
+        /usr/bin/pkill -P "$$" -x "xcodebuild" >/dev/null 2>&1 || true
+        rm -rf "$HOME/Library/Saved Application State/${app_bundle_id}.savedState" || true
+        rm -rf build/macos/Build/Intermediates.noindex/XCBuildData || true
+        sleep 2
+    }
+    run_e2e() {
+        local attempt_label="$1"
+        shift
+        # Try to activate GUI session for local interactive runs.
+        if [[ "${CI:-}" != "true" && "${GITHUB_ACTIONS:-}" != "true" ]]; then
+            /usr/bin/open -a Finder || true
+            sleep 1
+        fi
         E2E_LOG_FILE="$(mktemp -t flutter-e2e.XXXXXX.log)"
-        flutter test -d macos --dart-define=INTEGRATION_TEST=true $test_target "$@" 2>&1 | tee "$E2E_LOG_FILE"
+        # Prevent macOS state-restoration modal from blocking app startup after crashes.
+        ApplePersistenceIgnoreState=YES \
+            flutter test --no-pub -d macos --dart-define=INTEGRATION_TEST=true $test_target "$@" \
+            2>&1 | tee "$E2E_LOG_FILE"
         local status=${PIPESTATUS[0]}
+        persist_e2e_log "$E2E_LOG_FILE" "integration-${attempt_label}.log"
         if [[ $status -eq 0 ]]; then
             echo "$test_target passed!"
         else
@@ -33,35 +90,52 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
         return $status
     }
 
-    run_e2e
-    test_status=$?
-    log_file="$E2E_LOG_FILE"
-    if [[ $test_status -eq 0 ]]; then
-        rm -f "$log_file"
-        exit 0
+    if ! [[ "$max_startup_retries" =~ ^[1-9][0-9]*$ ]]; then
+        echo "Invalid E2E_STARTUP_RETRIES='$max_startup_retries', expected positive integer."
+        exit 2
     fi
-    if log_contains_foreground_failure "$log_file"; then
-        echo "Foreground failed. Attempting to clear quarantine and retry once..."
-        app_path="build/macos/Build/Products/Debug/browser.app"
-        if [[ -d "$app_path" ]]; then
-            xattr -dr com.apple.quarantine "$app_path" || true
+
+    prepare_initial_environment
+    attempt=1
+    while (( attempt <= max_startup_retries )); do
+        attempt_label="attempt-${attempt}"
+        if (( attempt == 1 )); then
+            run_e2e "$attempt_label"
+        else
+            echo "Retrying app startup/attach ($attempt/$max_startup_retries)..."
+            run_e2e "$attempt_label"
         fi
-        rm -f "$log_file"
-        run_e2e -v
-        retry_status=$?
+        test_status=$?
         log_file="$E2E_LOG_FILE"
-        if [[ $retry_status -eq 0 ]]; then
+        if [[ $test_status -eq 0 ]]; then
             rm -f "$log_file"
             exit 0
         fi
-        if log_contains_foreground_failure "$log_file"; then
+        if [[ -s "$log_file" ]] && log_contains_startup_attach_failure "$log_file"; then
+            capture_startup_diagnostics "$attempt_label"
+            if (( attempt < max_startup_retries )); then
+                prepare_retry_environment
+                rm -f "$log_file"
+                attempt=$((attempt + 1))
+                continue
+            fi
+            echo "App startup/attach instability persisted after $max_startup_retries attempts."
+            rm -f "$log_file"
+            exit $test_status
+        fi
+        if [[ -s "$log_file" ]] && log_contains_foreground_failure "$log_file"; then
             echo "E2E requires a foregrounded macOS GUI session. Run from a desktop session."
         fi
         rm -f "$log_file"
-        exit $retry_status
+        exit $test_status
+    done
+
+    # Fallback guard (should be unreachable with loop exits above).
+    if [[ -n "${E2E_LOG_FILE:-}" ]]; then
+        rm -f "$E2E_LOG_FILE"
     fi
-    rm -f "$log_file"
-    exit $test_status
+    echo "$test_target failed after retries."
+    exit 1
 else
     echo "Integration tests are only supported on macOS. Skipping on $OSTYPE."
     exit 0

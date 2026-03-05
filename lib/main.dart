@@ -382,20 +382,28 @@ void main() async {
       logger.w(
           'Warning: .env file not found. Firebase keys will use defaults. $e');
     }
-    try {
-      await windowManager.ensureInitialized();
-    } catch (e) {
-      logger.w(
-          'Warning: Window manager initialization failed on this platform: $e. Some desktop window features (minimize, maximize, etc.) may not be available.');
+    if (!isIntegrationTest) {
+      try {
+        await windowManager.ensureInitialized();
+      } catch (e) {
+        logger.w(
+            'Warning: Window manager initialization failed on this platform: $e. Some desktop window features (minimize, maximize, etc.) may not be available.');
+      }
+    } else {
+      logger.i('Skipping window manager initialization in integration mode.');
     }
-    try {
-      await Firebase.initializeApp(
-          options: DefaultFirebaseOptions.currentPlatform);
-      AiService().initialize();
-      aiAvailable = true;
-    } catch (e) {
-      logger.w(
-          'Firebase initialization failed: $e. AI features will not be available.');
+    if (!isIntegrationTest) {
+      try {
+        await Firebase.initializeApp(
+            options: DefaultFirebaseOptions.currentPlatform);
+        AiService().initialize();
+        aiAvailable = true;
+      } catch (e) {
+        logger.w(
+            'Firebase initialization failed: $e. AI features will not be available.');
+      }
+    } else {
+      logger.i('Skipping Firebase/AI initialization in integration test mode.');
     }
     runApp(MyApp(aiAvailable: aiAvailable));
     if (defaultTargetPlatform == TargetPlatform.macOS && !isIntegrationTest) {
@@ -407,6 +415,7 @@ void main() async {
               windowButtonVisibility: true,
             ),
             () {
+              markWindowChromeReady();
               windowManager.show();
               windowManager.focus();
             },

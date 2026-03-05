@@ -25,5 +25,13 @@ const String whatsNewSeenVersionKey = 'whatsNewSeenVersion';
 
 const String defaultHomepageUrl = 'about:browser-home';
 
-const bool isIntegrationTest =
-    bool.fromEnvironment('INTEGRATION_TEST', defaultValue: false);
+bool get isIntegrationTest =>
+    const bool.fromEnvironment('INTEGRATION_TEST', defaultValue: false);
+
+bool _windowChromeReady = false;
+
+bool get isWindowChromeReady => _windowChromeReady;
+
+void markWindowChromeReady() {
+  _windowChromeReady = true;
+}
