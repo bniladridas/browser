@@ -70,8 +70,11 @@ jobs:
         run: flutter build macos
       - name: Run yamllint
         run: |
-          python3 -m pip install --user yamllint
-          python3 -m yamllint .github/workflows
+          python3 -m venv .venv-yamllint
+          source .venv-yamllint/bin/activate
+          python3 -m pip install --upgrade pip
+          python3 -m pip install yamllint
+          yamllint .github/workflows
       - name: Run E2E integration tests
         run: |
           chmod +x scripts/e2e.sh
