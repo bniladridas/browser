@@ -16,5 +16,10 @@
     "Highlights for this release.",
     "UI and stability improvements.",
     "Performance and quality fixes."
+  ],
+  "1.8.1": [
+    "Runtime integration hardening.",
+    "Integration-mode detection.",
+    "Favicon safety with DNS-aware private/local IP blocking."
   ]
 }
