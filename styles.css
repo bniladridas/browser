@@ -24,7 +24,7 @@ body {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transform: scale(-10.8);
+  transform: scale(1.0);
   transform-origin: center;
   z-index: -1;
   pointer-events: none;
