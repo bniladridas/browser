@@ -55,6 +55,19 @@
       document.querySelector('.sidebar-toggle').textContent =
         document.body.classList.contains('sidebar-hidden') ? '☰' : '✕';
     }
+
+    (function () {
+      const bgVideo = document.querySelector('.page-bg-video');
+      if (!bgVideo) return;
+      let hidden = false;
+      const hide = () => {
+        if (hidden) return;
+        hidden = true;
+        bgVideo.classList.add('video-hidden');
+        setTimeout(() => bgVideo.pause(), 600);
+      };
+      bgVideo.addEventListener('playing', () => setTimeout(hide, 3000), { once: true });
+    })();
   </script>
 </body>
 </html>
