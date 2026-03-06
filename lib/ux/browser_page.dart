@@ -27,6 +27,7 @@ import '../constants.dart';
 import '../features/theme_color_parser.dart';
 import '../features/theme_utils.dart';
 import '../features/bookmark_manager.dart';
+import '../features/firebase_config_store.dart';
 import '../features/password_prompt.dart';
 import '../features/password_storage.dart';
 import 'clickable_icon.dart';
@@ -362,6 +363,7 @@ class SettingsDialog extends HookWidget {
     final firebaseProjectId = useTextEditingController();
     final firebaseStorageBucket = useTextEditingController();
     final showFirebaseConfig = useState(false);
+    final loadedFirebaseConfig = useRef<Map<String, String>>(<String, String>{});
 
     useEffect(() {
       Future<void> loadPreferences() async {
@@ -392,12 +394,20 @@ class SettingsDialog extends HookWidget {
               orElse: () => currentTheme ?? AppThemeMode.system);
         }
 
-        firebaseApiKey.text = prefs.getString(firebaseApiKeyPref) ?? '';
-        firebaseAppId.text = prefs.getString(firebaseAppIdPref) ?? '';
-        firebaseSenderId.text = prefs.getString(firebaseSenderIdPref) ?? '';
-        firebaseProjectId.text = prefs.getString(firebaseProjectIdPref) ?? '';
+        final firebaseConfig = await FirebaseConfigStore.loadSettingsConfig();
+        firebaseApiKey.text = firebaseConfig[firebaseApiKeyPref] ?? '';
+        firebaseAppId.text = firebaseConfig[firebaseAppIdPref] ?? '';
+        firebaseSenderId.text = firebaseConfig[firebaseSenderIdPref] ?? '';
+        firebaseProjectId.text = firebaseConfig[firebaseProjectIdPref] ?? '';
         firebaseStorageBucket.text =
-            prefs.getString(firebaseStorageBucketPref) ?? '';
+            firebaseConfig[firebaseStorageBucketPref] ?? '';
+        loadedFirebaseConfig.value = <String, String>{
+          firebaseApiKeyPref: firebaseApiKey.text,
+          firebaseAppIdPref: firebaseAppId.text,
+          firebaseSenderIdPref: firebaseSenderId.text,
+          firebaseProjectIdPref: firebaseProjectId.text,
+          firebaseStorageBucketPref: firebaseStorageBucket.text,
+        };
 
         // Mark dialog ready only after all settings are loaded.
         homepage.value = resolvedHomepage;
@@ -809,13 +819,17 @@ class SettingsDialog extends HookWidget {
             }
             final prefs = await SharedPreferences.getInstance();
 
-            // Check if Firebase config changed
-            final oldApiKey = prefs.getString(firebaseApiKeyPref) ?? '';
-            final oldAppId = prefs.getString(firebaseAppIdPref) ?? '';
-            final oldSenderId = prefs.getString(firebaseSenderIdPref) ?? '';
-            final oldProjectId = prefs.getString(firebaseProjectIdPref) ?? '';
+            // Check if Firebase config changed from loaded values.
+            final oldApiKey =
+                loadedFirebaseConfig.value[firebaseApiKeyPref] ?? '';
+            final oldAppId =
+                loadedFirebaseConfig.value[firebaseAppIdPref] ?? '';
+            final oldSenderId =
+                loadedFirebaseConfig.value[firebaseSenderIdPref] ?? '';
+            final oldProjectId =
+                loadedFirebaseConfig.value[firebaseProjectIdPref] ?? '';
             final oldStorageBucket =
-                prefs.getString(firebaseStorageBucketPref) ?? '';
+                loadedFirebaseConfig.value[firebaseStorageBucketPref] ?? '';
 
             final newApiKey = firebaseApiKey.text.trim();
             final newAppId = firebaseAppId.text.trim();
@@ -846,11 +860,17 @@ class SettingsDialog extends HookWidget {
                 advancedCacheEnabledKey, advancedCacheEnabled.value);
             await prefs.setString(themeModeKey, selectedTheme.value.name);
 
-            await prefs.setString(firebaseApiKeyPref, newApiKey);
-            await prefs.setString(firebaseAppIdPref, newAppId);
-            await prefs.setString(firebaseSenderIdPref, newSenderId);
-            await prefs.setString(firebaseProjectIdPref, newProjectId);
-            await prefs.setString(firebaseStorageBucketPref, newStorageBucket);
+            try {
+              await FirebaseConfigStore.saveSettingsConfig(
+                apiKey: newApiKey,
+                appId: newAppId,
+                senderId: newSenderId,
+                projectId: newProjectId,
+                storageBucket: newStorageBucket,
+              );
+            } catch (_) {
+              // Keep settings save flow resilient even when secure storage fails.
+            }
 
             onSettingsChanged?.call();
             if (privateBrowsing.value &&

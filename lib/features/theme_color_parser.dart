@@ -177,8 +177,10 @@ Color? _parseThemeHexColor(String value) {
     // CSS uses #RRGGBBAA, not ARGB.
     final rgba = int.tryParse(hex, radix: 16);
     if (rgba == null) return null;
+    final alpha = rgba & 0xFF;
+    if (alpha == 0) return null;
     return Color.fromARGB(
-      rgba & 0xFF,
+      alpha,
       (rgba >> 24) & 0xFF,
       (rgba >> 16) & 0xFF,
       (rgba >> 8) & 0xFF,

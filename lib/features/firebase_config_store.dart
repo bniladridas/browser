@@ -148,8 +148,13 @@ class FirebaseConfigStore {
 
     try {
       await _writeSecureValues(values);
-      final prefs = await SharedPreferences.getInstance();
-      await _removeLegacyPrefsKeys(prefs);
+      // Secure write succeeded. Best-effort cleanup for legacy prefs.
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await _removeLegacyPrefsKeys(prefs);
+      } catch (_) {
+        // Ignore cleanup errors to avoid downgrading back to plain prefs.
+      }
       return;
     } catch (_) {
       // Fallback for environments where secure storage is unavailable.

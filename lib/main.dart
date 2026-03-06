@@ -329,6 +329,10 @@ class _MyAppState extends State<MyApp> {
         outline: onBase.withValues(alpha: 0.18),
       );
     }
+    final hoverOnlyTransparentOverlay =
+        WidgetStateProperty.resolveWith<Color?>((states) {
+      return states.contains(WidgetState.hovered) ? Colors.transparent : null;
+    });
     return ThemeData(
       colorScheme: scheme,
       useMaterial3: true,
@@ -341,21 +345,18 @@ class _MyAppState extends State<MyApp> {
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           foregroundColor: scheme.onSurface,
-          overlayColor: Colors.transparent,
-        ),
+        ).copyWith(overlayColor: hoverOnlyTransparentOverlay),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
-        style: ElevatedButton.styleFrom(
-          overlayColor: Colors.transparent,
-        ),
+        style: ElevatedButton.styleFrom()
+            .copyWith(overlayColor: hoverOnlyTransparentOverlay),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
-        style: OutlinedButton.styleFrom(
-          overlayColor: Colors.transparent,
-        ),
+        style: OutlinedButton.styleFrom()
+            .copyWith(overlayColor: hoverOnlyTransparentOverlay),
       ),
       switchTheme: SwitchThemeData(
-        overlayColor: WidgetStateProperty.all(Colors.transparent),
+        overlayColor: hoverOnlyTransparentOverlay,
       ),
       chipTheme: ChipThemeData(
         backgroundColor: scheme.surfaceContainerHighest,
@@ -365,9 +366,8 @@ class _MyAppState extends State<MyApp> {
         pressElevation: 0,
       ),
       iconButtonTheme: IconButtonThemeData(
-        style: IconButton.styleFrom(
-          overlayColor: Colors.transparent,
-        ),
+        style: IconButton.styleFrom()
+            .copyWith(overlayColor: hoverOnlyTransparentOverlay),
       ),
     );
   }

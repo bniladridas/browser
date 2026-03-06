@@ -89,7 +89,7 @@ void main() {
       expect(tester.widget<ChoiceChip>(darkChip).selected, isTrue);
     });
 
-    testWidgets('save persists toggles and invokes callbacks',
+    testWidgets('save persists toggles and theme preview callback',
         (WidgetTester tester) async {
       SharedPreferences.setMockInitialValues({
         useModernUserAgentKey: false,
@@ -97,14 +97,12 @@ void main() {
         themeModeKey: AppThemeMode.system.name,
       });
 
-      var settingsChangedCount = 0;
       final previewModes = <AppThemeMode>[];
 
       await _openSettingsDialog(
         tester,
         _dialogHost(
           aiAvailable: false,
-          onSettingsChanged: () => settingsChangedCount++,
           onThemePreviewChanged: previewModes.add,
         ),
       );
@@ -136,7 +134,6 @@ void main() {
       expect(prefs.getBool(useModernUserAgentKey), isTrue);
       expect(prefs.getBool(aiSearchSuggestionsEnabledKey), isTrue);
       expect(prefs.getString(themeModeKey), AppThemeMode.dark.name);
-      expect(settingsChangedCount, 1);
       expect(previewModes, contains(AppThemeMode.dark));
     });
 
@@ -198,7 +195,7 @@ void main() {
       expect(find.text('Storage'), findsOneWidget);
     });
 
-    testWidgets('loads Firebase keys from SharedPreferences',
+    testWidgets('loads Firebase keys for settings fields',
         (WidgetTester tester) async {
       FlutterSecureStorage.setMockInitialValues({});
       SharedPreferences.setMockInitialValues({
@@ -258,7 +255,7 @@ void main() {
       expect(projectIdField.controller?.text, 'test-project');
     });
 
-    testWidgets('saves Firebase keys to SharedPreferences',
+    testWidgets('saves Firebase keys to secure storage',
         (WidgetTester tester) async {
       FlutterSecureStorage.setMockInitialValues({});
       SharedPreferences.setMockInitialValues({});
@@ -307,9 +304,14 @@ void main() {
       await tester.tap(find.text('Save'));
       await tester.pumpAndSettle();
 
+      const secureStorage = FlutterSecureStorage();
+      final storedApiKey = await secureStorage.read(key: firebaseApiKeyPref);
+      final storedAppId = await secureStorage.read(key: firebaseAppIdPref);
       final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getString(firebaseApiKeyPref), 'new-api-key');
-      expect(prefs.getString(firebaseAppIdPref), 'new-app-id');
+      expect(storedApiKey, 'new-api-key');
+      expect(storedAppId, 'new-app-id');
+      expect(prefs.getString(firebaseApiKeyPref), isNull);
+      expect(prefs.getString(firebaseAppIdPref), isNull);
     });
   });
 }

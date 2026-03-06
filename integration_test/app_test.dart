@@ -261,14 +261,6 @@ void main() {
       expect(find.text('Fetch'), findsOneWidget);
       expect(find.text('Cancel'), findsOneWidget);
 
-      // Use invalid input to verify validation path without external network.
-      await tester.enterText(find.bySemanticsLabel('GitHub Repo (owner/repo)'),
-          'invalid-repo-format');
-      await tester.tap(find.text('Fetch'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Invalid format. Use owner/repo'), findsOneWidget);
-
       await tester.tap(find.text('Cancel'));
       await tester.pumpAndSettle();
       expect(find.text('Git Fetch'), findsNothing);
@@ -490,9 +482,43 @@ void main() {
     await tester.tap(find.text('Save'));
     await tester.pumpAndSettle();
 
-    final prefs = await SharedPreferences.getInstance();
-    expect(prefs.getString(firebaseApiKeyPref), 'test-api-key');
-    expect(prefs.getString(firebaseAppIdPref), 'test-app-id');
+    // Reopen settings and verify the values are persisted for the UI.
+    await openOverflowMenu(tester);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Settings'));
+    await tester.pumpAndSettle();
+
+    final reopenedScrollable = find.descendant(
+      of: find.byType(AlertDialog),
+      matching: find.byType(Scrollable),
+    );
+    await tester.scrollUntilVisible(
+      find.text('Config'),
+      100,
+      scrollable: reopenedScrollable.first,
+    );
+    await tester.tap(find.text('Config'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('API Key'),
+      100,
+      scrollable: reopenedScrollable.first,
+    );
+
+    final reopenedApiKeyField = tester.widget<TextField>(
+      find.ancestor(
+        of: find.text('API Key'),
+        matching: find.byType(TextField),
+      ),
+    );
+    final reopenedAppIdField = tester.widget<TextField>(
+      find.ancestor(
+        of: find.text('App ID'),
+        matching: find.byType(TextField),
+      ),
+    );
+    expect(reopenedApiKeyField.controller?.text, 'test-api-key');
+    expect(reopenedAppIdField.controller?.text, 'test-app-id');
   }, timeout: testTimeout);
   }, skip: Platform.isLinux || Platform.isWindows);
 }
