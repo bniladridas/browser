@@ -173,20 +173,36 @@ void main() {
         _dialogHost(aiAvailable: false),
       );
 
-      expect(find.text('Firebase Configuration'), findsOneWidget);
-      expect(find.widgetWithText(TextField, 'API Key'), findsOneWidget);
-      expect(find.widgetWithText(TextField, 'App ID'), findsOneWidget);
-      expect(find.widgetWithText(TextField, 'Messaging Sender ID'), findsOneWidget);
-      expect(find.widgetWithText(TextField, 'Project ID'), findsOneWidget);
-      expect(find.widgetWithText(TextField, 'Storage Bucket'), findsOneWidget);
+      // Scroll to Firebase section
+      final settingsScrollable = find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.byType(Scrollable),
+      );
+      await tester.scrollUntilVisible(
+        find.text('Config'),
+        100,
+        scrollable: settingsScrollable.first,
+      );
+
+      expect(find.text('Config'), findsOneWidget);
+
+      // Expand Firebase config
+      await tester.tap(find.text('Config'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('API Key'), findsOneWidget);
+      expect(find.text('App ID'), findsOneWidget);
+      expect(find.text('Sender ID'), findsOneWidget);
+      expect(find.text('Project ID'), findsOneWidget);
+      expect(find.text('Storage'), findsOneWidget);
     });
 
     testWidgets('loads Firebase keys from SharedPreferences',
         (WidgetTester tester) async {
       SharedPreferences.setMockInitialValues({
-        'firebase_FIREBASE_API_KEY': 'test-api-key',
-        'firebase_FIREBASE_APP_ID': 'test-app-id',
-        'firebase_FIREBASE_PROJECT_ID': 'test-project',
+        firebaseApiKeyPref: 'test-api-key',
+        firebaseAppIdPref: 'test-app-id',
+        firebaseProjectIdPref: 'test-project',
       });
 
       await _openSettingsDialog(
@@ -194,14 +210,45 @@ void main() {
         _dialogHost(aiAvailable: false),
       );
 
+      // Scroll to Firebase section
+      final settingsScrollable = find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.byType(Scrollable),
+      );
+      await tester.scrollUntilVisible(
+        find.text('Config'),
+        100,
+        scrollable: settingsScrollable.first,
+      );
+
+      // Expand Firebase config
+      await tester.tap(find.text('Config'));
+      await tester.pumpAndSettle();
+
+      // Scroll to fields
+      await tester.scrollUntilVisible(
+        find.text('API Key'),
+        100,
+        scrollable: settingsScrollable.first,
+      );
+
       final apiKeyField = tester.widget<TextField>(
-        find.widgetWithText(TextField, 'API Key'),
+        find.ancestor(
+          of: find.text('API Key'),
+          matching: find.byType(TextField),
+        ),
       );
       final appIdField = tester.widget<TextField>(
-        find.widgetWithText(TextField, 'App ID'),
+        find.ancestor(
+          of: find.text('App ID'),
+          matching: find.byType(TextField),
+        ),
       );
       final projectIdField = tester.widget<TextField>(
-        find.widgetWithText(TextField, 'Project ID'),
+        find.ancestor(
+          of: find.text('Project ID'),
+          matching: find.byType(TextField),
+        ),
       );
 
       expect(apiKeyField.controller?.text, 'test-api-key');
@@ -218,22 +265,48 @@ void main() {
         _dialogHost(aiAvailable: false),
       );
 
-      await tester.enterText(
-        find.widgetWithText(TextField, 'API Key'),
-        'new-api-key',
+      // Scroll to Firebase section
+      final settingsScrollable = find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.byType(Scrollable),
       );
-      await tester.enterText(
-        find.widgetWithText(TextField, 'App ID'),
-        'new-app-id',
+      await tester.scrollUntilVisible(
+        find.text('Config'),
+        100,
+        scrollable: settingsScrollable.first,
       );
+
+      // Expand Firebase config
+      await tester.tap(find.text('Config'));
+      await tester.pumpAndSettle();
+
+      // Scroll to fields
+      await tester.scrollUntilVisible(
+        find.text('API Key'),
+        100,
+        scrollable: settingsScrollable.first,
+      );
+
+      final apiKeyField = find.ancestor(
+        of: find.text('API Key'),
+        matching: find.byType(TextField),
+      );
+      final appIdField = find.ancestor(
+        of: find.text('App ID'),
+        matching: find.byType(TextField),
+      );
+
+      await tester.enterText(apiKeyField, 'new-api-key');
+      await tester.pumpAndSettle();
+      await tester.enterText(appIdField, 'new-app-id');
       await tester.pumpAndSettle();
 
       await tester.tap(find.text('Save'));
       await tester.pumpAndSettle();
 
       final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getString('firebase_FIREBASE_API_KEY'), 'new-api-key');
-      expect(prefs.getString('firebase_FIREBASE_APP_ID'), 'new-app-id');
+      expect(prefs.getString(firebaseApiKeyPref), 'new-api-key');
+      expect(prefs.getString(firebaseAppIdPref), 'new-app-id');
     });
   });
 }

@@ -4,6 +4,7 @@
 // Use of this source code is governed by a MIT license that can be
 // found in the LICENSE file.
 
+import 'package:browser/constants.dart';
 import 'package:browser/firebase_options.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -26,12 +27,20 @@ void main() {
   group('Firebase Options Configuration', () {
     test('getConfig loads from SharedPreferences first', () async {
       SharedPreferences.setMockInitialValues({
-        'firebase_FIREBASE_API_KEY': 'prefs-api-key',
+        firebaseApiKeyPref: 'prefs-api-key',
+        firebaseAppIdPref: 'prefs-app-id',
+        firebaseSenderIdPref: 'prefs-sender-id',
+        firebaseProjectIdPref: 'prefs-project-id',
+        firebaseStorageBucketPref: 'prefs-storage-bucket',
       });
 
       dotenv.env['FIREBASE_API_KEY'] = 'env-api-key';
+      dotenv.env['FIREBASE_APP_ID'] = 'env-app-id';
+      dotenv.env['FIREBASE_MESSAGING_SENDER_ID'] = 'env-sender-id';
+      dotenv.env['FIREBASE_PROJECT_ID'] = 'env-project-id';
+      dotenv.env['FIREBASE_STORAGE_BUCKET'] = 'env-storage-bucket';
 
-      final result = await getConfig('FIREBASE_API_KEY');
+      final result = await getConfig('FIREBASE_API_KEY', firebaseApiKeyPref);
       expect(result, 'prefs-api-key');
     });
 
@@ -39,8 +48,12 @@ void main() {
       SharedPreferences.setMockInitialValues({});
 
       dotenv.env['FIREBASE_API_KEY'] = 'env-api-key';
+      dotenv.env['FIREBASE_APP_ID'] = 'env-app-id';
+      dotenv.env['FIREBASE_MESSAGING_SENDER_ID'] = 'env-sender-id';
+      dotenv.env['FIREBASE_PROJECT_ID'] = 'env-project-id';
+      dotenv.env['FIREBASE_STORAGE_BUCKET'] = 'env-storage-bucket';
 
-      final result = await getConfig('FIREBASE_API_KEY');
+      final result = await getConfig('FIREBASE_API_KEY', firebaseApiKeyPref);
       expect(result, 'env-api-key');
     });
 
@@ -48,35 +61,42 @@ void main() {
       SharedPreferences.setMockInitialValues({});
 
       dotenv.env.remove('FIREBASE_API_KEY');
+      dotenv.env.remove('FIREBASE_APP_ID');
+      dotenv.env.remove('FIREBASE_MESSAGING_SENDER_ID');
+      dotenv.env.remove('FIREBASE_PROJECT_ID');
+      dotenv.env.remove('FIREBASE_STORAGE_BUCKET');
 
       expect(
-        () async => await getConfig('FIREBASE_API_KEY'),
+        () async => await getConfig('FIREBASE_API_KEY', firebaseApiKeyPref),
         throwsA(isA<ArgumentError>()),
       );
     });
 
-    test('getConfig throws error when both are empty strings', () async {
+    test('getConfig ignores incomplete SharedPreferences overrides', () async {
       SharedPreferences.setMockInitialValues({
-        'firebase_FIREBASE_API_KEY': '',
+        firebaseApiKeyPref: 'prefs-api-key',
+        // Missing other fields - should fall back to .env
       });
 
-      dotenv.env['FIREBASE_API_KEY'] = '';
+      dotenv.env['FIREBASE_API_KEY'] = 'env-api-key';
+      dotenv.env['FIREBASE_APP_ID'] = 'env-app-id';
+      dotenv.env['FIREBASE_MESSAGING_SENDER_ID'] = 'env-sender-id';
+      dotenv.env['FIREBASE_PROJECT_ID'] = 'env-project-id';
+      dotenv.env['FIREBASE_STORAGE_BUCKET'] = 'env-storage-bucket';
 
-      expect(
-        () async => await getConfig('FIREBASE_API_KEY'),
-        throwsA(isA<ArgumentError>()),
-      );
+      final result = await getConfig('FIREBASE_API_KEY', firebaseApiKeyPref);
+      expect(result, 'env-api-key'); // Should use .env, not incomplete prefs
     });
 
     test('SharedPreferences stores Firebase keys correctly', () async {
       SharedPreferences.setMockInitialValues({});
 
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('firebase_FIREBASE_API_KEY', 'test-key');
-      await prefs.setString('firebase_FIREBASE_APP_ID', 'test-app');
+      await prefs.setString(firebaseApiKeyPref, 'test-key');
+      await prefs.setString(firebaseAppIdPref, 'test-app');
 
-      expect(prefs.getString('firebase_FIREBASE_API_KEY'), 'test-key');
-      expect(prefs.getString('firebase_FIREBASE_APP_ID'), 'test-app');
+      expect(prefs.getString(firebaseApiKeyPref), 'test-key');
+      expect(prefs.getString(firebaseAppIdPref), 'test-app');
     });
   });
 }
