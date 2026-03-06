@@ -341,6 +341,32 @@ class _MyAppState extends State<MyApp> {
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           foregroundColor: scheme.onSurface,
+          overlayColor: Colors.transparent,
+        ),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          overlayColor: Colors.transparent,
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          overlayColor: Colors.transparent,
+        ),
+      ),
+      switchTheme: SwitchThemeData(
+        overlayColor: WidgetStateProperty.all(Colors.transparent),
+      ),
+      chipTheme: ChipThemeData(
+        backgroundColor: scheme.surfaceContainerHighest,
+        selectedColor: scheme.primaryContainer,
+        disabledColor: scheme.surfaceContainerHighest,
+        side: BorderSide.none,
+        pressElevation: 0,
+      ),
+      iconButtonTheme: IconButtonThemeData(
+        style: IconButton.styleFrom(
+          overlayColor: Colors.transparent,
         ),
       ),
     );
