@@ -1538,20 +1538,26 @@ class _BrowserPageState extends State<BrowserPage>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || _urlAutocompleteOpen == open) return;
       setState(() => _urlAutocompleteOpen = open);
-      _syncPagePointerEvents(activeTab);
+      _syncPointerEventsForAllTabs();
     });
   }
 
   void _setModalInteractionBlockOpen(bool open) {
     if (_modalInteractionBlockOpen == open) return;
     _modalInteractionBlockOpen = open;
-    _syncPagePointerEvents(activeTab);
+    _syncPointerEventsForAllTabs();
   }
 
   void _setOverflowMenuOpen(bool open) {
     if (_overflowMenuOpen == open) return;
     _overflowMenuOpen = open;
-    _syncPagePointerEvents(activeTab);
+    _syncPointerEventsForAllTabs();
+  }
+
+  void _syncPointerEventsForAllTabs() {
+    for (final tab in tabs) {
+      _syncPagePointerEvents(tab);
+    }
   }
 
   Future<T?> _showWithModalInteractionBlock<T>(
@@ -1871,6 +1877,7 @@ class _BrowserPageState extends State<BrowserPage>
 
   void _onTabChanged() {
     previousTabIndex = tabController.index;
+    _syncPointerEventsForAllTabs();
     _applyThemeForTab(tabs[tabController.index]);
     if (mounted) {
       setState(() {});
@@ -2972,7 +2979,6 @@ class _BrowserPageState extends State<BrowserPage>
             if (activeTab.currentUrl != widget.initialUrl) {
               activeTab.forwardUrl = activeTab.currentUrl;
             }
-            activeTab.hideStaleWebViewUntilPageFinish = true;
             activeTab.currentUrl = widget.initialUrl;
             final homeDisplayUrl = _displayUrl(widget.initialUrl);
             activeTab.urlController.value = TextEditingValue(
@@ -3226,6 +3232,9 @@ class _BrowserPageState extends State<BrowserPage>
 
   Future<void> _showFontPicker() async {
     const customOptionValue = '__custom__';
+    final noHoverOverlay = WidgetStateProperty.resolveWith<Color?>((states) {
+      return states.contains(WidgetState.hovered) ? Colors.transparent : null;
+    });
     final currentHost = _hostFromUrl(activeTab.currentUrl);
     final hasSiteRule =
         currentHost != null && _siteFontFamilies.containsKey(currentHost);
@@ -3240,146 +3249,174 @@ class _BrowserPageState extends State<BrowserPage>
       text: hasPreset ? '' : initialFont,
     );
 
-    _setModalInteractionBlockOpen(true);
-    final result = await showGeneralDialog<_FontPickerResult>(
-      context: context,
-      barrierDismissible: false,
-      barrierLabel: 'Page Font',
-      barrierColor: Colors.transparent,
-      pageBuilder: (context, _, __) => Material(
-        type: MaterialType.transparency,
-        child: Stack(
-          children: [
-            const InteractionBlocker(),
-            Align(
-              alignment: Alignment.center,
-              child: StatefulBuilder(
-                builder: (context, setStateDialog) => AlertDialog(
-                  title: const Text('Page Font'),
-                  content: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (currentHost != null) ...[
-                        SizedBox(
-                          width: double.infinity,
-                          child: SegmentedButton<bool>(
-                            segments: [
-                              const ButtonSegment<bool>(
-                                value: false,
-                                label: Text('Global'),
-                              ),
-                              ButtonSegment<bool>(
-                                value: true,
-                                label: Text(currentHost),
-                              ),
-                            ],
-                            selected: {applyToCurrentSite},
-                            onSelectionChanged: (selection) {
-                              setStateDialog(() {
-                                applyToCurrentSite = selection.first;
-                              });
-                            },
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                      ],
-                      SizedBox(
-                        width: double.infinity,
-                        child: ConstrainedBox(
-                          constraints: const BoxConstraints(maxHeight: 220),
-                          child: SingleChildScrollView(
-                            child: Column(
-                              children: [
-                                ..._pageFontChoices.map(
-                                  (choice) => ListTile(
-                                    dense: true,
-                                    visualDensity: const VisualDensity(
-                                        horizontal: -2, vertical: -2),
-                                    hoverColor: Colors.transparent,
-                                    title: Text(choice.label),
-                                    trailing: selectedValue == choice.cssFamily
-                                        ? const Icon(Icons.check, size: 18)
-                                        : null,
-                                    onTap: () {
-                                      setStateDialog(() {
-                                        selectedValue = choice.cssFamily;
-                                      });
-                                    },
-                                  ),
-                                ),
-                                ListTile(
-                                  dense: true,
-                                  visualDensity: const VisualDensity(
-                                      horizontal: -2, vertical: -2),
-                                  hoverColor: Colors.transparent,
-                                  title: const Text('Custom CSS Font Family'),
-                                  trailing: selectedValue == customOptionValue
-                                      ? const Icon(Icons.check, size: 18)
-                                      : null,
-                                  onTap: () {
+    final result = await _showWithModalInteractionBlock<_FontPickerResult>(
+      () => showGeneralDialog<_FontPickerResult>(
+        context: context,
+        barrierDismissible: false,
+        barrierLabel: 'Page Font',
+        barrierColor: Colors.transparent,
+        pageBuilder: (context, _, __) {
+          final dialogTheme = Theme.of(context).copyWith(
+            splashFactory: NoSplash.splashFactory,
+            highlightColor: Colors.transparent,
+          );
+          return Material(
+            type: MaterialType.transparency,
+            child: Stack(
+              children: [
+                const InteractionBlocker(),
+                Align(
+                  alignment: Alignment.center,
+                  child: Theme(
+                    data: dialogTheme,
+                    child: StatefulBuilder(
+                      builder: (context, setStateDialog) => AlertDialog(
+                        title: const Text('Page Font'),
+                        content: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (currentHost != null) ...[
+                              SizedBox(
+                                width: double.infinity,
+                                child: SegmentedButton<bool>(
+                                  segments: [
+                                    const ButtonSegment<bool>(
+                                      value: false,
+                                      label: Text('Global'),
+                                    ),
+                                    ButtonSegment<bool>(
+                                      value: true,
+                                      label: Text(currentHost),
+                                    ),
+                                  ],
+                                  selected: {applyToCurrentSite},
+                                  style: ButtonStyle(
+                                      overlayColor: noHoverOverlay),
+                                  onSelectionChanged: (selection) {
                                     setStateDialog(() {
-                                      selectedValue = customOptionValue;
+                                      applyToCurrentSite = selection.first;
                                     });
                                   },
                                 ),
-                              ],
+                              ),
+                              const SizedBox(height: 8),
+                            ],
+                            SizedBox(
+                              width: double.infinity,
+                              child: ConstrainedBox(
+                                constraints: const BoxConstraints(maxHeight: 220),
+                                child: SingleChildScrollView(
+                                  child: Column(
+                                    children: [
+                                      ..._pageFontChoices.map(
+                                        (choice) => ListTile(
+                                          dense: true,
+                                          visualDensity: const VisualDensity(
+                                              horizontal: -2,
+                                              vertical: -2),
+                                          hoverColor: Colors.transparent,
+                                          title: Text(choice.label),
+                                          trailing: selectedValue ==
+                                                  choice.cssFamily
+                                              ? const Icon(Icons.check,
+                                                  size: 18)
+                                              : null,
+                                          onTap: () {
+                                            setStateDialog(() {
+                                              selectedValue = choice.cssFamily;
+                                            });
+                                          },
+                                        ),
+                                      ),
+                                      ListTile(
+                                        dense: true,
+                                        visualDensity: const VisualDensity(
+                                            horizontal: -2, vertical: -2),
+                                        hoverColor: Colors.transparent,
+                                        title:
+                                            const Text('Custom CSS Font Family'),
+                                        trailing:
+                                            selectedValue == customOptionValue
+                                                ? const Icon(Icons.check,
+                                                    size: 18)
+                                                : null,
+                                        onTap: () {
+                                          setStateDialog(() {
+                                            selectedValue = customOptionValue;
+                                          });
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
                             ),
-                          ),
+                            if (selectedValue == customOptionValue) ...[
+                              const SizedBox(height: 12),
+                              TextField(
+                                controller: customFontController,
+                                decoration: const InputDecoration(
+                                  labelText: 'Custom font-family value',
+                                  hintText:
+                                      'e.g. "Fira Sans", Arial, sans-serif',
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
+                        actions: [
+                          TextButton(
+                            style:
+                                ButtonStyle(overlayColor: noHoverOverlay),
+                            onPressed: () => Navigator.of(context).pop(),
+                            child: const Text('Cancel'),
+                          ),
+                          if (currentHost != null &&
+                              hasSiteRule &&
+                              applyToCurrentSite)
+                            TextButton(
+                              style:
+                                  ButtonStyle(overlayColor: noHoverOverlay),
+                              onPressed: () {
+                                Navigator.of(context).pop(
+                                  const _FontPickerResult(
+                                    fontFamily: '',
+                                    applyToCurrentSite: true,
+                                    clearCurrentSiteRule: true,
+                                  ),
+                                );
+                              },
+                              child: const Text('Clear Site Rule'),
+                            ),
+                          TextButton(
+                            style:
+                                ButtonStyle(overlayColor: noHoverOverlay),
+                            onPressed: () {
+                              final chosenFont =
+                                  selectedValue == customOptionValue
+                                      ? customFontController.text.trim()
+                                      : selectedValue;
+                              Navigator.of(context).pop(
+                                _FontPickerResult(
+                                  fontFamily: chosenFont,
+                                  applyToCurrentSite: currentHost != null &&
+                                      applyToCurrentSite,
+                                ),
+                              );
+                            },
+                            child: const Text('Apply'),
+                          ),
+                        ],
                       ),
-                      if (selectedValue == customOptionValue) ...[
-                        const SizedBox(height: 12),
-                        TextField(
-                          controller: customFontController,
-                          decoration: const InputDecoration(
-                            labelText: 'Custom font-family value',
-                            hintText: 'e.g. "Fira Sans", Arial, sans-serif',
-                          ),
-                        ),
-                      ],
-                    ],
+                    ),
                   ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      child: const Text('Cancel'),
-                    ),
-                    if (currentHost != null && hasSiteRule && applyToCurrentSite)
-                      TextButton(
-                        onPressed: () {
-                          Navigator.of(context).pop(
-                            const _FontPickerResult(
-                              fontFamily: '',
-                              applyToCurrentSite: true,
-                              clearCurrentSiteRule: true,
-                            ),
-                          );
-                        },
-                        child: const Text('Clear Site Rule'),
-                      ),
-                    TextButton(
-                      onPressed: () {
-                        final chosenFont = selectedValue == customOptionValue
-                            ? customFontController.text.trim()
-                            : selectedValue;
-                        Navigator.of(context).pop(
-                          _FontPickerResult(
-                            fontFamily: chosenFont,
-                            applyToCurrentSite:
-                                currentHost != null && applyToCurrentSite,
-                          ),
-                        );
-                      },
-                      child: const Text('Apply'),
-                    ),
-                  ],
                 ),
-              ),
+              ],
             ),
-          ],
-        ),
+          );
+        },
       ),
-    ).whenComplete(() => _setModalInteractionBlockOpen(false));
+    );
 
     customFontController.dispose();
 
@@ -4091,7 +4128,6 @@ class _BrowserPageState extends State<BrowserPage>
             activeTab.urlController.text = _displayUrl(url);
             activeTab.faviconUrl = _defaultFaviconUrlFor(url);
             activeTab.webViewController = null;
-            activeTab.hideStaleWebViewUntilPageFinish = false;
             activeTab.state = BrowserState.success(url);
           });
         }
