@@ -397,23 +397,20 @@ void main() {
       await tester.testTextInput.receiveAction(TextInputAction.done);
       await tester.pumpAndSettle(const Duration(seconds: 2));
 
-      expect(find.byKey(const Key('browser.ai_suggestions_title')),
-          findsOneWidget);
-
-      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
-      await tester.pumpAndSettle();
-
       final aiSuggestionsTitle =
           find.byKey(const Key('browser.ai_suggestions_title'));
-      if (aiSuggestionsTitle.evaluate().isNotEmpty) {
-        // Desktop key dispatch can be flaky in CI; tap modal barrier as fallback.
-        await tester.tapAt(const Offset(8, 8));
-        await tester.pumpAndSettle();
+      expect(aiSuggestionsTitle, findsOneWidget);
+
+      final aiSuggestionsSheet =
+          find.byKey(const Key('browser.ai_suggestions_sheet'));
+      if (aiSuggestionsSheet.evaluate().isNotEmpty) {
+        await tester.drag(aiSuggestionsSheet.first, const Offset(0, 300));
+        await tester.pump(const Duration(milliseconds: 300));
       }
       if (aiSuggestionsTitle.evaluate().isNotEmpty) {
-        // Last fallback: dismiss the top route.
-        await tester.pageBack();
-        await tester.pumpAndSettle();
+        // If drag dismissal is flaky in CI, tap outside the sheet as fallback.
+        await tester.tapAt(const Offset(8, 8));
+        await tester.pump(const Duration(milliseconds: 300));
       }
 
       expect(aiSuggestionsTitle, findsNothing);

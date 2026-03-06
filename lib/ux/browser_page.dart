@@ -1143,10 +1143,21 @@ class GitFetchDialog extends HookWidget {
             TextField(
               controller: repoController,
               style: theme.textTheme.bodyMedium?.copyWith(fontSize: 13),
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'GitHub Repo (owner/repo)',
                 hintText: 'e.g., flutter/flutter',
                 isDense: true,
+                filled: false,
+                enabledBorder: UnderlineInputBorder(
+                  borderSide: BorderSide(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                focusedBorder: UnderlineInputBorder(
+                  borderSide: BorderSide(
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
               ),
             ),
             const SizedBox(height: 10),
