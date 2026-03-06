@@ -236,7 +236,8 @@ class FaviconUrlPolicy {
       if (b[0] == 10) return true; // 10.0.0.0/8
       if (b[0] == 127) return true; // loopback
       if (b[0] == 0) return true; // invalid/unspecified
-      if (b[0] == 169 && b[1] == 254) return true; // link-local + metadata range
+      if (b[0] == 169 && b[1] == 254)
+        return true; // link-local + metadata range
       if (b[0] == 172 && b[1] >= 16 && b[1] <= 31) return true; // 172.16.0.0/12
       if (b[0] == 192 && b[1] == 168) return true; // 192.168.0.0/16
       if (b[0] == 100 && b[1] >= 64 && b[1] <= 127) return true; // CGNAT
@@ -250,13 +251,13 @@ class FaviconUrlPolicy {
       if (isUnspecified) return true;
       final isLoopback = b.sublist(0, 15).every((v) => v == 0) && b[15] == 1;
       if (isLoopback) return true; // ::1
-      final isIpv4Mapped =
-          b.sublist(0, 10).every((v) => v == 0) &&
+      final isIpv4Mapped = b.sublist(0, 10).every((v) => v == 0) &&
           b[10] == 0xFF &&
           b[11] == 0xFF;
       if (isIpv4Mapped) return true; // ::ffff:x.x.x.x
       if ((b[0] & 0xFE) == 0xFC) return true; // fc00::/7 unique local
-      if (b[0] == 0xFE && (b[1] & 0xC0) == 0x80) return true; // fe80::/10 link-local
+      if (b[0] == 0xFE && (b[1] & 0xC0) == 0x80)
+        return true; // fe80::/10 link-local
       if (b[0] == 0xFF) return true; // multicast
       return false;
     }
@@ -393,7 +394,8 @@ class SettingsDialog extends HookWidget {
         firebaseAppId.text = prefs.getString(firebaseAppIdPref) ?? '';
         firebaseSenderId.text = prefs.getString(firebaseSenderIdPref) ?? '';
         firebaseProjectId.text = prefs.getString(firebaseProjectIdPref) ?? '';
-        firebaseStorageBucket.text = prefs.getString(firebaseStorageBucketPref) ?? '';
+        firebaseStorageBucket.text =
+            prefs.getString(firebaseStorageBucketPref) ?? '';
       }
 
       loadPreferences();
@@ -513,7 +515,8 @@ class SettingsDialog extends HookWidget {
                     child: SwitchListTile(
                       title: const Text('Password Manager'),
                       value: passwordManagerEnabled.value,
-                      onChanged: (value) => passwordManagerEnabled.value = value,
+                      onChanged: (value) =>
+                          passwordManagerEnabled.value = value,
                       hoverColor: Colors.transparent,
                     ),
                   ),
@@ -525,15 +528,15 @@ class SettingsDialog extends HookWidget {
                         title: const Text('Manage Passwords'),
                         trailing: const Icon(Icons.chevron_right),
                         onTap: () {
-                        Navigator.of(context).pop();
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (context) => const PasswordVaultScreen(),
-                          ),
-                        );
-                      },
+                          Navigator.of(context).pop();
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) => const PasswordVaultScreen(),
+                            ),
+                          );
+                        },
+                      ),
                     ),
-                  ),
                   MouseRegion(
                     cursor: SystemMouseCursors.click,
                     child: SwitchListTile(
@@ -654,7 +657,8 @@ class SettingsDialog extends HookWidget {
                         MouseRegion(
                           cursor: SystemMouseCursors.click,
                           child: GestureDetector(
-                            onTap: () => showFirebaseConfig.value = !showFirebaseConfig.value,
+                            onTap: () => showFirebaseConfig.value =
+                                !showFirebaseConfig.value,
                             child: Row(
                               children: [
                                 Icon(
@@ -681,12 +685,14 @@ class SettingsDialog extends HookWidget {
                           TextField(
                             controller: firebaseApiKey,
                             obscureText: true,
-                            style: theme.textTheme.bodyMedium?.copyWith(fontSize: 9),
+                            style: theme.textTheme.bodyMedium
+                                ?.copyWith(fontSize: 9),
                             decoration: InputDecoration(
                               labelText: 'API Key',
                               labelStyle: TextStyle(fontSize: 8),
                               isDense: true,
-                              contentPadding: EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+                              contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 6),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(4),
                               ),
@@ -696,12 +702,14 @@ class SettingsDialog extends HookWidget {
                           TextField(
                             controller: firebaseAppId,
                             obscureText: true,
-                            style: theme.textTheme.bodyMedium?.copyWith(fontSize: 9),
+                            style: theme.textTheme.bodyMedium
+                                ?.copyWith(fontSize: 9),
                             decoration: InputDecoration(
                               labelText: 'App ID',
                               labelStyle: TextStyle(fontSize: 8),
                               isDense: true,
-                              contentPadding: EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+                              contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 6),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(4),
                               ),
@@ -711,12 +719,14 @@ class SettingsDialog extends HookWidget {
                           TextField(
                             controller: firebaseSenderId,
                             obscureText: true,
-                            style: theme.textTheme.bodyMedium?.copyWith(fontSize: 9),
+                            style: theme.textTheme.bodyMedium
+                                ?.copyWith(fontSize: 9),
                             decoration: InputDecoration(
                               labelText: 'Sender ID',
                               labelStyle: TextStyle(fontSize: 8),
                               isDense: true,
-                              contentPadding: EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+                              contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 6),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(4),
                               ),
@@ -726,12 +736,14 @@ class SettingsDialog extends HookWidget {
                           TextField(
                             controller: firebaseProjectId,
                             obscureText: true,
-                            style: theme.textTheme.bodyMedium?.copyWith(fontSize: 9),
+                            style: theme.textTheme.bodyMedium
+                                ?.copyWith(fontSize: 9),
                             decoration: InputDecoration(
                               labelText: 'Project ID',
                               labelStyle: TextStyle(fontSize: 8),
                               isDense: true,
-                              contentPadding: EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+                              contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 6),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(4),
                               ),
@@ -741,12 +753,14 @@ class SettingsDialog extends HookWidget {
                           TextField(
                             controller: firebaseStorageBucket,
                             obscureText: true,
-                            style: theme.textTheme.bodyMedium?.copyWith(fontSize: 9),
+                            style: theme.textTheme.bodyMedium
+                                ?.copyWith(fontSize: 9),
                             decoration: InputDecoration(
                               labelText: 'Storage',
                               labelStyle: TextStyle(fontSize: 8),
                               isDense: true,
-                              contentPadding: EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+                              contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 6),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(4),
                               ),
@@ -790,7 +804,8 @@ class SettingsDialog extends HookWidget {
             final oldAppId = prefs.getString(firebaseAppIdPref) ?? '';
             final oldSenderId = prefs.getString(firebaseSenderIdPref) ?? '';
             final oldProjectId = prefs.getString(firebaseProjectIdPref) ?? '';
-            final oldStorageBucket = prefs.getString(firebaseStorageBucketPref) ?? '';
+            final oldStorageBucket =
+                prefs.getString(firebaseStorageBucketPref) ?? '';
 
             final newApiKey = firebaseApiKey.text.trim();
             final newAppId = firebaseAppId.text.trim();
@@ -799,10 +814,10 @@ class SettingsDialog extends HookWidget {
             final newStorageBucket = firebaseStorageBucket.text.trim();
 
             final firebaseChanged = oldApiKey != newApiKey ||
-                                    oldAppId != newAppId ||
-                                    oldSenderId != newSenderId ||
-                                    oldProjectId != newProjectId ||
-                                    oldStorageBucket != newStorageBucket;
+                oldAppId != newAppId ||
+                oldSenderId != newSenderId ||
+                oldProjectId != newProjectId ||
+                oldStorageBucket != newStorageBucket;
 
             await prefs.setString(homepageKey, homepageToSave);
             await prefs.setBool(hideAppBarKey, hideAppBar.value);
@@ -897,6 +912,275 @@ class _ThemeTone {
   const _ThemeTone({required this.brightness, this.seedColor});
 }
 
+const Map<String, int> _namedCssColors = {
+  'black': 0xFF000000,
+  'white': 0xFFFFFFFF,
+  'red': 0xFFFF0000,
+  'green': 0xFF008000,
+  'blue': 0xFF0000FF,
+  'yellow': 0xFFFFFF00,
+  'cyan': 0xFF00FFFF,
+  'aqua': 0xFF00FFFF,
+  'magenta': 0xFFFF00FF,
+  'fuchsia': 0xFFFF00FF,
+  'orange': 0xFFFFA500,
+  'purple': 0xFF800080,
+  'rebeccapurple': 0xFF663399,
+  'gray': 0xFF808080,
+  'grey': 0xFF808080,
+  'silver': 0xFFC0C0C0,
+  'maroon': 0xFF800000,
+  'olive': 0xFF808000,
+  'lime': 0xFF00FF00,
+  'navy': 0xFF000080,
+  'teal': 0xFF008080,
+};
+
+class ThemeProbeDecision {
+  const ThemeProbeDecision({required this.brightness, this.seedColor});
+
+  final Brightness brightness;
+  final Color? seedColor;
+}
+
+@visibleForTesting
+ThemeProbeDecision? resolveThemeProbeDecision(Map<String, dynamic> probe) {
+  final sampleBg =
+      probe['sampleBg'] is String ? probe['sampleBg'] as String : null;
+  final bg = probe['bg'] is String ? probe['bg'] as String : null;
+  final themeColor =
+      probe['themeColor'] is String ? probe['themeColor'] as String : null;
+  final accentHint =
+      probe['accentHint'] is String ? probe['accentHint'] as String : null;
+  final metaColorScheme = probe['metaColorScheme'] is String
+      ? probe['metaColorScheme'] as String
+      : null;
+  final colorScheme =
+      probe['colorScheme'] is String ? probe['colorScheme'] as String : null;
+  final textColor =
+      probe['textColor'] is String ? probe['textColor'] as String : null;
+  final scheme = (metaColorScheme ?? colorScheme ?? '').toLowerCase();
+
+  Brightness? schemeBrightness;
+  if (scheme.contains('dark') && !scheme.contains('light')) {
+    schemeBrightness = Brightness.dark;
+  } else if (scheme.contains('light') && !scheme.contains('dark')) {
+    schemeBrightness = Brightness.light;
+  }
+
+  final theme = parseThemeCssColor(themeColor);
+  final accent = parseThemeCssColor(accentHint);
+  final sampled = parseThemeCssColor(sampleBg);
+  final rootBg = parseThemeCssColor(bg);
+
+  Color? preferred;
+  final reliableCandidates = [theme, accent, sampled, rootBg]
+      .whereType<Color>()
+      .where(_isReliableSeedColor)
+      .toList();
+  if (reliableCandidates.isNotEmpty) {
+    preferred = reliableCandidates.first;
+  } else {
+    preferred = theme ?? accent ?? sampled ?? rootBg;
+  }
+
+  if (preferred != null) {
+    final inferredBrightness =
+        preferred.computeLuminance() < 0.5 ? Brightness.dark : Brightness.light;
+    return ThemeProbeDecision(
+      brightness: schemeBrightness ?? inferredBrightness,
+      seedColor: preferred,
+    );
+  }
+
+  if (schemeBrightness != null) {
+    return ThemeProbeDecision(brightness: schemeBrightness);
+  }
+
+  final text = parseThemeCssColor(textColor);
+  if (text != null) {
+    final brightness =
+        text.computeLuminance() < 0.5 ? Brightness.light : Brightness.dark;
+    return ThemeProbeDecision(brightness: brightness);
+  }
+  return null;
+}
+
+@visibleForTesting
+Color? parseThemeCssColor(String? value) {
+  if (value == null) return null;
+  final normalized = value.trim().toLowerCase();
+  if (normalized.isEmpty || normalized == 'transparent') return null;
+  if (normalized.startsWith('rgb')) {
+    return _parseThemeRgbColor(normalized);
+  }
+  if (normalized.startsWith('hsl')) {
+    return _parseThemeHslColor(normalized);
+  }
+  if (normalized.startsWith('#')) {
+    return _parseThemeHexColor(normalized);
+  }
+  final named = _namedCssColors[normalized];
+  if (named != null) return Color(named);
+  return null;
+}
+
+Color? _parseThemeRgbColor(String value) {
+  final match = RegExp(r'rgba?\(([^)]+)\)').firstMatch(value);
+  if (match == null) return null;
+  final normalized = match.group(1)!.replaceAll('/', ' ');
+  final parts = normalized
+      .split(RegExp(r'[,\s]+'))
+      .map((e) => e.trim())
+      .where((e) => e.isNotEmpty)
+      .toList();
+  if (parts.length < 3) return null;
+  final r = _parseThemeRgbChannel(parts[0]);
+  final g = _parseThemeRgbChannel(parts[1]);
+  final b = _parseThemeRgbChannel(parts[2]);
+  if (r == null || g == null || b == null) return null;
+  double alpha = 1.0;
+  if (parts.length >= 4) {
+    alpha = _parseThemeAlphaChannel(parts[3]) ?? 1.0;
+  }
+  alpha = alpha.clamp(0.0, 1.0);
+  if (alpha <= 0.05) return null;
+  return Color.fromARGB(
+    (alpha * 255).round(),
+    _clampThemeChannel(r),
+    _clampThemeChannel(g),
+    _clampThemeChannel(b),
+  );
+}
+
+Color? _parseThemeHexColor(String value) {
+  var hex = value.substring(1);
+  if (hex.length == 4) {
+    // #RGBA
+    hex =
+        '${hex[0]}${hex[0]}${hex[1]}${hex[1]}${hex[2]}${hex[2]}${hex[3]}${hex[3]}';
+  }
+  if (hex.length == 3) {
+    hex = '${hex[0]}${hex[0]}${hex[1]}${hex[1]}${hex[2]}${hex[2]}';
+  }
+  if (hex.length == 6) {
+    final rgb = int.tryParse(hex, radix: 16);
+    if (rgb == null) return null;
+    return Color.fromARGB(
+      255,
+      (rgb >> 16) & 0xFF,
+      (rgb >> 8) & 0xFF,
+      rgb & 0xFF,
+    );
+  }
+  if (hex.length == 8) {
+    // CSS uses #RRGGBBAA, not ARGB.
+    final rgba = int.tryParse(hex, radix: 16);
+    if (rgba == null) return null;
+    return Color.fromARGB(
+      rgba & 0xFF,
+      (rgba >> 24) & 0xFF,
+      (rgba >> 16) & 0xFF,
+      (rgba >> 8) & 0xFF,
+    );
+  }
+  return null;
+}
+
+Color? _parseThemeHslColor(String value) {
+  final match = RegExp(r'hsla?\(([^)]+)\)').firstMatch(value);
+  if (match == null) return null;
+  final normalized = match.group(1)!.replaceAll('/', ' ');
+  final parts = normalized
+      .split(RegExp(r'[,\s]+'))
+      .map((e) => e.trim())
+      .where((e) => e.isNotEmpty)
+      .toList();
+  if (parts.length < 3) return null;
+  final h = _parseThemeAngle(parts[0]);
+  final s = _parseThemePercent(parts[1]);
+  final l = _parseThemePercent(parts[2]);
+  if (h == null || s == null || l == null) return null;
+  double alpha = 1.0;
+  if (parts.length >= 4) {
+    alpha = _parseThemeAlphaChannel(parts[3]) ?? 1.0;
+  }
+  alpha = alpha.clamp(0.0, 1.0);
+  if (alpha <= 0.05) return null;
+  final color = HSLColor.fromAHSL(alpha, h, s, l).toColor();
+  return Color.fromARGB(
+    (alpha * 255).round(),
+    color.red,
+    color.green,
+    color.blue,
+  );
+}
+
+double? _parseThemeAngle(String token) {
+  var value = token.trim();
+  if (value.endsWith('deg')) {
+    value = value.substring(0, value.length - 3);
+  } else if (value.endsWith('turn')) {
+    final turns = double.tryParse(value.substring(0, value.length - 4));
+    if (turns == null) return null;
+    return (turns * 360) % 360;
+  } else if (value.endsWith('rad')) {
+    final radians = double.tryParse(value.substring(0, value.length - 3));
+    if (radians == null) return null;
+    return (radians * 180 / math.pi) % 360;
+  }
+  final parsed = double.tryParse(value);
+  if (parsed == null) return null;
+  final wrapped = parsed % 360;
+  return wrapped < 0 ? wrapped + 360 : wrapped;
+}
+
+double? _parseThemePercent(String token) {
+  final trimmed = token.trim();
+  if (!trimmed.endsWith('%')) return null;
+  final value = double.tryParse(trimmed.substring(0, trimmed.length - 1));
+  if (value == null) return null;
+  return (value.clamp(0.0, 100.0) / 100.0);
+}
+
+double? _parseThemeRgbChannel(String token) {
+  if (token.endsWith('%')) {
+    final pct = double.tryParse(token.substring(0, token.length - 1));
+    if (pct == null) return null;
+    return (pct.clamp(0.0, 100.0) * 2.55);
+  }
+  return double.tryParse(token);
+}
+
+double? _parseThemeAlphaChannel(String token) {
+  if (token.endsWith('%')) {
+    final pct = double.tryParse(token.substring(0, token.length - 1));
+    if (pct == null) return null;
+    return (pct.clamp(0.0, 100.0) / 100.0);
+  }
+  return double.tryParse(token);
+}
+
+int _clampThemeChannel(double value) {
+  return value.round().clamp(0, 255).toInt();
+}
+
+bool _isReliableSeedColor(Color color) {
+  final saturation = _colorSaturation(color);
+  final luminance = color.computeLuminance();
+  return saturation >= 0.08 && luminance > 0.06 && luminance < 0.94;
+}
+
+double _colorSaturation(Color color) {
+  final r = color.red / 255.0;
+  final g = color.green / 255.0;
+  final b = color.blue / 255.0;
+  final maxChannel = math.max(r, math.max(g, b));
+  final minChannel = math.min(r, math.min(g, b));
+  if (maxChannel == 0) return 0;
+  return (maxChannel - minChannel) / maxChannel;
+}
+
 Future<Map<String, dynamic>> _fetchGitHubRepo(String url) async {
   final stopwatch = Stopwatch()..start();
   try {
@@ -950,7 +1234,8 @@ class GitFetchDialog extends HookWidget {
 
       final parts = repo.split('/');
       if (parts.length != 2) {
-        if (!isDisposed.value) errorMessage.value = 'Invalid format. Use owner/repo';
+        if (!isDisposed.value)
+          errorMessage.value = 'Invalid format. Use owner/repo';
         return;
       }
 
@@ -1252,6 +1537,16 @@ class _BrowserPageState extends State<BrowserPage>
     const style = window.getComputedStyle(el);
     return style ? style.backgroundColor : null;
   };
+  const normalizeColor = (raw) => {
+    if (!raw || typeof raw !== 'string') return null;
+    const candidate = raw.trim();
+    if (!candidate) return null;
+    const probe = document.createElement('div');
+    probe.style.color = '';
+    probe.style.color = candidate;
+    if (!probe.style.color) return null;
+    return probe.style.color;
+  };
   const getEffectiveBg = (el) => {
     let current = el;
     let depth = 0;
@@ -1270,20 +1565,38 @@ class _BrowserPageState extends State<BrowserPage>
   const sampleBg = getEffectiveBg(centerEl);
   const bg = getEffectiveBg(document.documentElement) ||
     getEffectiveBg(document.body) || null;
-  const themeColor = document.querySelector('meta[name="theme-color"]')
-    ?.getAttribute('content') || null;
+  const themeColorMeta = Array.from(
+    document.querySelectorAll('meta[name="theme-color"]')
+  );
+  const preferredThemeColor = themeColorMeta.find((meta) => {
+    const media = meta.getAttribute('media');
+    if (!media) return true;
+    return window.matchMedia ? window.matchMedia(media).matches : false;
+  }) || themeColorMeta[0] || null;
+  const themeColor = normalizeColor(preferredThemeColor
+    ?.getAttribute('content') || null);
   const metaColorScheme = document.querySelector('meta[name="color-scheme"]')
     ?.getAttribute('content') || null;
   const colorScheme = window.getComputedStyle(document.documentElement)
     .colorScheme || null;
   const textColor = window.getComputedStyle(document.body || document.documentElement)
     .color || null;
+  const accentHintEl = document.querySelector(
+    'header, nav, [role="banner"], [class*="header"], [class*="navbar"]'
+  ) || document.querySelector(
+    'a, button, [role="button"], [class*="btn"], [class*="link"]'
+  );
+  const accentHint = accentHintEl
+    ? (getEffectiveBg(accentHintEl) ||
+      window.getComputedStyle(accentHintEl).color || null)
+    : null;
   const prefersDark = window.matchMedia &&
     window.matchMedia('(prefers-color-scheme: dark)').matches;
   return JSON.stringify({
     bg,
     sampleBg,
     themeColor,
+    accentHint,
     metaColorScheme,
     colorScheme,
     textColor,
@@ -1302,8 +1615,8 @@ class _BrowserPageState extends State<BrowserPage>
       if (allowRetry && !_windowButtonsSyncRetryQueued) {
         _windowButtonsSyncRetryQueued = true;
         _windowButtonsSyncRetryTimer?.cancel();
-        _windowButtonsSyncRetryTimer = Timer.periodic(
-            const Duration(milliseconds: 120), (timer) {
+        _windowButtonsSyncRetryTimer =
+            Timer.periodic(const Duration(milliseconds: 120), (timer) {
           if (!mounted) {
             _windowButtonsSyncRetryQueued = false;
             _windowButtonsSyncRetryTimer = null;
@@ -1751,143 +2064,9 @@ class _BrowserPageState extends State<BrowserPage>
   }
 
   _ThemeTone? _toneFromProbe(Map<String, dynamic> probe) {
-    final sampleBg =
-        probe['sampleBg'] is String ? probe['sampleBg'] as String : null;
-    final bg = probe['bg'] is String ? probe['bg'] as String : null;
-    final themeColor =
-        probe['themeColor'] is String ? probe['themeColor'] as String : null;
-    final metaColorScheme = probe['metaColorScheme'] is String
-        ? probe['metaColorScheme'] as String
-        : null;
-    final colorScheme =
-        probe['colorScheme'] is String ? probe['colorScheme'] as String : null;
-    final textColor =
-        probe['textColor'] is String ? probe['textColor'] as String : null;
-    final scheme = (metaColorScheme ?? colorScheme ?? '').toLowerCase();
-    Brightness? schemeBrightness;
-    if (scheme.contains('dark') && !scheme.contains('light')) {
-      schemeBrightness = Brightness.dark;
-    } else if (scheme.contains('light') && !scheme.contains('dark')) {
-      schemeBrightness = Brightness.light;
-    }
-    final color = _parseCssColor(sampleBg) ??
-        _parseCssColor(bg) ??
-        _parseCssColor(themeColor);
-    if (color != null) {
-      final inferredBrightness =
-          color.computeLuminance() < 0.5 ? Brightness.dark : Brightness.light;
-      return _ThemeTone(
-        brightness: schemeBrightness ?? inferredBrightness,
-        seedColor: color,
-      );
-    }
-    if (schemeBrightness != null) {
-      return _ThemeTone(brightness: schemeBrightness);
-    }
-    final text = _parseCssColor(textColor);
-    if (text != null) {
-      final brightness =
-          text.computeLuminance() < 0.5 ? Brightness.light : Brightness.dark;
-      return _ThemeTone(brightness: brightness);
-    }
-    return null;
-  }
-
-  Color? _parseCssColor(String? value) {
-    if (value == null) return null;
-    final normalized = value.trim().toLowerCase();
-    if (normalized.isEmpty || normalized == 'transparent') return null;
-    if (normalized.startsWith('rgb')) {
-      return _parseRgbColor(normalized);
-    }
-    if (normalized.startsWith('#')) {
-      return _parseHexColor(normalized);
-    }
-    return null;
-  }
-
-  Color? _parseRgbColor(String value) {
-    final match = RegExp(r'rgba?\\(([^)]+)\\)').firstMatch(value);
-    if (match == null) return null;
-    final normalized = match.group(1)!.replaceAll('/', ' ');
-    final parts = normalized
-        .split(RegExp(r'[,\s]+'))
-        .map((e) => e.trim())
-        .where((e) => e.isNotEmpty)
-        .toList();
-    if (parts.length < 3) return null;
-    final r = _parseRgbChannel(parts[0]);
-    final g = _parseRgbChannel(parts[1]);
-    final b = _parseRgbChannel(parts[2]);
-    if (r == null || g == null || b == null) return null;
-    double alpha = 1.0;
-    if (parts.length >= 4) {
-      alpha = _parseAlphaChannel(parts[3]) ?? 1.0;
-    }
-    alpha = alpha.clamp(0.0, 1.0);
-    if (alpha <= 0.05) return null;
-    return Color.fromARGB(
-      (alpha * 255).round(),
-      _clampChannel(r),
-      _clampChannel(g),
-      _clampChannel(b),
-    );
-  }
-
-  Color? _parseHexColor(String value) {
-    var hex = value.substring(1);
-    if (hex.length == 4) {
-      // #RGBA
-      hex =
-          '${hex[0]}${hex[0]}${hex[1]}${hex[1]}${hex[2]}${hex[2]}${hex[3]}${hex[3]}';
-    }
-    if (hex.length == 3) {
-      hex = '${hex[0]}${hex[0]}${hex[1]}${hex[1]}${hex[2]}${hex[2]}';
-    }
-    if (hex.length == 6) {
-      final rgb = int.tryParse(hex, radix: 16);
-      if (rgb == null) return null;
-      return Color.fromARGB(
-        255,
-        (rgb >> 16) & 0xFF,
-        (rgb >> 8) & 0xFF,
-        rgb & 0xFF,
-      );
-    }
-    if (hex.length == 8) {
-      // CSS uses #RRGGBBAA, not ARGB.
-      final rgba = int.tryParse(hex, radix: 16);
-      if (rgba == null) return null;
-      return Color.fromARGB(
-        rgba & 0xFF,
-        (rgba >> 24) & 0xFF,
-        (rgba >> 16) & 0xFF,
-        (rgba >> 8) & 0xFF,
-      );
-    }
-    return null;
-  }
-
-  double? _parseRgbChannel(String token) {
-    if (token.endsWith('%')) {
-      final pct = double.tryParse(token.substring(0, token.length - 1));
-      if (pct == null) return null;
-      return (pct.clamp(0.0, 100.0) * 2.55);
-    }
-    return double.tryParse(token);
-  }
-
-  double? _parseAlphaChannel(String token) {
-    if (token.endsWith('%')) {
-      final pct = double.tryParse(token.substring(0, token.length - 1));
-      if (pct == null) return null;
-      return (pct.clamp(0.0, 100.0) / 100.0);
-    }
-    return double.tryParse(token);
-  }
-
-  int _clampChannel(double value) {
-    return value.round().clamp(0, 255).toInt();
+    final tone = resolveThemeProbeDecision(probe);
+    if (tone == null) return null;
+    return _ThemeTone(brightness: tone.brightness, seedColor: tone.seedColor);
   }
 
   Future<void> loadAdBlockers() async {
@@ -2994,7 +3173,8 @@ class _BrowserPageState extends State<BrowserPage>
     try {
       if (await activeTab.webViewController?.canGoBack() ?? false) {
         await activeTab.webViewController?.goBack();
-        activeTab.forwardUrl = null; // Clear forward URL when using WebView history
+        activeTab.forwardUrl =
+            null; // Clear forward URL when using WebView history
       } else {
         // If can't go back, show the home page and save current URL for forward
         if (mounted) {
@@ -3020,7 +3200,8 @@ class _BrowserPageState extends State<BrowserPage>
   Future<void> _goForward() async {
     try {
       // If on home page and have a forward URL, load it
-      if (activeTab.currentUrl == widget.initialUrl && activeTab.forwardUrl != null) {
+      if (activeTab.currentUrl == widget.initialUrl &&
+          activeTab.forwardUrl != null) {
         _loadUrl(activeTab.forwardUrl!);
         activeTab.forwardUrl = null;
       } else if (await activeTab.webViewController?.canGoForward() ?? false) {
@@ -3120,35 +3301,40 @@ class _BrowserPageState extends State<BrowserPage>
                                                     actions: [
                                                       TextButton(
                                                         onPressed: () =>
-                                                            Navigator.of(context)
+                                                            Navigator.of(
+                                                                    context)
                                                                 .pop(false),
-                                                        child:
-                                                            const Text('Cancel'),
+                                                        child: const Text(
+                                                            'Cancel'),
                                                       ),
                                                       TextButton(
                                                         onPressed: () =>
-                                                            Navigator.of(context)
+                                                            Navigator.of(
+                                                                    context)
                                                                 .pop(true),
-                                                        child:
-                                                            const Text('Delete'),
+                                                        child: const Text(
+                                                            'Delete'),
                                                       ),
-                                                  ],
-                                                ),
-                                              );
-                                              if (confirm == true) {
-                                                innerSetState(() {
-                                                  bookmarkManager.remove(
-                                                      url, entry.key);
-                                                });
-                                                _saveBookmarks();
-                                              }
-                                            },
-                                            child: Padding(
-                                              padding: const EdgeInsets.all(8),
-                                              child: Icon(Icons.delete,
-                                                color: Theme.of(context).colorScheme.onSurfaceVariant),
+                                                    ],
+                                                  ),
+                                                );
+                                                if (confirm == true) {
+                                                  innerSetState(() {
+                                                    bookmarkManager.remove(
+                                                        url, entry.key);
+                                                  });
+                                                  _saveBookmarks();
+                                                }
+                                              },
+                                              child: Padding(
+                                                padding:
+                                                    const EdgeInsets.all(8),
+                                                child: Icon(Icons.delete,
+                                                    color: Theme.of(context)
+                                                        .colorScheme
+                                                        .onSurfaceVariant),
+                                              ),
                                             ),
-                                          ),
                                           ),
                                         ))
                                     .toList(),
@@ -3583,8 +3769,9 @@ class _BrowserPageState extends State<BrowserPage>
               },
               child: Padding(
                 padding: const EdgeInsets.all(8),
-                child: Icon(Icons.more_vert, size: iconSize,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant),
+                child: Icon(Icons.more_vert,
+                    size: iconSize,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant),
               ),
             ),
           ),
@@ -3874,7 +4061,9 @@ class _BrowserPageState extends State<BrowserPage>
                                 child: Padding(
                                   padding: const EdgeInsets.all(8),
                                   child: Icon(Icons.delete,
-                                    color: Theme.of(context).colorScheme.onSurfaceVariant),
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurfaceVariant),
                                 ),
                               ),
                             ),
@@ -4613,23 +4802,23 @@ class _BrowserPageState extends State<BrowserPage>
                         if (text.isNotEmpty) {
                           final decision = resolveUrlSubmission(
                             submittedValue: text,
-                          aiSearchSuggestionsEnabled:
-                              widget.aiSearchSuggestionsEnabled,
-                        );
-                        if (decision.shouldShowAiSuggestions) {
-                          _showAiSearchSuggestionsSheet();
+                            aiSearchSuggestionsEnabled:
+                                widget.aiSearchSuggestionsEnabled,
+                          );
+                          if (decision.shouldShowAiSuggestions) {
+                            _showAiSearchSuggestionsSheet();
+                          }
+                          if (decision.shouldLoadUrl) {
+                            _loadUrl(decision.normalizedInput);
+                          }
                         }
-                        if (decision.shouldLoadUrl) {
-                          _loadUrl(decision.normalizedInput);
-                        }
-                      }
-                    },
-                    child: Icon(
-                      Icons.search,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      size: 18,
+                      },
+                      child: Icon(
+                        Icons.search,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        size: 18,
+                      ),
                     ),
-                  ),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
@@ -4770,7 +4959,8 @@ class _BrowserPageState extends State<BrowserPage>
                           turns: _refreshIconController,
                           child: Icon(
                             Icons.refresh,
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            color:
+                                Theme.of(context).colorScheme.onSurfaceVariant,
                             size: 18,
                           ),
                         ),
@@ -4785,365 +4975,370 @@ class _BrowserPageState extends State<BrowserPage>
         (isMacDesktop && !widget.hideAppBar) ? _kMacOsTopToolbarInset : 0.0;
 
     return DropTarget(
-              onDragEntered: (details) => setState(() => _dragging = true),
-              onDragExited: (details) => setState(() => _dragging = false),
-              onDragDone: (details) async {
-                setState(() => _dragging = false);
-                if (details.files.isNotEmpty) {
-                  final file = details.files.first;
-                  final path = 'file://${file.path}';
-                  if (tabs.isEmpty) {
-                    _addNewTab();
-                  }
-                  _loadUrl(path);
-                }
-              },
-              child: Scaffold(
-                appBar: topToolbarInset > 0 && appBarWidget != null
-                    ? PreferredSize(
-                        preferredSize:
-                            Size.fromHeight(kToolbarHeight + topToolbarInset),
-                        child: Column(
-                          children: [
-                            Container(
-                              height: topToolbarInset,
-                              color: Theme.of(context).colorScheme.surface,
-                            ),
-                            appBarWidget,
-                          ],
-                        ),
-                      )
-                    : appBarWidget,
-                body: Stack(
+      onDragEntered: (details) => setState(() => _dragging = true),
+      onDragExited: (details) => setState(() => _dragging = false),
+      onDragDone: (details) async {
+        setState(() => _dragging = false);
+        if (details.files.isNotEmpty) {
+          final file = details.files.first;
+          final path = 'file://${file.path}';
+          if (tabs.isEmpty) {
+            _addNewTab();
+          }
+          _loadUrl(path);
+        }
+      },
+      child: Scaffold(
+        appBar: topToolbarInset > 0 && appBarWidget != null
+            ? PreferredSize(
+                preferredSize:
+                    Size.fromHeight(kToolbarHeight + topToolbarInset),
+                child: Column(
                   children: [
-                    Column(
-                      children: [
-                        Container(
-                          height: 34,
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.surface,
-                            border: Border(
-                              bottom: BorderSide(
-                                color: widget.themeMode == AppThemeMode.adjust
-                                    ? Colors.transparent
-                                    : Theme.of(context)
-                                        .colorScheme
-                                        .outline
-                                        .withValues(alpha: 0.2),
-                                width: 1,
-                              ),
-                            ),
-                          ),
-                          child: MouseRegion(
-                            onEnter: (_) {
-                              if (defaultTargetPlatform ==
-                                      TargetPlatform.macOS &&
-                                  widget.hideAppBar &&
-                                  _reorderableTabs) {
+                    Container(
+                      height: topToolbarInset,
+                      color: Theme.of(context).colorScheme.surface,
+                    ),
+                    appBarWidget,
+                  ],
+                ),
+              )
+            : appBarWidget,
+        body: Stack(
+          children: [
+            Column(
+              children: [
+                Container(
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surface,
+                    border: Border(
+                      bottom: BorderSide(
+                        color: widget.themeMode == AppThemeMode.adjust
+                            ? Colors.transparent
+                            : Theme.of(context)
+                                .colorScheme
+                                .outline
+                                .withValues(alpha: 0.2),
+                        width: 1,
+                      ),
+                    ),
+                  ),
+                  child: MouseRegion(
+                    onEnter: (_) {
+                      if (defaultTargetPlatform == TargetPlatform.macOS &&
+                          widget.hideAppBar &&
+                          _reorderableTabs) {
+                        _setWindowMovable(false);
+                      }
+                    },
+                    onExit: (_) {
+                      if (defaultTargetPlatform == TargetPlatform.macOS &&
+                          widget.hideAppBar &&
+                          _reorderableTabs) {
+                        _setWindowMovable(true);
+                      }
+                    },
+                    child: Listener(
+                      behavior: HitTestBehavior.translucent,
+                      onPointerDown: (_) {
+                        if (widget.hideAppBar && _reorderableTabs) {
+                          _setWindowMovable(false);
+                        }
+                      },
+                      onPointerUp: (_) {
+                        if (widget.hideAppBar && _reorderableTabs) {
+                          _setWindowMovable(true);
+                        }
+                      },
+                      onPointerCancel: (_) {
+                        if (widget.hideAppBar && _reorderableTabs) {
+                          _setWindowMovable(true);
+                        }
+                      },
+                      child: _reorderableTabs
+                          ? ReorderableListView.builder(
+                              scrollDirection: Axis.horizontal,
+                              itemCount: tabs.length,
+                              onReorder: _reorderTab,
+                              onReorderStart: (_) {
                                 _setWindowMovable(false);
-                              }
-                            },
-                            onExit: (_) {
-                              if (defaultTargetPlatform ==
-                                      TargetPlatform.macOS &&
-                                  widget.hideAppBar &&
-                                  _reorderableTabs) {
+                              },
+                              onReorderEnd: (_) {
                                 _setWindowMovable(true);
-                              }
-                            },
-                            child: Listener(
-                              behavior: HitTestBehavior.translucent,
-                              onPointerDown: (_) {
-                                if (widget.hideAppBar && _reorderableTabs) {
-                                  _setWindowMovable(false);
-                                }
                               },
-                              onPointerUp: (_) {
-                                if (widget.hideAppBar && _reorderableTabs) {
-                                  _setWindowMovable(true);
-                                }
-                              },
-                              onPointerCancel: (_) {
-                                if (widget.hideAppBar && _reorderableTabs) {
-                                  _setWindowMovable(true);
-                                }
-                              },
-                              child: _reorderableTabs
-                                  ? ReorderableListView.builder(
-                                      scrollDirection: Axis.horizontal,
-                                      itemCount: tabs.length,
-                                      onReorder: _reorderTab,
-                                      onReorderStart: (_) {
-                                        _setWindowMovable(false);
-                                      },
-                                      onReorderEnd: (_) {
-                                        _setWindowMovable(true);
-                                      },
-                                      buildDefaultDragHandles: false,
-                                      itemBuilder: (context, index) {
-                                        final tab = tabs[index];
-                                        final isSelected =
-                                            tabController.index == index;
-                                        return ReorderableDragStartListener(
-                                          key: ObjectKey(tab),
-                                          index: index,
-                                          child: MouseRegion(
-                                            cursor: SystemMouseCursors.click,
-                                            child: GestureDetector(
-                                              onTap: () => setState(() =>
-                                                  tabController.index = index),
-                                              child: Container(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                        horizontal: 12,
-                                                        vertical: 4),
-                                                decoration: BoxDecoration(
-                                                  border: Border(
-                                                    bottom: BorderSide(
-                                                      color: isSelected
-                                                          ? Theme.of(context)
-                                                              .colorScheme
-                                                              .primary
-                                                          : Colors.transparent,
-                                                      width: 2,
-                                                    ),
-                                                  ),
-                                                ),
-                                                child: _buildTabItem(
-                                                    tab, index, isSelected,
-                                                    showDragHandle: true),
-                                              ),
+                              buildDefaultDragHandles: false,
+                              itemBuilder: (context, index) {
+                                final tab = tabs[index];
+                                final isSelected = tabController.index == index;
+                                return ReorderableDragStartListener(
+                                  key: ObjectKey(tab),
+                                  index: index,
+                                  child: MouseRegion(
+                                    cursor: SystemMouseCursors.click,
+                                    child: GestureDetector(
+                                      onTap: () => setState(
+                                          () => tabController.index = index),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 12, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          border: Border(
+                                            bottom: BorderSide(
+                                              color: isSelected
+                                                  ? Theme.of(context)
+                                                      .colorScheme
+                                                      .primary
+                                                  : Colors.transparent,
+                                              width: 2,
                                             ),
                                           ),
-                                        );
-                                      },
-                                    )
-                                  : Theme(
-                                      data: Theme.of(context).copyWith(
-                                        hoverColor: Colors.transparent,
-                                        splashColor: Colors.transparent,
-                                        highlightColor: Colors.transparent,
+                                        ),
+                                        child: _buildTabItem(
+                                            tab, index, isSelected,
+                                            showDragHandle: true),
                                       ),
-                                      child: TabBar(
-                                        controller: tabController,
-                                        isScrollable: true,
-                                        tabAlignment: TabAlignment.start,
-                                        padding: EdgeInsets.zero,
-                                        overlayColor: WidgetStateProperty.all(Colors.transparent),
-                                        indicatorColor: widget.themeMode ==
-                                                AppThemeMode.adjust
-                                            ? Colors.transparent
-                                            : Theme.of(context)
-                                                .colorScheme
-                                                .primary,
-                                        dividerColor: widget.themeMode ==
-                                                AppThemeMode.adjust
-                                            ? Colors.transparent
-                                            : Theme.of(context)
-                                                .colorScheme
-                                                .outline
-                                                .withValues(alpha: 0.2),
-                                        labelColor: Theme.of(context)
-                                            .colorScheme
-                                            .onSurface,
-                                        unselectedLabelColor: Theme.of(context)
-                                            .colorScheme
-                                            .onSurface
-                                            .withValues(alpha: 0.6),
-                                      tabs: tabs.asMap().entries.map((entry) {
-                                        final index = entry.key;
-                                        final tab = entry.value;
-                                        final isSelected =
-                                            tabController.index == index;
-                                        return Tab(
-                                          height: 30,
-                                          child: _buildTabItem(
-                                              tab, index, isSelected),
-                                        );
-                                      }).toList(),
                                     ),
-                                    ),
+                                  ),
+                                );
+                              },
+                            )
+                          : Theme(
+                              data: Theme.of(context).copyWith(
+                                hoverColor: Colors.transparent,
+                                splashColor: Colors.transparent,
+                                highlightColor: Colors.transparent,
+                              ),
+                              child: TabBar(
+                                controller: tabController,
+                                isScrollable: true,
+                                tabAlignment: TabAlignment.start,
+                                padding: EdgeInsets.zero,
+                                overlayColor:
+                                    WidgetStateProperty.all(Colors.transparent),
+                                indicatorColor:
+                                    widget.themeMode == AppThemeMode.adjust
+                                        ? Colors.transparent
+                                        : Theme.of(context).colorScheme.primary,
+                                dividerColor:
+                                    widget.themeMode == AppThemeMode.adjust
+                                        ? Colors.transparent
+                                        : Theme.of(context)
+                                            .colorScheme
+                                            .outline
+                                            .withValues(alpha: 0.2),
+                                labelColor:
+                                    Theme.of(context).colorScheme.onSurface,
+                                unselectedLabelColor: Theme.of(context)
+                                    .colorScheme
+                                    .onSurface
+                                    .withValues(alpha: 0.6),
+                                tabs: tabs.asMap().entries.map((entry) {
+                                  final index = entry.key;
+                                  final tab = entry.value;
+                                  final isSelected =
+                                      tabController.index == index;
+                                  return Tab(
+                                    height: 30,
+                                    child:
+                                        _buildTabItem(tab, index, isSelected),
+                                  );
+                                }).toList(),
+                              ),
                             ),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: IgnorePointer(
+                    ignoring:
+                        activeTab.urlFocusNode.hasFocus || _urlAutocompleteOpen,
+                    child: _reorderableTabs
+                        ? IndexedStack(
+                            index: tabController.index,
+                            children:
+                                tabs.map((tab) => _buildTabBody(tab)).toList(),
+                          )
+                        : TabBarView(
+                            controller: tabController,
+                            children:
+                                tabs.map((tab) => _buildTabBody(tab)).toList(),
+                          ),
+                  ),
+                ),
+              ],
+            ),
+            if (widget.hideAppBar)
+              Positioned(
+                top: 16,
+                right: 16,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surfaceContainer,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.1),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      MouseRegion(
+                        cursor: SystemMouseCursors.click,
+                        child: GestureDetector(
+                          onTap: _goBack,
+                          child: Padding(
+                            padding: const EdgeInsets.all(8),
+                            child: Icon(Icons.arrow_back_ios,
+                                size: 18,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant),
                           ),
                         ),
-                        Expanded(
-                          child: IgnorePointer(
-                            ignoring: activeTab.urlFocusNode.hasFocus ||
-                                _urlAutocompleteOpen,
-                            child: _reorderableTabs
-                                ? IndexedStack(
-                                    index: tabController.index,
-                                    children: tabs
-                                        .map((tab) => _buildTabBody(tab))
-                                        .toList(),
-                                  )
-                                : TabBarView(
-                                    controller: tabController,
-                                    children: tabs
-                                        .map((tab) => _buildTabBody(tab))
-                                        .toList(),
-                                  ),
+                      ),
+                      MouseRegion(
+                        cursor: SystemMouseCursors.click,
+                        child: GestureDetector(
+                          onTap: _goForward,
+                          child: Padding(
+                            padding: const EdgeInsets.all(8),
+                            child: Icon(Icons.arrow_forward_ios,
+                                size: 18,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant),
+                          ),
+                        ),
+                      ),
+                      MouseRegion(
+                        cursor: SystemMouseCursors.click,
+                        child: GestureDetector(
+                          onTap: _showQuickUrlPrompt,
+                          child: Padding(
+                            padding: const EdgeInsets.all(8),
+                            child: Icon(Icons.search,
+                                size: 18,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant),
+                          ),
+                        ),
+                      ),
+                      MouseRegion(
+                        cursor: SystemMouseCursors.click,
+                        child: GestureDetector(
+                          onTap: _refresh,
+                          child: Padding(
+                            padding: const EdgeInsets.all(8),
+                            child: Icon(Icons.refresh,
+                                size: 18,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant),
+                          ),
+                        ),
+                      ),
+                      MouseRegion(
+                        cursor: SystemMouseCursors.click,
+                        child: GestureDetector(
+                          onTap: _addNewTab,
+                          child: Padding(
+                            padding: const EdgeInsets.all(8),
+                            child: Icon(Icons.add,
+                                size: 18,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant),
+                          ),
+                        ),
+                      ),
+                      MouseRegion(
+                        cursor: SystemMouseCursors.click,
+                        child: GestureDetector(
+                          onTap: _showSettings,
+                          child: Padding(
+                            padding: const EdgeInsets.all(8),
+                            child: Icon(Icons.settings,
+                                size: 18,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant),
+                          ),
+                        ),
+                      ),
+                      _buildMenuButton(iconSize: 18),
+                    ],
+                  ),
+                ),
+              ),
+            if (_dragging)
+              Container(
+                color: Theme.of(context)
+                    .colorScheme
+                    .primary
+                    .withValues(alpha: 0.1),
+                child: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.file_open,
+                        size: 64,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Drop file to open',
+                        style: TextStyle(
+                          fontSize: 18,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            if (!_isOnline)
+              Positioned(
+                top: widget.hideAppBar ? 16 : 0,
+                left: 0,
+                right: 0,
+                child: Material(
+                  color: Theme.of(context).colorScheme.errorContainer,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.wifi_off,
+                          size: 16,
+                          color: Theme.of(context).colorScheme.onErrorContainer,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'No internet connection',
+                          style: TextStyle(
+                            color:
+                                Theme.of(context).colorScheme.onErrorContainer,
                           ),
                         ),
                       ],
                     ),
-                    if (widget.hideAppBar)
-                      Positioned(
-                        top: 16,
-                        right: 16,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color:
-                                Theme.of(context).colorScheme.surfaceContainer,
-                            borderRadius: BorderRadius.circular(16),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.1),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              MouseRegion(
-                                cursor: SystemMouseCursors.click,
-                                child: GestureDetector(
-                                  onTap: _goBack,
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(8),
-                                    child: Icon(Icons.arrow_back_ios, size: 18,
-                                      color: Theme.of(context).colorScheme.onSurfaceVariant),
-                                  ),
-                                ),
-                              ),
-                              MouseRegion(
-                                cursor: SystemMouseCursors.click,
-                                child: GestureDetector(
-                                  onTap: _goForward,
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(8),
-                                    child: Icon(Icons.arrow_forward_ios, size: 18,
-                                      color: Theme.of(context).colorScheme.onSurfaceVariant),
-                                  ),
-                                ),
-                              ),
-                              MouseRegion(
-                                cursor: SystemMouseCursors.click,
-                                child: GestureDetector(
-                                  onTap: _showQuickUrlPrompt,
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(8),
-                                    child: Icon(Icons.search, size: 18,
-                                      color: Theme.of(context).colorScheme.onSurfaceVariant),
-                                  ),
-                                ),
-                              ),
-                              MouseRegion(
-                                cursor: SystemMouseCursors.click,
-                                child: GestureDetector(
-                                  onTap: _refresh,
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(8),
-                                    child: Icon(Icons.refresh, size: 18,
-                                      color: Theme.of(context).colorScheme.onSurfaceVariant),
-                                  ),
-                                ),
-                              ),
-                              MouseRegion(
-                                cursor: SystemMouseCursors.click,
-                                child: GestureDetector(
-                                  onTap: _addNewTab,
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(8),
-                                    child: Icon(Icons.add, size: 18,
-                                      color: Theme.of(context).colorScheme.onSurfaceVariant),
-                                  ),
-                                ),
-                              ),
-                              MouseRegion(
-                                cursor: SystemMouseCursors.click,
-                                child: GestureDetector(
-                                  onTap: _showSettings,
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(8),
-                                    child: Icon(Icons.settings, size: 18,
-                                      color: Theme.of(context).colorScheme.onSurfaceVariant),
-                                  ),
-                                ),
-                              ),
-                              _buildMenuButton(iconSize: 18),
-                            ],
-                          ),
-                        ),
-                      ),
-                    if (_dragging)
-                      Container(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .primary
-                            .withValues(alpha: 0.1),
-                        child: Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.file_open,
-                                size: 64,
-                                color: Theme.of(context).colorScheme.primary,
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                'Drop file to open',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  color: Theme.of(context).colorScheme.primary,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    if (!_isOnline)
-                      Positioned(
-                        top: widget.hideAppBar ? 16 : 0,
-                        left: 0,
-                        right: 0,
-                        child: Material(
-                          color: Theme.of(context).colorScheme.errorContainer,
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 8,
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.wifi_off,
-                                  size: 16,
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onErrorContainer,
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  'No internet connection',
-                                  style: TextStyle(
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .onErrorContainer,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
+                  ),
                 ),
               ),
-            );
+          ],
+        ),
+      ),
+    );
   }
 }
