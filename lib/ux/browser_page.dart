@@ -364,7 +364,8 @@ class SettingsDialog extends HookWidget {
     final firebaseProjectId = useTextEditingController();
     final firebaseStorageBucket = useTextEditingController();
     final showFirebaseConfig = useState(false);
-    final loadedFirebaseConfig = useRef<Map<String, String>>(<String, String>{});
+    final loadedFirebaseConfig =
+        useRef<Map<String, String>>(<String, String>{});
 
     useEffect(() {
       Future<void> loadPreferences() async {
@@ -488,7 +489,8 @@ class SettingsDialog extends HookWidget {
                       hintText: 'leave blank for welcome page',
                       hintStyle: theme.textTheme.bodySmall?.copyWith(
                         fontSize: 11,
-                        color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+                        color: theme.colorScheme.onSurfaceVariant
+                            .withValues(alpha: 0.6),
                       ),
                       isDense: true,
                       filled: false,
@@ -1401,6 +1403,7 @@ class _BrowserPageState extends State<BrowserPage>
   bool _overflowMenuOpen = false;
   bool _urlAutocompleteOpen = false;
   bool _modalInteractionBlockOpen = false;
+  bool _quickUrlPromptOpen = false;
   bool _windowButtonsSyncRetryQueued = false;
   Timer? _windowButtonsSyncRetryTimer;
   final Map<String, String> _faviconCacheByHost = {};
@@ -1614,8 +1617,8 @@ class _BrowserPageState extends State<BrowserPage>
       // For other text inputs in dialogs, unfocus but let event fall through
       if (isTextInputFocused) {
         FocusScope.of(context).unfocus();
-        // Return false to allow dialog dismissal
-        return false;
+        // Only quick URL prompt should allow Esc to dismiss the route.
+        return !_quickUrlPromptOpen;
       }
       // Exit fullscreen on Esc
       _exitFullscreenIfNeeded();
@@ -1624,9 +1627,11 @@ class _BrowserPageState extends State<BrowserPage>
 
     // Window-level shortcuts should work even when text input is focused
     if (KeyboardUtils.isFullscreenKey(event)) {
+      if (!_isDesktopPlatform) return false;
       _toggleFullscreen();
       return true;
     } else if (KeyboardUtils.isMinimizeKey(event)) {
+      if (!_isDesktopPlatform) return false;
       windowManager.minimize();
       return true;
     }
@@ -1642,22 +1647,29 @@ class _BrowserPageState extends State<BrowserPage>
   }
 
   Future<void> _toggleFullscreen() async {
+    if (!_isDesktopPlatform) return;
     final isFullscreen = await windowManager.isFullScreen();
     await windowManager.setFullScreen(!isFullscreen);
   }
 
   Future<void> _exitFullscreenIfNeeded() async {
+    if (!_isDesktopPlatform) return;
     final isFullscreen = await windowManager.isFullScreen();
     if (isFullscreen) {
       await windowManager.setFullScreen(false);
     }
   }
 
+  bool get _isDesktopPlatform =>
+      Platform.isWindows || Platform.isLinux || Platform.isMacOS;
+
   bool _isValidHistoryUrl(String url) {
     try {
       final uri = Uri.parse(url);
       // Only allow http, https, and about schemes
-      if (uri.scheme != 'http' && uri.scheme != 'https' && uri.scheme != 'about') {
+      if (uri.scheme != 'http' &&
+          uri.scheme != 'https' &&
+          uri.scheme != 'about') {
         return false;
       }
       // Reject URLs with suspicious patterns
@@ -1740,7 +1752,9 @@ class _BrowserPageState extends State<BrowserPage>
   void _syncPagePointerEvents(TabData tab) {
     if (tab.isClosed) return;
     final shouldBlock = identical(tab, activeTab) &&
-        (_urlAutocompleteOpen || _modalInteractionBlockOpen || _overflowMenuOpen);
+        (_urlAutocompleteOpen ||
+            _modalInteractionBlockOpen ||
+            _overflowMenuOpen);
     unawaited(_setTabPointerEventsEnabled(tab, !shouldBlock));
   }
 
@@ -3275,88 +3289,92 @@ class _BrowserPageState extends State<BrowserPage>
                         child: ListView(
                           children: bookmarkManager.bookmarks.entries
                               .map((entry) => ExpansionTile(
-                                    tilePadding:
-                                        const EdgeInsets.symmetric(horizontal: 8),
+                                    tilePadding: const EdgeInsets.symmetric(
+                                        horizontal: 8),
+                                    shape: const Border(),
+                                    collapsedShape: const Border(),
                                     title: Text(
                                       entry.key,
                                       style: theme.textTheme.bodyMedium
                                           ?.copyWith(fontSize: 13),
                                     ),
-                                  children: entry.value
-                                      .map((url) => ListTile(
-                                            dense: true,
-                                            visualDensity:
-                                                const VisualDensity(
-                                                    horizontal: -2,
-                                                    vertical: -2),
-                                            title: Text(
-                                              url,
-                                              style: theme.textTheme.bodyMedium
-                                                  ?.copyWith(fontSize: 12),
-                                            ),
-                                            hoverColor: Colors.transparent,
-                                            onTap: () {
-                                              Navigator.of(context).pop();
-                                              _loadUrl(url);
-                                            },
-                                            trailing: MouseRegion(
-                                              cursor: SystemMouseCursors.click,
-                                              child: GestureDetector(
-                                                onTap: () async {
-                                                  final confirm =
-                                                      await showDialog<bool>(
-                                                    context: context,
-                                                    builder: (context) =>
-                                                        AlertDialog(
-                                                      title: const Text(
-                                                          'Delete Bookmark?'),
-                                                      content: Text(
-                                                          'Remove "$url" from ${entry.key}?'),
-                                                      actions: [
-                                                        TextButton(
-                                                          onPressed: () =>
-                                                              Navigator.of(
-                                                                      context)
-                                                                  .pop(false),
-                                                          child: const Text(
-                                                              'Cancel'),
-                                                        ),
-                                                        TextButton(
-                                                          onPressed: () =>
-                                                              Navigator.of(
-                                                                      context)
-                                                                  .pop(true),
-                                                          child: const Text(
-                                                              'Delete'),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                  );
-                                                  if (confirm == true) {
-                                                    innerSetState(() {
-                                                      bookmarkManager.remove(
-                                                          url, entry.key);
-                                                    });
-                                                    _saveBookmarks();
-                                                  }
-                                                },
-                                                child: Padding(
-                                                  padding:
-                                                      const EdgeInsets.all(8),
-                                                  child: Icon(Icons.delete,
-                                                      color: Theme.of(context)
-                                                          .colorScheme
-                                                          .onSurfaceVariant),
+                                    children: entry.value
+                                        .map((url) => ListTile(
+                                              dense: true,
+                                              visualDensity:
+                                                  const VisualDensity(
+                                                      horizontal: -2,
+                                                      vertical: -2),
+                                              title: Text(
+                                                url,
+                                                style: theme
+                                                    .textTheme.bodyMedium
+                                                    ?.copyWith(fontSize: 12),
+                                              ),
+                                              hoverColor: Colors.transparent,
+                                              onTap: () {
+                                                Navigator.of(context).pop();
+                                                _loadUrl(url);
+                                              },
+                                              trailing: MouseRegion(
+                                                cursor:
+                                                    SystemMouseCursors.click,
+                                                child: GestureDetector(
+                                                  onTap: () async {
+                                                    final confirm =
+                                                        await showDialog<bool>(
+                                                      context: context,
+                                                      builder: (context) =>
+                                                          AlertDialog(
+                                                        title: const Text(
+                                                            'Delete Bookmark?'),
+                                                        content: Text(
+                                                            'Remove "$url" from ${entry.key}?'),
+                                                        actions: [
+                                                          TextButton(
+                                                            onPressed: () =>
+                                                                Navigator.of(
+                                                                        context)
+                                                                    .pop(false),
+                                                            child: const Text(
+                                                                'Cancel'),
+                                                          ),
+                                                          TextButton(
+                                                            onPressed: () =>
+                                                                Navigator.of(
+                                                                        context)
+                                                                    .pop(true),
+                                                            child: const Text(
+                                                                'Delete'),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    );
+                                                    if (confirm == true) {
+                                                      innerSetState(() {
+                                                        bookmarkManager.remove(
+                                                            url, entry.key);
+                                                      });
+                                                      _saveBookmarks();
+                                                    }
+                                                  },
+                                                  child: Padding(
+                                                    padding:
+                                                        const EdgeInsets.all(8),
+                                                    child: Icon(Icons.delete,
+                                                        color: Theme.of(context)
+                                                            .colorScheme
+                                                            .onSurfaceVariant),
+                                                  ),
                                                 ),
                                               ),
-                                            ),
-                                          ))
-                                      .toList(),
-                                ))
-                            .toList(),
+                                            ))
+                                        .toList(),
+                                  ))
+                              .toList(),
+                        ),
                       ),
-                    ),
-            ),
+              ),
               actions: [
                 TextButton(
                   onPressed: () {
@@ -3504,8 +3522,8 @@ class _BrowserPageState extends State<BrowserPage>
                                     ),
                                   ],
                                   selected: {applyToCurrentSite},
-                                  style: ButtonStyle(
-                                      overlayColor: noHoverOverlay),
+                                  style:
+                                      ButtonStyle(overlayColor: noHoverOverlay),
                                   onSelectionChanged: (selection) {
                                     setStateDialog(() {
                                       applyToCurrentSite = selection.first;
@@ -3518,7 +3536,8 @@ class _BrowserPageState extends State<BrowserPage>
                             SizedBox(
                               width: double.infinity,
                               child: ConstrainedBox(
-                                constraints: const BoxConstraints(maxHeight: 220),
+                                constraints:
+                                    const BoxConstraints(maxHeight: 220),
                                 child: SingleChildScrollView(
                                   child: Column(
                                     children: [
@@ -3526,15 +3545,14 @@ class _BrowserPageState extends State<BrowserPage>
                                         (choice) => ListTile(
                                           dense: true,
                                           visualDensity: const VisualDensity(
-                                              horizontal: -2,
-                                              vertical: -2),
+                                              horizontal: -2, vertical: -2),
                                           hoverColor: Colors.transparent,
                                           title: Text(choice.label),
-                                          trailing: selectedValue ==
-                                                  choice.cssFamily
-                                              ? const Icon(Icons.check,
-                                                  size: 18)
-                                              : null,
+                                          trailing:
+                                              selectedValue == choice.cssFamily
+                                                  ? const Icon(Icons.check,
+                                                      size: 18)
+                                                  : null,
                                           onTap: () {
                                             setStateDialog(() {
                                               selectedValue = choice.cssFamily;
@@ -3547,13 +3565,12 @@ class _BrowserPageState extends State<BrowserPage>
                                         visualDensity: const VisualDensity(
                                             horizontal: -2, vertical: -2),
                                         hoverColor: Colors.transparent,
-                                        title:
-                                            const Text('Custom CSS Font Family'),
-                                        trailing:
-                                            selectedValue == customOptionValue
-                                                ? const Icon(Icons.check,
-                                                    size: 18)
-                                                : null,
+                                        title: const Text(
+                                            'Custom CSS Font Family'),
+                                        trailing: selectedValue ==
+                                                customOptionValue
+                                            ? const Icon(Icons.check, size: 18)
+                                            : null,
                                         onTap: () {
                                           setStateDialog(() {
                                             selectedValue = customOptionValue;
@@ -3580,8 +3597,7 @@ class _BrowserPageState extends State<BrowserPage>
                         ),
                         actions: [
                           TextButton(
-                            style:
-                                ButtonStyle(overlayColor: noHoverOverlay),
+                            style: ButtonStyle(overlayColor: noHoverOverlay),
                             onPressed: () => Navigator.of(context).pop(),
                             child: const Text('Cancel'),
                           ),
@@ -3589,8 +3605,7 @@ class _BrowserPageState extends State<BrowserPage>
                               hasSiteRule &&
                               applyToCurrentSite)
                             TextButton(
-                              style:
-                                  ButtonStyle(overlayColor: noHoverOverlay),
+                              style: ButtonStyle(overlayColor: noHoverOverlay),
                               onPressed: () {
                                 Navigator.of(context).pop(
                                   const _FontPickerResult(
@@ -3603,8 +3618,7 @@ class _BrowserPageState extends State<BrowserPage>
                               child: const Text('Clear Site Rule'),
                             ),
                           TextButton(
-                            style:
-                                ButtonStyle(overlayColor: noHoverOverlay),
+                            style: ButtonStyle(overlayColor: noHoverOverlay),
                             onPressed: () {
                               final chosenFont =
                                   selectedValue == customOptionValue
@@ -3613,8 +3627,8 @@ class _BrowserPageState extends State<BrowserPage>
                               Navigator.of(context).pop(
                                 _FontPickerResult(
                                   fontFamily: chosenFont,
-                                  applyToCurrentSite: currentHost != null &&
-                                      applyToCurrentSite,
+                                  applyToCurrentSite:
+                                      currentHost != null && applyToCurrentSite,
                                 ),
                               );
                             },
@@ -4138,8 +4152,7 @@ class _BrowserPageState extends State<BrowserPage>
             data: dialogTheme,
             child: StatefulBuilder(
               builder: (context, setDialogState) {
-                final displayHistory =
-                    history.reversed.toList(growable: false);
+                final displayHistory = history.reversed.toList(growable: false);
                 return AlertDialog(
                   title: Text(
                     'History',
@@ -4255,75 +4268,83 @@ class _BrowserPageState extends State<BrowserPage>
         activeTab.currentUrl == defaultHomepageUrl ? '' : activeTab.currentUrl;
     var dialogClosed = false;
     final theme = Theme.of(context);
-    final submittedValue = await showDialog<String>(
-      context: context,
-      useRootNavigator: true,
-      builder: (dialogContext) {
-        void closeDialog([String? value]) {
-          if (dialogClosed) return;
-          dialogClosed = true;
-          Navigator.of(dialogContext).pop(value);
-        }
+    _quickUrlPromptOpen = true;
+    final submittedValue = await (() async {
+      try {
+        return await showDialog<String>(
+          context: context,
+          useRootNavigator: true,
+          builder: (dialogContext) {
+            void closeDialog([String? value]) {
+              if (dialogClosed) return;
+              dialogClosed = true;
+              Navigator.of(dialogContext).pop(value);
+            }
 
-        return AlertDialog(
-          contentPadding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Search or URL',
-                style: theme.textTheme.titleSmall?.copyWith(fontSize: 13),
+            return AlertDialog(
+              contentPadding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Search or URL',
+                    style: theme.textTheme.titleSmall?.copyWith(fontSize: 13),
+                  ),
+                  const SizedBox(height: 8),
+                  TextFormField(
+                    initialValue: inputValue,
+                    autofocus: true,
+                    textInputAction: TextInputAction.go,
+                    style: theme.textTheme.bodyMedium?.copyWith(fontSize: 13),
+                    decoration: InputDecoration(
+                      hintText: 'enter url or search',
+                      hintStyle: theme.textTheme.bodySmall?.copyWith(
+                        fontSize: 11,
+                        color: theme.colorScheme.onSurfaceVariant
+                            .withValues(alpha: 0.6),
+                      ),
+                      isDense: true,
+                      filled: false,
+                      enabledBorder: UnderlineInputBorder(
+                        borderSide: BorderSide(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      focusedBorder: UnderlineInputBorder(
+                        borderSide: BorderSide(
+                          color: theme.colorScheme.primary,
+                        ),
+                      ),
+                    ),
+                    onChanged: (value) {
+                      inputValue = value;
+                    },
+                    onFieldSubmitted: (value) {
+                      Future<void>.delayed(Duration.zero, () {
+                        closeDialog(value);
+                      });
+                    },
+                  ),
+                ],
               ),
-              const SizedBox(height: 8),
-              TextFormField(
-                initialValue: inputValue,
-                autofocus: true,
-                textInputAction: TextInputAction.go,
-                style: theme.textTheme.bodyMedium?.copyWith(fontSize: 13),
-                decoration: InputDecoration(
-                  hintText: 'enter url or search',
-                  hintStyle: theme.textTheme.bodySmall?.copyWith(
-                    fontSize: 11,
-                    color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
-                  ),
-                  isDense: true,
-                  filled: false,
-                  enabledBorder: UnderlineInputBorder(
-                    borderSide: BorderSide(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                  focusedBorder: UnderlineInputBorder(
-                    borderSide: BorderSide(
-                      color: theme.colorScheme.primary,
-                    ),
-                  ),
+              actions: [
+                TextButton(
+                  onPressed: () => closeDialog(),
+                  child: const Text('Cancel'),
                 ),
-                onChanged: (value) {
-                  inputValue = value;
-                },
-                onFieldSubmitted: (value) {
-                  Future<void>.delayed(Duration.zero, () {
-                    closeDialog(value);
-                  });
-                },
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => closeDialog(),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () => closeDialog(inputValue),
-              child: const Text('Go'),
-            ),
-          ],
+                TextButton(
+                  onPressed: () => closeDialog(inputValue),
+                  child: const Text('Go'),
+                ),
+              ],
+            );
+          },
         );
-      },
-    );
+      } finally {
+        _quickUrlPromptOpen = false;
+      }
+    })();
 
     final value = submittedValue?.trim();
     if (value == null || value.isEmpty) return;
@@ -4689,7 +4710,9 @@ class _BrowserPageState extends State<BrowserPage>
         final url = message.message;
         // Validate URL to prevent LFI and spoofing attacks
         if (!_isValidHistoryUrl(url)) {
-          logger.w('Blocked invalid URL from HistoryChannel: $url');
+          logger.w(
+            'Blocked invalid URL from HistoryChannel: ${_sanitizeUrlForLog(url)}',
+          );
           return;
         }
         _recordHistory(tab, url);

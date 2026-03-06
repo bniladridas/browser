@@ -7,6 +7,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:browser/main.dart';
@@ -125,25 +126,25 @@ void main() {
       expect(urlFieldFinder(), findsOneWidget);
       await tester.enterText(urlFieldFinder(), testUrl);
       await tester.testTextInput.receiveAction(TextInputAction.done);
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(seconds: 1));
 
       // Open menu and add bookmark
       await openOverflowMenu(tester);
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 300));
       await tester.tap(find.text('Add Bookmark'), warnIfMissed: false);
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 300));
       // Dismiss the add bookmark dialog if it is shown.
       if (find.text('Add Bookmark').evaluate().isNotEmpty &&
           find.text('Cancel').evaluate().isNotEmpty) {
         await tester.tap(find.text('Cancel'));
-        await tester.pumpAndSettle();
+        await tester.pump(const Duration(milliseconds: 300));
       }
 
       // Open menu and view bookmarks
       await openOverflowMenu(tester);
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 300));
       await tester.tap(find.text('Bookmarks'), warnIfMissed: false);
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 500));
 
       // Should show bookmarks dialog
       expect(
@@ -402,17 +403,38 @@ void main() {
 
       final aiSuggestionsSheet =
           find.byKey(const Key('browser.ai_suggestions_sheet'));
-      if (aiSuggestionsSheet.evaluate().isNotEmpty) {
-        await tester.drag(aiSuggestionsSheet.first, const Offset(0, 300));
+      if (!Platform.isMacOS) {
+        try {
+          HardwareKeyboard.instance.handleKeyEvent(
+            const KeyDownEvent(
+              timeStamp: Duration.zero,
+              physicalKey: PhysicalKeyboardKey.escape,
+              logicalKey: LogicalKeyboardKey.escape,
+            ),
+          );
+          await tester.pump(const Duration(milliseconds: 100));
+          HardwareKeyboard.instance.handleKeyEvent(
+            const KeyUpEvent(
+              timeStamp: Duration.zero,
+              physicalKey: PhysicalKeyboardKey.escape,
+              logicalKey: LogicalKeyboardKey.escape,
+            ),
+          );
+        } catch (_) {
+          // Key dispatch can be flaky; fallback below handles it.
+        }
         await tester.pump(const Duration(milliseconds: 300));
       }
-      if (aiSuggestionsTitle.evaluate().isNotEmpty) {
+
+      if (aiSuggestionsSheet.evaluate().isNotEmpty ||
+          aiSuggestionsTitle.evaluate().isNotEmpty) {
         // If drag dismissal is flaky in CI, tap outside the sheet as fallback.
         await tester.tapAt(const Offset(8, 8));
         await tester.pump(const Duration(milliseconds: 300));
       }
 
       expect(aiSuggestionsTitle, findsNothing);
+      expect(aiSuggestionsSheet, findsNothing);
     }, timeout: testTimeout);
 
     testWidgets('Git Fetch visibility persists after relaunch',
@@ -427,94 +449,94 @@ void main() {
       expect(find.text('Git Fetch'), findsOneWidget);
     }, timeout: testTimeout);
 
-  testWidgets('Firebase configuration can be saved in settings',
-      (WidgetTester tester) async {
-    await _launchApp(tester);
+    testWidgets('Firebase configuration can be saved in settings',
+        (WidgetTester tester) async {
+      await _launchApp(tester);
 
-    await openOverflowMenu(tester);
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Settings'));
-    await tester.pumpAndSettle();
+      await openOverflowMenu(tester);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Settings'));
+      await tester.pumpAndSettle();
 
-    // Scroll to Config section
-    final settingsScrollable = find.descendant(
-      of: find.byType(AlertDialog),
-      matching: find.byType(Scrollable),
-    );
-    await tester.scrollUntilVisible(
-      find.text('Config'),
-      100,
-      scrollable: settingsScrollable.first,
-    );
+      // Scroll to Config section
+      final settingsScrollable = find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.byType(Scrollable),
+      );
+      await tester.scrollUntilVisible(
+        find.text('Config'),
+        100,
+        scrollable: settingsScrollable.first,
+      );
 
-    // Expand Firebase config
-    await tester.tap(find.text('Config'));
-    await tester.pumpAndSettle();
+      // Expand Firebase config
+      await tester.tap(find.text('Config'));
+      await tester.pumpAndSettle();
 
-    // Scroll to fields
-    await tester.scrollUntilVisible(
-      find.text('API Key'),
-      100,
-      scrollable: settingsScrollable.first,
-    );
+      // Scroll to fields
+      await tester.scrollUntilVisible(
+        find.text('API Key'),
+        100,
+        scrollable: settingsScrollable.first,
+      );
 
-    final apiKeyField = find.ancestor(
-      of: find.text('API Key'),
-      matching: find.byType(TextField),
-    );
-    final appIdField = find.ancestor(
-      of: find.text('App ID'),
-      matching: find.byType(TextField),
-    );
-
-    expect(apiKeyField, findsOneWidget);
-    expect(appIdField, findsOneWidget);
-
-    await tester.enterText(apiKeyField, 'test-api-key');
-    await tester.pumpAndSettle();
-    await tester.enterText(appIdField, 'test-app-id');
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.text('Save'));
-    await tester.pumpAndSettle();
-
-    // Reopen settings and verify the values are persisted for the UI.
-    await openOverflowMenu(tester);
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Settings'));
-    await tester.pumpAndSettle();
-
-    final reopenedScrollable = find.descendant(
-      of: find.byType(AlertDialog),
-      matching: find.byType(Scrollable),
-    );
-    await tester.scrollUntilVisible(
-      find.text('Config'),
-      100,
-      scrollable: reopenedScrollable.first,
-    );
-    await tester.tap(find.text('Config'));
-    await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(
-      find.text('API Key'),
-      100,
-      scrollable: reopenedScrollable.first,
-    );
-
-    final reopenedApiKeyField = tester.widget<TextField>(
-      find.ancestor(
+      final apiKeyField = find.ancestor(
         of: find.text('API Key'),
         matching: find.byType(TextField),
-      ),
-    );
-    final reopenedAppIdField = tester.widget<TextField>(
-      find.ancestor(
+      );
+      final appIdField = find.ancestor(
         of: find.text('App ID'),
         matching: find.byType(TextField),
-      ),
-    );
-    expect(reopenedApiKeyField.controller?.text, 'test-api-key');
-    expect(reopenedAppIdField.controller?.text, 'test-app-id');
-  }, timeout: testTimeout);
+      );
+
+      expect(apiKeyField, findsOneWidget);
+      expect(appIdField, findsOneWidget);
+
+      await tester.enterText(apiKeyField, 'test-api-key');
+      await tester.pumpAndSettle();
+      await tester.enterText(appIdField, 'test-app-id');
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+
+      // Reopen settings and verify the values are persisted for the UI.
+      await openOverflowMenu(tester);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Settings'));
+      await tester.pumpAndSettle();
+
+      final reopenedScrollable = find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.byType(Scrollable),
+      );
+      await tester.scrollUntilVisible(
+        find.text('Config'),
+        100,
+        scrollable: reopenedScrollable.first,
+      );
+      await tester.tap(find.text('Config'));
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        find.text('API Key'),
+        100,
+        scrollable: reopenedScrollable.first,
+      );
+
+      final reopenedApiKeyField = tester.widget<TextField>(
+        find.ancestor(
+          of: find.text('API Key'),
+          matching: find.byType(TextField),
+        ),
+      );
+      final reopenedAppIdField = tester.widget<TextField>(
+        find.ancestor(
+          of: find.text('App ID'),
+          matching: find.byType(TextField),
+        ),
+      );
+      expect(reopenedApiKeyField.controller?.text, 'test-api-key');
+      expect(reopenedAppIdField.controller?.text, 'test-app-id');
+    }, timeout: testTimeout);
   }, skip: Platform.isLinux || Platform.isWindows);
 }
