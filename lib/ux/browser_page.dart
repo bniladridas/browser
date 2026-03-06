@@ -1593,32 +1593,37 @@ class _BrowserPageState extends State<BrowserPage>
     } else if (KeyboardUtils.isEscapeKey(event)) {
       // Check if URL bar is focused
       if (activeTab.urlFocusNode.hasFocus) {
-        activeTab.urlFocusNode.unfocus();
+        // Close autocomplete first to avoid overlay disposal issues
         if (_urlAutocompleteOpen) {
           _setUrlAutocompleteOpen(false);
         }
+        activeTab.urlFocusNode.unfocus();
         return true;
       }
-      // Check if any other text input is focused
+      // For other text inputs in dialogs, unfocus but let event fall through
       if (isTextInputFocused) {
         FocusScope.of(context).unfocus();
-        return true;
+        // Return false to allow dialog dismissal
+        return false;
       }
       // Exit fullscreen on Esc
       _exitFullscreenIfNeeded();
       return false;
     }
 
-    if (isTextInputFocused) return false;
-
-    if (KeyboardUtils.isRefreshKey(event)) {
-      _refresh();
-      return true;
-    } else if (KeyboardUtils.isFullscreenKey(event)) {
+    // Window-level shortcuts should work even when text input is focused
+    if (KeyboardUtils.isFullscreenKey(event)) {
       _toggleFullscreen();
       return true;
     } else if (KeyboardUtils.isMinimizeKey(event)) {
       windowManager.minimize();
+      return true;
+    }
+
+    if (isTextInputFocused) return false;
+
+    if (KeyboardUtils.isRefreshKey(event)) {
+      _refresh();
       return true;
     }
 
@@ -1634,6 +1639,23 @@ class _BrowserPageState extends State<BrowserPage>
     final isFullscreen = await windowManager.isFullScreen();
     if (isFullscreen) {
       await windowManager.setFullScreen(false);
+    }
+  }
+
+  bool _isValidHistoryUrl(String url) {
+    try {
+      final uri = Uri.parse(url);
+      // Only allow http, https, and about schemes
+      if (uri.scheme != 'http' && uri.scheme != 'https' && uri.scheme != 'about') {
+        return false;
+      }
+      // Reject URLs with suspicious patterns
+      if (url.contains('file://') || url.contains('javascript:')) {
+        return false;
+      }
+      return true;
+    } catch (e) {
+      return false;
     }
   }
 
@@ -4612,12 +4634,7 @@ class _BrowserPageState extends State<BrowserPage>
                   ).copyWith(overlayColor: noHoverOverlay),
                   onPressed: () {
                     if (widget.hideAppBar) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Enable app bar in settings to edit URL'),
-                          duration: Duration(seconds: 2),
-                        ),
-                      );
+                      _showQuickUrlPrompt();
                     } else {
                       tab.urlFocusNode.requestFocus();
                     }
@@ -4659,6 +4676,11 @@ class _BrowserPageState extends State<BrowserPage>
       tab.webViewController!.addJavaScriptChannel('HistoryChannel',
           onMessageReceived: (JavaScriptMessage message) {
         final url = message.message;
+        // Validate URL to prevent LFI and spoofing attacks
+        if (!_isValidHistoryUrl(url)) {
+          logger.w('Blocked invalid URL from HistoryChannel: $url');
+          return;
+        }
         _recordHistory(tab, url);
         // Update the URL bar for SPA navigation
         if (!tab.isClosed && mounted && tab.currentUrl != url) {
