@@ -236,8 +236,9 @@ class FaviconUrlPolicy {
       if (b[0] == 10) return true; // 10.0.0.0/8
       if (b[0] == 127) return true; // loopback
       if (b[0] == 0) return true; // invalid/unspecified
-      if (b[0] == 169 && b[1] == 254)
+      if (b[0] == 169 && b[1] == 254) {
         return true; // link-local + metadata range
+      }
       if (b[0] == 172 && b[1] >= 16 && b[1] <= 31) return true; // 172.16.0.0/12
       if (b[0] == 192 && b[1] == 168) return true; // 192.168.0.0/16
       if (b[0] == 100 && b[1] >= 64 && b[1] <= 127) return true; // CGNAT
@@ -256,8 +257,9 @@ class FaviconUrlPolicy {
           b[11] == 0xFF;
       if (isIpv4Mapped) return true; // ::ffff:x.x.x.x
       if ((b[0] & 0xFE) == 0xFC) return true; // fc00::/7 unique local
-      if (b[0] == 0xFE && (b[1] & 0xC0) == 0x80)
+      if (b[0] == 0xFE && (b[1] & 0xC0) == 0x80) {
         return true; // fe80::/10 link-local
+      }
       if (b[0] == 0xFF) return true; // multicast
       return false;
     }
@@ -1110,9 +1112,9 @@ Color? _parseThemeHslColor(String value) {
   final color = HSLColor.fromAHSL(alpha, h, s, l).toColor();
   return Color.fromARGB(
     (alpha * 255).round(),
-    color.red,
-    color.green,
-    color.blue,
+    (color.r * 255.0).round().clamp(0, 255),
+    (color.g * 255.0).round().clamp(0, 255),
+    (color.b * 255.0).round().clamp(0, 255),
   );
 }
 
@@ -1172,9 +1174,9 @@ bool _isReliableSeedColor(Color color) {
 }
 
 double _colorSaturation(Color color) {
-  final r = color.red / 255.0;
-  final g = color.green / 255.0;
-  final b = color.blue / 255.0;
+  final r = color.r;
+  final g = color.g;
+  final b = color.b;
   final maxChannel = math.max(r, math.max(g, b));
   final minChannel = math.min(r, math.min(g, b));
   if (maxChannel == 0) return 0;
@@ -1234,8 +1236,9 @@ class GitFetchDialog extends HookWidget {
 
       final parts = repo.split('/');
       if (parts.length != 2) {
-        if (!isDisposed.value)
+        if (!isDisposed.value) {
           errorMessage.value = 'Invalid format. Use owner/repo';
+        }
         return;
       }
 
