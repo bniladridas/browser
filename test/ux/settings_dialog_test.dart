@@ -8,6 +8,7 @@ import 'package:browser/constants.dart';
 import 'package:browser/features/theme_utils.dart';
 import 'package:browser/ux/browser_page.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -199,6 +200,7 @@ void main() {
 
     testWidgets('loads Firebase keys from SharedPreferences',
         (WidgetTester tester) async {
+      FlutterSecureStorage.setMockInitialValues({});
       SharedPreferences.setMockInitialValues({
         firebaseApiKeyPref: 'test-api-key',
         firebaseAppIdPref: 'test-app-id',
@@ -258,6 +260,7 @@ void main() {
 
     testWidgets('saves Firebase keys to SharedPreferences',
         (WidgetTester tester) async {
+      FlutterSecureStorage.setMockInitialValues({});
       SharedPreferences.setMockInitialValues({});
 
       await _openSettingsDialog(
