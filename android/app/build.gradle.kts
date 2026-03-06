@@ -33,15 +33,21 @@ android {
 
     val keystoreProperties = Properties()
     val keystorePropertiesFile = rootProject.file("key.properties")
+    var hasValidReleaseSigning = false
     if (keystorePropertiesFile.exists()) {
         keystorePropertiesFile.inputStream().use { keystoreProperties.load(it) }
+        val requiredKeys = listOf("storeFile", "storePassword", "keyAlias", "keyPassword")
+        hasValidReleaseSigning = requiredKeys.all { !keystoreProperties.getProperty(it).isNullOrBlank() }
+        if (hasValidReleaseSigning) {
+            val storeFilePath = keystoreProperties.getProperty("storeFile")
+            hasValidReleaseSigning = file(storeFilePath).exists()
+        }
     }
 
     signingConfigs {
         create("release") {
-            val keystorePath = keystoreProperties.getProperty("storeFile")
-            if (!keystorePath.isNullOrBlank()) {
-                storeFile = file(keystorePath)
+            if (hasValidReleaseSigning) {
+                storeFile = file(keystoreProperties.getProperty("storeFile"))
                 storePassword = keystoreProperties.getProperty("storePassword")
                 keyAlias = keystoreProperties.getProperty("keyAlias")
                 keyPassword = keystoreProperties.getProperty("keyPassword")
@@ -51,8 +57,13 @@ android {
 
     buildTypes {
         release {
-            // Uses key.properties-backed signing for release builds.
-            signingConfig = signingConfigs.getByName("release")
+            // Use release signing when key.properties is fully configured;
+            // otherwise fall back to debug signing for local/dev builds.
+            signingConfig = if (hasValidReleaseSigning) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
         }
     }
 }
