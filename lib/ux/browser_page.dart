@@ -368,9 +368,6 @@ class SettingsDialog extends HookWidget {
             (storedHomepage == null || storedHomepage.isEmpty)
                 ? defaultHomepageUrl
                 : storedHomepage;
-        homepage.value = resolvedHomepage;
-        homepageController.text =
-            resolvedHomepage == defaultHomepageUrl ? '' : resolvedHomepage;
         hideAppBar.value = prefs.getBool(hideAppBarKey) ?? false;
         useModernUserAgent.value =
             prefs.getBool(useModernUserAgentKey) ?? false;
@@ -398,6 +395,11 @@ class SettingsDialog extends HookWidget {
         firebaseProjectId.text = prefs.getString(firebaseProjectIdPref) ?? '';
         firebaseStorageBucket.text =
             prefs.getString(firebaseStorageBucketPref) ?? '';
+
+        // Mark dialog ready only after all settings are loaded.
+        homepage.value = resolvedHomepage;
+        homepageController.text =
+            resolvedHomepage == defaultHomepageUrl ? '' : resolvedHomepage;
       }
 
       loadPreferences();
@@ -656,11 +658,14 @@ class SettingsDialog extends HookWidget {
                           ],
                         ),
                         const SizedBox(height: 6),
-                        MouseRegion(
-                          cursor: SystemMouseCursors.click,
-                          child: GestureDetector(
-                            onTap: () => showFirebaseConfig.value =
-                                !showFirebaseConfig.value,
+                        InkWell(
+                          onTap: () => showFirebaseConfig.value =
+                              !showFirebaseConfig.value,
+                          hoverColor: Colors.transparent,
+                          splashColor: Colors.transparent,
+                          highlightColor: Colors.transparent,
+                          child: MouseRegion(
+                            cursor: SystemMouseCursors.click,
                             child: Row(
                               children: [
                                 Icon(
@@ -3284,6 +3289,7 @@ class _BrowserPageState extends State<BrowserPage>
                                             style: theme.textTheme.bodyMedium
                                                 ?.copyWith(fontSize: 12),
                                           ),
+                                          hoverColor: Colors.transparent,
                                           onTap: () {
                                             Navigator.of(context).pop();
                                             _loadUrl(url);
@@ -4042,6 +4048,7 @@ class _BrowserPageState extends State<BrowserPage>
                               style: theme.textTheme.bodyMedium
                                   ?.copyWith(fontSize: 12),
                             ),
+                            hoverColor: Colors.transparent,
                             onTap: () {
                               Navigator.of(context).pop();
                               _loadUrl(entry);
