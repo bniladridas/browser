@@ -258,7 +258,7 @@ void main() {
       expect(projectIdField.controller?.text, 'test-project');
     });
 
-    testWidgets('saves Firebase keys to secure storage',
+    testWidgets('saves Firebase keys to SharedPreferences',
         (WidgetTester tester) async {
       FlutterSecureStorage.setMockInitialValues({});
       SharedPreferences.setMockInitialValues({});
@@ -307,9 +307,9 @@ void main() {
       await tester.tap(find.text('Save'));
       await tester.pumpAndSettle();
 
-      const secureStorage = FlutterSecureStorage();
-      expect(await secureStorage.read(key: firebaseApiKeyPref), 'new-api-key');
-      expect(await secureStorage.read(key: firebaseAppIdPref), 'new-app-id');
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getString(firebaseApiKeyPref), 'new-api-key');
+      expect(prefs.getString(firebaseAppIdPref), 'new-app-id');
     });
   });
 }
