@@ -163,5 +163,77 @@ void main() {
       expect(prefs.getBool(useModernUserAgentKey), isFalse);
       expect(settingsChangedCount, 0);
     });
+
+    testWidgets('displays Firebase configuration fields',
+        (WidgetTester tester) async {
+      SharedPreferences.setMockInitialValues({});
+
+      await _openSettingsDialog(
+        tester,
+        _dialogHost(aiAvailable: false),
+      );
+
+      expect(find.text('Firebase Configuration'), findsOneWidget);
+      expect(find.widgetWithText(TextField, 'API Key'), findsOneWidget);
+      expect(find.widgetWithText(TextField, 'App ID'), findsOneWidget);
+      expect(find.widgetWithText(TextField, 'Messaging Sender ID'), findsOneWidget);
+      expect(find.widgetWithText(TextField, 'Project ID'), findsOneWidget);
+      expect(find.widgetWithText(TextField, 'Storage Bucket'), findsOneWidget);
+    });
+
+    testWidgets('loads Firebase keys from SharedPreferences',
+        (WidgetTester tester) async {
+      SharedPreferences.setMockInitialValues({
+        'firebase_FIREBASE_API_KEY': 'test-api-key',
+        'firebase_FIREBASE_APP_ID': 'test-app-id',
+        'firebase_FIREBASE_PROJECT_ID': 'test-project',
+      });
+
+      await _openSettingsDialog(
+        tester,
+        _dialogHost(aiAvailable: false),
+      );
+
+      final apiKeyField = tester.widget<TextField>(
+        find.widgetWithText(TextField, 'API Key'),
+      );
+      final appIdField = tester.widget<TextField>(
+        find.widgetWithText(TextField, 'App ID'),
+      );
+      final projectIdField = tester.widget<TextField>(
+        find.widgetWithText(TextField, 'Project ID'),
+      );
+
+      expect(apiKeyField.controller?.text, 'test-api-key');
+      expect(appIdField.controller?.text, 'test-app-id');
+      expect(projectIdField.controller?.text, 'test-project');
+    });
+
+    testWidgets('saves Firebase keys to SharedPreferences',
+        (WidgetTester tester) async {
+      SharedPreferences.setMockInitialValues({});
+
+      await _openSettingsDialog(
+        tester,
+        _dialogHost(aiAvailable: false),
+      );
+
+      await tester.enterText(
+        find.widgetWithText(TextField, 'API Key'),
+        'new-api-key',
+      );
+      await tester.enterText(
+        find.widgetWithText(TextField, 'App ID'),
+        'new-app-id',
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getString('firebase_FIREBASE_API_KEY'), 'new-api-key');
+      expect(prefs.getString('firebase_FIREBASE_APP_ID'), 'new-app-id');
+    });
   });
 }

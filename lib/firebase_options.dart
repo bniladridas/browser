@@ -7,7 +7,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Helper to get Firebase config from SharedPreferences or .env
-Future<String> _getConfig(String key) async {
+Future<String> getConfig(String key) async {
   final prefs = await SharedPreferences.getInstance();
   final prefKey = 'firebase_$key';
   final prefValue = prefs.getString(prefKey);
@@ -72,11 +72,11 @@ class DefaultFirebaseOptions {
   }
 
   static Future<FirebaseOptions> get macos async => FirebaseOptions(
-        apiKey: await _getConfig('FIREBASE_API_KEY'),
-        appId: await _getConfig('FIREBASE_APP_ID'),
-        messagingSenderId: await _getConfig('FIREBASE_MESSAGING_SENDER_ID'),
-        projectId: await _getConfig('FIREBASE_PROJECT_ID'),
-        storageBucket: await _getConfig('FIREBASE_STORAGE_BUCKET'),
+        apiKey: await getConfig('FIREBASE_API_KEY'),
+        appId: await getConfig('FIREBASE_APP_ID'),
+        messagingSenderId: await getConfig('FIREBASE_MESSAGING_SENDER_ID'),
+        projectId: await getConfig('FIREBASE_PROJECT_ID'),
+        storageBucket: await getConfig('FIREBASE_STORAGE_BUCKET'),
         iosBundleId: 'com.example.browser',
       );
 }

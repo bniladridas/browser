@@ -437,5 +437,38 @@ void main() {
 
       expect(find.text('Git Fetch'), findsOneWidget);
     }, timeout: testTimeout);
+
+  testWidgets('Firebase configuration can be saved in settings',
+      (WidgetTester tester) async {
+    await _launchApp(tester);
+
+    await openOverflowMenu(tester);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Settings'));
+    await tester.pumpAndSettle();
+
+    final apiKeyField = find.ancestor(
+      of: find.text('API Key'),
+      matching: find.byType(TextField),
+    );
+    final appIdField = find.ancestor(
+      of: find.text('App ID'),
+      matching: find.byType(TextField),
+    );
+
+    expect(apiKeyField, findsOneWidget);
+    expect(appIdField, findsOneWidget);
+
+    await tester.enterText(apiKeyField, 'test-api-key');
+    await tester.enterText(appIdField, 'test-app-id');
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getString('firebase_FIREBASE_API_KEY'), 'test-api-key');
+    expect(prefs.getString('firebase_FIREBASE_APP_ID'), 'test-app-id');
+  }, timeout: testTimeout);
   }, skip: Platform.isLinux || Platform.isWindows);
 }
