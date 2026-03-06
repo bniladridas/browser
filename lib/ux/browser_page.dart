@@ -26,7 +26,6 @@ import 'package:desktop_drop/desktop_drop.dart';
 import '../constants.dart';
 import '../features/theme_utils.dart';
 import '../features/bookmark_manager.dart';
-import '../features/firebase_config_store.dart';
 import '../features/password_prompt.dart';
 import '../features/password_storage.dart';
 import 'clickable_icon.dart';
@@ -390,16 +389,14 @@ class SettingsDialog extends HookWidget {
               orElse: () => currentTheme ?? AppThemeMode.system);
         }
 
-        final firebaseConfig = await FirebaseConfigStore.loadSettingsConfig();
-        firebaseApiKey.text = firebaseConfig[firebaseApiKeyPref] ?? '';
-        firebaseAppId.text = firebaseConfig[firebaseAppIdPref] ?? '';
-        firebaseSenderId.text = firebaseConfig[firebaseSenderIdPref] ?? '';
-        firebaseProjectId.text = firebaseConfig[firebaseProjectIdPref] ?? '';
+        firebaseApiKey.text = prefs.getString(firebaseApiKeyPref) ?? '';
+        firebaseAppId.text = prefs.getString(firebaseAppIdPref) ?? '';
+        firebaseSenderId.text = prefs.getString(firebaseSenderIdPref) ?? '';
+        firebaseProjectId.text = prefs.getString(firebaseProjectIdPref) ?? '';
         firebaseStorageBucket.text =
-            firebaseConfig[firebaseStorageBucketPref] ?? '';
+            prefs.getString(firebaseStorageBucketPref) ?? '';
 
-        // Mark dialog ready only after all settings (including secure values)
-        // are loaded to avoid race conditions with user interactions.
+        // Mark dialog ready only after all settings are loaded.
         homepage.value = resolvedHomepage;
         homepageController.text =
             resolvedHomepage == defaultHomepageUrl ? '' : resolvedHomepage;
@@ -810,14 +807,12 @@ class SettingsDialog extends HookWidget {
             final prefs = await SharedPreferences.getInstance();
 
             // Check if Firebase config changed
-            final oldFirebaseConfig =
-                await FirebaseConfigStore.loadSettingsConfig();
-            final oldApiKey = oldFirebaseConfig[firebaseApiKeyPref] ?? '';
-            final oldAppId = oldFirebaseConfig[firebaseAppIdPref] ?? '';
-            final oldSenderId = oldFirebaseConfig[firebaseSenderIdPref] ?? '';
-            final oldProjectId = oldFirebaseConfig[firebaseProjectIdPref] ?? '';
+            final oldApiKey = prefs.getString(firebaseApiKeyPref) ?? '';
+            final oldAppId = prefs.getString(firebaseAppIdPref) ?? '';
+            final oldSenderId = prefs.getString(firebaseSenderIdPref) ?? '';
+            final oldProjectId = prefs.getString(firebaseProjectIdPref) ?? '';
             final oldStorageBucket =
-                oldFirebaseConfig[firebaseStorageBucketPref] ?? '';
+                prefs.getString(firebaseStorageBucketPref) ?? '';
 
             final newApiKey = firebaseApiKey.text.trim();
             final newAppId = firebaseAppId.text.trim();
@@ -848,14 +843,13 @@ class SettingsDialog extends HookWidget {
                 advancedCacheEnabledKey, advancedCacheEnabled.value);
             await prefs.setString(themeModeKey, selectedTheme.value.name);
 
+            await prefs.setString(firebaseApiKeyPref, newApiKey);
+            await prefs.setString(firebaseAppIdPref, newAppId);
+            await prefs.setString(firebaseSenderIdPref, newSenderId);
+            await prefs.setString(firebaseProjectIdPref, newProjectId);
+            await prefs.setString(firebaseStorageBucketPref, newStorageBucket);
+
             onSettingsChanged?.call();
-            await FirebaseConfigStore.saveSettingsConfig(
-              apiKey: newApiKey,
-              appId: newAppId,
-              senderId: newSenderId,
-              projectId: newProjectId,
-              storageBucket: newStorageBucket,
-            );
             if (privateBrowsing.value &&
                 originalPrivateBrowsing.value == false) {
               onClearCaches?.call();
