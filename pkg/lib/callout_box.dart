@@ -13,29 +13,16 @@ class CalloutBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final brightness = MediaQuery.of(context).platformBrightness;
-    final isDark = brightness == Brightness.dark;
-
-    final backgroundColor =
-        isDark ? const Color(0xFF1e3a5f) : const Color(0xFFcfe8ff);
-    final textColor =
-        isDark ? const Color(0xFFe6f0ff) : const Color(0xFF0b1f33);
-
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-        color: backgroundColor,
+        color: Colors.transparent,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.black.withValues(alpha: 0.1)),
-      ),
-      child: DefaultTextStyle(
-        style: TextStyle(
-          color: textColor,
-          fontWeight: FontWeight.w500,
-          height: 1.4,
+        border: Border.all(
+          color: Theme.of(context).colorScheme.outline.withOpacity(0.3),
         ),
-        child: child,
       ),
+      child: child,
     );
   }
 }

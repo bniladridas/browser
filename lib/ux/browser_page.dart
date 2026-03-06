@@ -448,6 +448,21 @@ class SettingsDialog extends HookWidget {
             controller: settingsScrollController,
             child: Theme(
               data: theme.copyWith(
+                splashFactory: NoSplash.splashFactory,
+                highlightColor: Colors.transparent,
+                hoverColor: Colors.transparent,
+                inputDecorationTheme: theme.inputDecorationTheme.copyWith(
+                  hoverColor: Colors.transparent,
+                ),
+                switchTheme: SwitchThemeData(
+                  overlayColor: WidgetStateProperty.all(Colors.transparent),
+                  thumbColor: WidgetStateProperty.resolveWith((states) {
+                    if (states.contains(WidgetState.selected)) {
+                      return theme.colorScheme.onPrimary;
+                    }
+                    return theme.colorScheme.outline;
+                  }),
+                ),
                 listTileTheme: ListTileThemeData(
                   dense: true,
                   visualDensity: compactDensity,
@@ -468,10 +483,25 @@ class SettingsDialog extends HookWidget {
                   TextField(
                     controller: homepageController,
                     style: theme.textTheme.bodyMedium?.copyWith(fontSize: 13),
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Homepage',
-                      hintText: 'Blank = welcome page',
+                      hintText: 'leave blank for welcome page',
+                      hintStyle: theme.textTheme.bodySmall?.copyWith(
+                        fontSize: 11,
+                        color: theme.colorScheme.onSurfaceVariant.withOpacity(0.6),
+                      ),
                       isDense: true,
+                      filled: false,
+                      enabledBorder: UnderlineInputBorder(
+                        borderSide: BorderSide(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      focusedBorder: UnderlineInputBorder(
+                        borderSide: BorderSide(
+                          color: theme.colorScheme.primary,
+                        ),
+                      ),
                     ),
                   ),
                   MouseRegion(
@@ -545,6 +575,7 @@ class SettingsDialog extends HookWidget {
                         leading: const Icon(Icons.lock),
                         title: const Text('Manage Passwords'),
                         trailing: const Icon(Icons.chevron_right),
+                        hoverColor: Colors.transparent,
                         onTap: () {
                           Navigator.of(context).pop();
                           Navigator.of(context).push(
@@ -596,19 +627,28 @@ class SettingsDialog extends HookWidget {
                     runSpacing: 6,
                     children: AppThemeMode.values.map((mode) {
                       final isSelected = selectedTheme.value == mode;
-                      return ChoiceChip(
-                        label: Text(
-                          _themeLabel(mode),
-                          style:
-                              theme.textTheme.bodySmall?.copyWith(fontSize: 11),
+                      return Theme(
+                        data: theme.copyWith(
+                          splashFactory: NoSplash.splashFactory,
+                          highlightColor: Colors.transparent,
+                          hoverColor: Colors.transparent,
                         ),
-                        selected: isSelected,
-                        visualDensity: compactDensity,
-                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        onSelected: (_) {
-                          selectedTheme.value = mode;
-                          onThemePreviewChanged?.call(mode);
-                        },
+                        child: ChoiceChip(
+                          label: Text(
+                            _themeLabel(mode),
+                            style: theme.textTheme.bodySmall
+                                ?.copyWith(fontSize: 11),
+                          ),
+                          selected: isSelected,
+                          showCheckmark: false,
+                          visualDensity: compactDensity,
+                          materialTapTargetSize:
+                              MaterialTapTargetSize.shrinkWrap,
+                          onSelected: (_) {
+                            selectedTheme.value = mode;
+                            onThemePreviewChanged?.call(mode);
+                          },
+                        ),
                       );
                     }).toList(),
                   ),
@@ -717,6 +757,19 @@ class SettingsDialog extends HookWidget {
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(4),
                               ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(4),
+                                borderSide: BorderSide(
+                                  color: theme.colorScheme.outline,
+                                ),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(4),
+                                borderSide: BorderSide(
+                                  color: theme.colorScheme.primary,
+                                ),
+                              ),
+                              filled: false,
                             ),
                           ),
                           const SizedBox(height: 4),
@@ -734,6 +787,19 @@ class SettingsDialog extends HookWidget {
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(4),
                               ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(4),
+                                borderSide: BorderSide(
+                                  color: theme.colorScheme.outline,
+                                ),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(4),
+                                borderSide: BorderSide(
+                                  color: theme.colorScheme.primary,
+                                ),
+                              ),
+                              filled: false,
                             ),
                           ),
                           const SizedBox(height: 4),
@@ -751,6 +817,19 @@ class SettingsDialog extends HookWidget {
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(4),
                               ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(4),
+                                borderSide: BorderSide(
+                                  color: theme.colorScheme.outline,
+                                ),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(4),
+                                borderSide: BorderSide(
+                                  color: theme.colorScheme.primary,
+                                ),
+                              ),
+                              filled: false,
                             ),
                           ),
                           const SizedBox(height: 4),
@@ -768,6 +847,19 @@ class SettingsDialog extends HookWidget {
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(4),
                               ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(4),
+                                borderSide: BorderSide(
+                                  color: theme.colorScheme.outline,
+                                ),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(4),
+                                borderSide: BorderSide(
+                                  color: theme.colorScheme.primary,
+                                ),
+                              ),
+                              filled: false,
                             ),
                           ),
                           const SizedBox(height: 4),
@@ -785,6 +877,19 @@ class SettingsDialog extends HookWidget {
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(4),
                               ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(4),
+                                borderSide: BorderSide(
+                                  color: theme.colorScheme.outline,
+                                ),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(4),
+                                borderSide: BorderSide(
+                                  color: theme.colorScheme.primary,
+                                ),
+                              ),
+                              filled: false,
                             ),
                           ),
                         ],
@@ -1486,10 +1591,21 @@ class _BrowserPageState extends State<BrowserPage>
       activeTab.urlFocusNode.requestFocus();
       return true;
     } else if (KeyboardUtils.isEscapeKey(event)) {
+      // Check if URL bar is focused
+      if (activeTab.urlFocusNode.hasFocus) {
+        activeTab.urlFocusNode.unfocus();
+        if (_urlAutocompleteOpen) {
+          _setUrlAutocompleteOpen(false);
+        }
+        return true;
+      }
+      // Check if any other text input is focused
       if (isTextInputFocused) {
         FocusScope.of(context).unfocus();
         return true;
       }
+      // Exit fullscreen on Esc
+      _exitFullscreenIfNeeded();
       return false;
     }
 
@@ -1498,9 +1614,27 @@ class _BrowserPageState extends State<BrowserPage>
     if (KeyboardUtils.isRefreshKey(event)) {
       _refresh();
       return true;
+    } else if (KeyboardUtils.isFullscreenKey(event)) {
+      _toggleFullscreen();
+      return true;
+    } else if (KeyboardUtils.isMinimizeKey(event)) {
+      windowManager.minimize();
+      return true;
     }
 
     return false;
+  }
+
+  Future<void> _toggleFullscreen() async {
+    final isFullscreen = await windowManager.isFullScreen();
+    await windowManager.setFullScreen(!isFullscreen);
+  }
+
+  Future<void> _exitFullscreenIfNeeded() async {
+    final isFullscreen = await windowManager.isFullScreen();
+    if (isFullscreen) {
+      await windowManager.setFullScreen(false);
+    }
   }
 
   void _initConnectivity() async {
@@ -2934,18 +3068,32 @@ class _BrowserPageState extends State<BrowserPage>
       return;
     }
     String category = 'General';
+    final theme = Theme.of(context);
     await showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: Text(
           'Add Bookmark',
-          style: Theme.of(context).textTheme.titleSmall?.copyWith(fontSize: 15),
+          style: theme.textTheme.titleSmall?.copyWith(fontSize: 15),
         ),
         content: TextField(
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 13),
+          style: theme.textTheme.bodyMedium?.copyWith(fontSize: 13),
           onChanged: (value) => category = value.isEmpty ? 'General' : value,
-          decoration:
-              const InputDecoration(labelText: 'Category', isDense: true),
+          decoration: InputDecoration(
+            labelText: 'Category',
+            isDense: true,
+            filled: false,
+            enabledBorder: UnderlineInputBorder(
+              borderSide: BorderSide(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            focusedBorder: UnderlineInputBorder(
+              borderSide: BorderSide(
+                color: theme.colorScheme.primary,
+              ),
+            ),
+          ),
         ),
         actions: [
           TextButton(
@@ -3072,28 +3220,35 @@ class _BrowserPageState extends State<BrowserPage>
         context: context,
         builder: (context) {
           final theme = Theme.of(context);
-          return AlertDialog(
-            title: Text(
-              'Bookmarks',
-              style: theme.textTheme.titleSmall?.copyWith(fontSize: 15),
-            ),
-            content: StatefulBuilder(
-              builder: (context, innerSetState) => bookmarkManager
-                      .bookmarks.isEmpty
-                  ? const Text('No bookmarks')
-                  : SizedBox(
-                      width: double.maxFinite,
-                      height: 300,
-                      child: ListView(
-                        children: bookmarkManager.bookmarks.entries
-                            .map((entry) => ExpansionTile(
-                                  tilePadding:
-                                      const EdgeInsets.symmetric(horizontal: 8),
-                                  title: Text(
-                                    entry.key,
-                                    style: theme.textTheme.bodyMedium
-                                        ?.copyWith(fontSize: 13),
-                                  ),
+          final dialogTheme = theme.copyWith(
+            splashFactory: NoSplash.splashFactory,
+            highlightColor: Colors.transparent,
+            hoverColor: Colors.transparent,
+          );
+          return Theme(
+            data: dialogTheme,
+            child: AlertDialog(
+              title: Text(
+                'Bookmarks',
+                style: theme.textTheme.titleSmall?.copyWith(fontSize: 15),
+              ),
+              content: StatefulBuilder(
+                builder: (context, innerSetState) => bookmarkManager
+                        .bookmarks.isEmpty
+                    ? const Text('No bookmarks')
+                    : SizedBox(
+                        width: double.maxFinite,
+                        height: 300,
+                        child: ListView(
+                          children: bookmarkManager.bookmarks.entries
+                              .map((entry) => ExpansionTile(
+                                    tilePadding:
+                                        const EdgeInsets.symmetric(horizontal: 8),
+                                    title: Text(
+                                      entry.key,
+                                      style: theme.textTheme.bodyMedium
+                                          ?.copyWith(fontSize: 13),
+                                    ),
                                   children: entry.value
                                       .map((url) => ListTile(
                                             dense: true,
@@ -3169,22 +3324,23 @@ class _BrowserPageState extends State<BrowserPage>
                       ),
                     ),
             ),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  setState(() {
-                    bookmarkManager.clear();
-                  });
-                  _saveBookmarks();
-                  Navigator.of(context).pop();
-                },
-                child: const Text('Clear All'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Close'),
-              ),
-            ],
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    setState(() {
+                      bookmarkManager.clear();
+                    });
+                    _saveBookmarks();
+                    Navigator.of(context).pop();
+                  },
+                  child: const Text('Clear All'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Close'),
+                ),
+              ],
+            ),
           );
         },
       ),
@@ -3210,19 +3366,44 @@ class _BrowserPageState extends State<BrowserPage>
 
   void _showSettings() async {
     final saved = await _showWithModalInteractionBlock<bool>(
-      () => showDialog<bool>(
+      () => showGeneralDialog<bool>(
         context: context,
-        builder: (context) => SettingsDialog(
-            onSettingsChanged: () {
-              _loadReorderableTabs();
-              widget.onSettingsChanged?.call();
-            },
-            onClearCaches: _clearAllCaches,
-            onThemePreviewChanged: widget.onThemePreviewChanged,
-            currentTheme: widget.themeMode,
-            aiSearchSuggestionsEnabled: widget.aiSearchSuggestionsEnabled,
-            advancedCacheEnabled: widget.advancedCacheEnabled,
-            aiAvailable: widget.aiAvailable),
+        barrierDismissible: true,
+        barrierLabel: 'Settings',
+        barrierColor: Colors.black54,
+        transitionDuration: const Duration(milliseconds: 200),
+        pageBuilder: (context, animation, secondaryAnimation) {
+          return Align(
+            alignment: Alignment.centerRight,
+            child: Material(
+              type: MaterialType.transparency,
+              child: SettingsDialog(
+                onSettingsChanged: () {
+                  _loadReorderableTabs();
+                  widget.onSettingsChanged?.call();
+                },
+                onClearCaches: _clearAllCaches,
+                onThemePreviewChanged: widget.onThemePreviewChanged,
+                currentTheme: widget.themeMode,
+                aiSearchSuggestionsEnabled: widget.aiSearchSuggestionsEnabled,
+                advancedCacheEnabled: widget.advancedCacheEnabled,
+                aiAvailable: widget.aiAvailable,
+              ),
+            ),
+          );
+        },
+        transitionBuilder: (context, animation, secondaryAnimation, child) {
+          return SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(1.0, 0.0),
+              end: Offset.zero,
+            ).animate(CurvedAnimation(
+              parent: animation,
+              curve: Curves.easeOut,
+            )),
+            child: child,
+          );
+        },
       ),
     );
     if (saved != true) {
@@ -3915,87 +4096,96 @@ class _BrowserPageState extends State<BrowserPage>
         context: context,
         builder: (context) {
           final theme = Theme.of(context);
-          return StatefulBuilder(
-            builder: (context, setDialogState) {
-              final displayHistory = history.reversed.toList(growable: false);
-              return AlertDialog(
-                title: Text(
-                  'History',
-                  style: theme.textTheme.titleSmall?.copyWith(fontSize: 15),
-                ),
-                content: history.isEmpty
-                    ? const Text('No history')
-                    : SizedBox(
-                        width: double.maxFinite,
-                        height: 300,
-                        child: ListView.builder(
-                          itemCount: displayHistory.length,
-                          itemBuilder: (context, index) {
-                            final entry = displayHistory[index];
-                            return ListTile(
-                              dense: true,
-                              visualDensity: const VisualDensity(
-                                  horizontal: -2, vertical: -2),
-                              title: Text(
-                                entry,
-                                style: theme.textTheme.bodyMedium
-                                    ?.copyWith(fontSize: 12),
-                              ),
-                              hoverColor: Colors.transparent,
-                              onTap: () {
-                                Navigator.of(context).pop();
-                                _loadUrl(entry);
-                              },
-                              trailing: MouseRegion(
-                                cursor: SystemMouseCursors.click,
-                                child: GestureDetector(
-                                  onTap: () {
-                                    setState(() {
-                                      final removeIndex =
-                                          history.length - 1 - index;
-                                      if (removeIndex >= 0 &&
-                                          removeIndex < history.length) {
-                                        history.removeAt(removeIndex);
-                                      }
-                                    });
-                                    setDialogState(() {});
-                                    _saveHistory();
-                                  },
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(8),
-                                    child: Icon(Icons.delete,
-                                        color: Theme.of(context)
-                                            .colorScheme
-                                            .onSurfaceVariant),
+          final dialogTheme = theme.copyWith(
+            splashFactory: NoSplash.splashFactory,
+            highlightColor: Colors.transparent,
+            hoverColor: Colors.transparent,
+          );
+          return Theme(
+            data: dialogTheme,
+            child: StatefulBuilder(
+              builder: (context, setDialogState) {
+                final displayHistory =
+                    history.reversed.toList(growable: false);
+                return AlertDialog(
+                  title: Text(
+                    'History',
+                    style: theme.textTheme.titleSmall?.copyWith(fontSize: 15),
+                  ),
+                  content: history.isEmpty
+                      ? const Text('No history')
+                      : SizedBox(
+                          width: double.maxFinite,
+                          height: 300,
+                          child: ListView.builder(
+                            itemCount: displayHistory.length,
+                            itemBuilder: (context, index) {
+                              final entry = displayHistory[index];
+                              return ListTile(
+                                dense: true,
+                                visualDensity: const VisualDensity(
+                                    horizontal: -2, vertical: -2),
+                                title: Text(
+                                  entry,
+                                  style: theme.textTheme.bodyMedium
+                                      ?.copyWith(fontSize: 12),
+                                ),
+                                hoverColor: Colors.transparent,
+                                onTap: () {
+                                  Navigator.of(context).pop();
+                                  _loadUrl(entry);
+                                },
+                                trailing: MouseRegion(
+                                  cursor: SystemMouseCursors.click,
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      setState(() {
+                                        final removeIndex =
+                                            history.length - 1 - index;
+                                        if (removeIndex >= 0 &&
+                                            removeIndex < history.length) {
+                                          history.removeAt(removeIndex);
+                                        }
+                                      });
+                                      setDialogState(() {});
+                                      _saveHistory();
+                                    },
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(8),
+                                      child: Icon(Icons.delete,
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onSurfaceVariant),
+                                    ),
                                   ),
                                 ),
-                              ),
-                            );
-                          },
+                              );
+                            },
+                          ),
                         ),
-                      ),
-                actions: [
-                  TextButton(
-                    onPressed: () {
-                      setState(() {
-                        history.clear();
-                        for (final tab in tabs) {
-                          tab.history.clear();
-                        }
-                      });
-                      setDialogState(() {});
-                      _saveHistory();
-                      Navigator.of(context).pop();
-                    },
-                    child: const Text('Clear All'),
-                  ),
-                  TextButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('Close'),
-                  ),
-                ],
-              );
-            },
+                  actions: [
+                    TextButton(
+                      onPressed: () {
+                        setState(() {
+                          history.clear();
+                          for (final tab in tabs) {
+                            tab.history.clear();
+                          }
+                        });
+                        setDialogState(() {});
+                        _saveHistory();
+                        Navigator.of(context).pop();
+                      },
+                      child: const Text('Clear All'),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: const Text('Close'),
+                    ),
+                  ],
+                );
+              },
+            ),
           );
         },
       ),
@@ -4031,6 +4221,7 @@ class _BrowserPageState extends State<BrowserPage>
     var inputValue =
         activeTab.currentUrl == defaultHomepageUrl ? '' : activeTab.currentUrl;
     var dialogClosed = false;
+    final theme = Theme.of(context);
     final submittedValue = await showDialog<String>(
       context: context,
       useRootNavigator: true,
@@ -4042,33 +4233,50 @@ class _BrowserPageState extends State<BrowserPage>
         }
 
         return AlertDialog(
-          title: Text(
-            'Open URL or Search',
-            style: Theme.of(dialogContext)
-                .textTheme
-                .titleSmall
-                ?.copyWith(fontSize: 15),
-          ),
-          content: TextFormField(
-            initialValue: inputValue,
-            autofocus: true,
-            textInputAction: TextInputAction.go,
-            style: Theme.of(dialogContext)
-                .textTheme
-                .bodyMedium
-                ?.copyWith(fontSize: 13),
-            decoration: const InputDecoration(
-              hintText: 'Search or enter URL',
-              isDense: true,
-            ),
-            onChanged: (value) {
-              inputValue = value;
-            },
-            onFieldSubmitted: (value) {
-              Future<void>.delayed(Duration.zero, () {
-                closeDialog(value);
-              });
-            },
+          contentPadding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Search or URL',
+                style: theme.textTheme.titleSmall?.copyWith(fontSize: 13),
+              ),
+              const SizedBox(height: 8),
+              TextFormField(
+                initialValue: inputValue,
+                autofocus: true,
+                textInputAction: TextInputAction.go,
+                style: theme.textTheme.bodyMedium?.copyWith(fontSize: 13),
+                decoration: InputDecoration(
+                  hintText: 'enter url or search',
+                  hintStyle: theme.textTheme.bodySmall?.copyWith(
+                    fontSize: 11,
+                    color: theme.colorScheme.onSurfaceVariant.withOpacity(0.6),
+                  ),
+                  isDense: true,
+                  filled: false,
+                  enabledBorder: UnderlineInputBorder(
+                    borderSide: BorderSide(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  focusedBorder: UnderlineInputBorder(
+                    borderSide: BorderSide(
+                      color: theme.colorScheme.primary,
+                    ),
+                  ),
+                ),
+                onChanged: (value) {
+                  inputValue = value;
+                },
+                onFieldSubmitted: (value) {
+                  Future<void>.delayed(Duration.zero, () {
+                    closeDialog(value);
+                  });
+                },
+              ),
+            ],
           ),
           actions: [
             TextButton(
@@ -4077,7 +4285,7 @@ class _BrowserPageState extends State<BrowserPage>
             ),
             TextButton(
               onPressed: () => closeDialog(inputValue),
-              child: const Text('Open'),
+              child: const Text('Go'),
             ),
           ],
         );
@@ -4403,7 +4611,16 @@ class _BrowserPageState extends State<BrowserPage>
                     visualDensity: VisualDensity.compact,
                   ).copyWith(overlayColor: noHoverOverlay),
                   onPressed: () {
-                    tab.urlFocusNode.requestFocus();
+                    if (widget.hideAppBar) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Enable app bar in settings to edit URL'),
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
+                    } else {
+                      tab.urlFocusNode.requestFocus();
+                    }
                   },
                   icon: const Icon(Icons.edit),
                   label: const Text('Edit URL'),
