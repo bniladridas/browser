@@ -257,20 +257,21 @@ void main() {
 
       // Should show Git Fetch dialog
       expect(find.text('Git Fetch'), findsOneWidget);
+      expect(find.bySemanticsLabel('GitHub Repo (owner/repo)'), findsOneWidget);
+      expect(find.text('Fetch'), findsOneWidget);
+      expect(find.text('Cancel'), findsOneWidget);
 
-      // Enter a repo
-      const testRepo = 'flutter/flutter';
-      await tester.enterText(
-          find.bySemanticsLabel('GitHub Repo (owner/repo)'), testRepo);
-      await tester.pumpAndSettle();
-
-      // Tap Fetch
+      // Use invalid input to verify validation path without external network.
+      await tester.enterText(find.bySemanticsLabel('GitHub Repo (owner/repo)'),
+          'invalid-repo-format');
       await tester.tap(find.text('Fetch'));
       await tester.pumpAndSettle();
 
-      // Should show loading or results (skip detailed check due to network)
-      // For now, just ensure dialog stays open
-      expect(find.text('Git Fetch'), findsOneWidget);
+      expect(find.text('Invalid format. Use owner/repo'), findsOneWidget);
+
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+      expect(find.text('Git Fetch'), findsNothing);
     }, timeout: testTimeout);
 
     testWidgets('New feature toggles in settings', (WidgetTester tester) async {
