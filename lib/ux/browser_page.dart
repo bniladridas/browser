@@ -364,7 +364,8 @@ class SettingsDialog extends HookWidget {
     final firebaseProjectId = useTextEditingController();
     final firebaseStorageBucket = useTextEditingController();
     final showFirebaseConfig = useState(false);
-    final loadedFirebaseConfig = useRef<Map<String, String>>(<String, String>{});
+    final loadedFirebaseConfig =
+        useRef<Map<String, String>>(<String, String>{});
 
     useEffect(() {
       Future<void> loadPreferences() async {
@@ -448,6 +449,21 @@ class SettingsDialog extends HookWidget {
             controller: settingsScrollController,
             child: Theme(
               data: theme.copyWith(
+                splashFactory: NoSplash.splashFactory,
+                highlightColor: Colors.transparent,
+                hoverColor: Colors.transparent,
+                inputDecorationTheme: theme.inputDecorationTheme.copyWith(
+                  hoverColor: Colors.transparent,
+                ),
+                switchTheme: SwitchThemeData(
+                  overlayColor: WidgetStateProperty.all(Colors.transparent),
+                  thumbColor: WidgetStateProperty.resolveWith((states) {
+                    if (states.contains(WidgetState.selected)) {
+                      return theme.colorScheme.onPrimary;
+                    }
+                    return theme.colorScheme.outline;
+                  }),
+                ),
                 listTileTheme: ListTileThemeData(
                   dense: true,
                   visualDensity: compactDensity,
@@ -468,10 +484,26 @@ class SettingsDialog extends HookWidget {
                   TextField(
                     controller: homepageController,
                     style: theme.textTheme.bodyMedium?.copyWith(fontSize: 13),
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Homepage',
-                      hintText: 'Blank = welcome page',
+                      hintText: 'leave blank for welcome page',
+                      hintStyle: theme.textTheme.bodySmall?.copyWith(
+                        fontSize: 11,
+                        color: theme.colorScheme.onSurfaceVariant
+                            .withValues(alpha: 0.6),
+                      ),
                       isDense: true,
+                      filled: false,
+                      enabledBorder: UnderlineInputBorder(
+                        borderSide: BorderSide(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      focusedBorder: UnderlineInputBorder(
+                        borderSide: BorderSide(
+                          color: theme.colorScheme.primary,
+                        ),
+                      ),
                     ),
                   ),
                   MouseRegion(
@@ -545,6 +577,7 @@ class SettingsDialog extends HookWidget {
                         leading: const Icon(Icons.lock),
                         title: const Text('Manage Passwords'),
                         trailing: const Icon(Icons.chevron_right),
+                        hoverColor: Colors.transparent,
                         onTap: () {
                           Navigator.of(context).pop();
                           Navigator.of(context).push(
@@ -596,19 +629,28 @@ class SettingsDialog extends HookWidget {
                     runSpacing: 6,
                     children: AppThemeMode.values.map((mode) {
                       final isSelected = selectedTheme.value == mode;
-                      return ChoiceChip(
-                        label: Text(
-                          _themeLabel(mode),
-                          style:
-                              theme.textTheme.bodySmall?.copyWith(fontSize: 11),
+                      return Theme(
+                        data: theme.copyWith(
+                          splashFactory: NoSplash.splashFactory,
+                          highlightColor: Colors.transparent,
+                          hoverColor: Colors.transparent,
                         ),
-                        selected: isSelected,
-                        visualDensity: compactDensity,
-                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        onSelected: (_) {
-                          selectedTheme.value = mode;
-                          onThemePreviewChanged?.call(mode);
-                        },
+                        child: ChoiceChip(
+                          label: Text(
+                            _themeLabel(mode),
+                            style: theme.textTheme.bodySmall
+                                ?.copyWith(fontSize: 11),
+                          ),
+                          selected: isSelected,
+                          showCheckmark: false,
+                          visualDensity: compactDensity,
+                          materialTapTargetSize:
+                              MaterialTapTargetSize.shrinkWrap,
+                          onSelected: (_) {
+                            selectedTheme.value = mode;
+                            onThemePreviewChanged?.call(mode);
+                          },
+                        ),
                       );
                     }).toList(),
                   ),
@@ -717,6 +759,19 @@ class SettingsDialog extends HookWidget {
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(4),
                               ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(4),
+                                borderSide: BorderSide(
+                                  color: theme.colorScheme.outline,
+                                ),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(4),
+                                borderSide: BorderSide(
+                                  color: theme.colorScheme.primary,
+                                ),
+                              ),
+                              filled: false,
                             ),
                           ),
                           const SizedBox(height: 4),
@@ -734,6 +789,19 @@ class SettingsDialog extends HookWidget {
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(4),
                               ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(4),
+                                borderSide: BorderSide(
+                                  color: theme.colorScheme.outline,
+                                ),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(4),
+                                borderSide: BorderSide(
+                                  color: theme.colorScheme.primary,
+                                ),
+                              ),
+                              filled: false,
                             ),
                           ),
                           const SizedBox(height: 4),
@@ -751,6 +819,19 @@ class SettingsDialog extends HookWidget {
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(4),
                               ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(4),
+                                borderSide: BorderSide(
+                                  color: theme.colorScheme.outline,
+                                ),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(4),
+                                borderSide: BorderSide(
+                                  color: theme.colorScheme.primary,
+                                ),
+                              ),
+                              filled: false,
                             ),
                           ),
                           const SizedBox(height: 4),
@@ -768,6 +849,19 @@ class SettingsDialog extends HookWidget {
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(4),
                               ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(4),
+                                borderSide: BorderSide(
+                                  color: theme.colorScheme.outline,
+                                ),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(4),
+                                borderSide: BorderSide(
+                                  color: theme.colorScheme.primary,
+                                ),
+                              ),
+                              filled: false,
                             ),
                           ),
                           const SizedBox(height: 4),
@@ -785,6 +879,19 @@ class SettingsDialog extends HookWidget {
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(4),
                               ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(4),
+                                borderSide: BorderSide(
+                                  color: theme.colorScheme.outline,
+                                ),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(4),
+                                borderSide: BorderSide(
+                                  color: theme.colorScheme.primary,
+                                ),
+                              ),
+                              filled: false,
                             ),
                           ),
                         ],
@@ -1038,10 +1145,21 @@ class GitFetchDialog extends HookWidget {
             TextField(
               controller: repoController,
               style: theme.textTheme.bodyMedium?.copyWith(fontSize: 13),
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'GitHub Repo (owner/repo)',
                 hintText: 'e.g., flutter/flutter',
                 isDense: true,
+                filled: false,
+                enabledBorder: UnderlineInputBorder(
+                  borderSide: BorderSide(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                focusedBorder: UnderlineInputBorder(
+                  borderSide: BorderSide(
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
               ),
             ),
             const SizedBox(height: 10),
@@ -1285,6 +1403,7 @@ class _BrowserPageState extends State<BrowserPage>
   bool _overflowMenuOpen = false;
   bool _urlAutocompleteOpen = false;
   bool _modalInteractionBlockOpen = false;
+  bool _quickUrlPromptOpen = false;
   bool _windowButtonsSyncRetryQueued = false;
   Timer? _windowButtonsSyncRetryTimer;
   final Map<String, String> _faviconCacheByHost = {};
@@ -1486,11 +1605,35 @@ class _BrowserPageState extends State<BrowserPage>
       activeTab.urlFocusNode.requestFocus();
       return true;
     } else if (KeyboardUtils.isEscapeKey(event)) {
-      if (isTextInputFocused) {
-        FocusScope.of(context).unfocus();
+      // Check if URL bar is focused
+      if (activeTab.urlFocusNode.hasFocus) {
+        // Close autocomplete first to avoid overlay disposal issues
+        if (_urlAutocompleteOpen) {
+          _setUrlAutocompleteOpen(false);
+        }
+        activeTab.urlFocusNode.unfocus();
         return true;
       }
+      // For other text inputs in dialogs, unfocus but let event fall through
+      if (isTextInputFocused) {
+        FocusScope.of(context).unfocus();
+        // Only quick URL prompt should allow Esc to dismiss the route.
+        return !_quickUrlPromptOpen;
+      }
+      // Exit fullscreen on Esc
+      _exitFullscreenIfNeeded();
       return false;
+    }
+
+    // Window-level shortcuts should work even when text input is focused
+    if (KeyboardUtils.isFullscreenKey(event)) {
+      if (!_isDesktopPlatform) return false;
+      _toggleFullscreen();
+      return true;
+    } else if (KeyboardUtils.isMinimizeKey(event)) {
+      if (!_isDesktopPlatform) return false;
+      windowManager.minimize();
+      return true;
     }
 
     if (isTextInputFocused) return false;
@@ -1501,6 +1644,42 @@ class _BrowserPageState extends State<BrowserPage>
     }
 
     return false;
+  }
+
+  Future<void> _toggleFullscreen() async {
+    if (!_isDesktopPlatform) return;
+    final isFullscreen = await windowManager.isFullScreen();
+    await windowManager.setFullScreen(!isFullscreen);
+  }
+
+  Future<void> _exitFullscreenIfNeeded() async {
+    if (!_isDesktopPlatform) return;
+    final isFullscreen = await windowManager.isFullScreen();
+    if (isFullscreen) {
+      await windowManager.setFullScreen(false);
+    }
+  }
+
+  bool get _isDesktopPlatform =>
+      !kIsWeb && (Platform.isWindows || Platform.isLinux || Platform.isMacOS);
+
+  bool _isValidHistoryUrl(String url) {
+    try {
+      final uri = Uri.parse(url);
+      // Only allow http, https, and about schemes
+      if (uri.scheme != 'http' &&
+          uri.scheme != 'https' &&
+          uri.scheme != 'about') {
+        return false;
+      }
+      // Defense-in-depth: block dangerous substrings even with a strict scheme allowlist.
+      if (url.contains('file://') || url.contains('javascript:')) {
+        return false;
+      }
+      return true;
+    } catch (e) {
+      return false;
+    }
   }
 
   void _initConnectivity() async {
@@ -1573,7 +1752,9 @@ class _BrowserPageState extends State<BrowserPage>
   void _syncPagePointerEvents(TabData tab) {
     if (tab.isClosed) return;
     final shouldBlock = identical(tab, activeTab) &&
-        (_urlAutocompleteOpen || _modalInteractionBlockOpen || _overflowMenuOpen);
+        (_urlAutocompleteOpen ||
+            _modalInteractionBlockOpen ||
+            _overflowMenuOpen);
     unawaited(_setTabPointerEventsEnabled(tab, !shouldBlock));
   }
 
@@ -2934,18 +3115,32 @@ class _BrowserPageState extends State<BrowserPage>
       return;
     }
     String category = 'General';
+    final theme = Theme.of(context);
     await showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: Text(
           'Add Bookmark',
-          style: Theme.of(context).textTheme.titleSmall?.copyWith(fontSize: 15),
+          style: theme.textTheme.titleSmall?.copyWith(fontSize: 15),
         ),
         content: TextField(
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 13),
+          style: theme.textTheme.bodyMedium?.copyWith(fontSize: 13),
           onChanged: (value) => category = value.isEmpty ? 'General' : value,
-          decoration:
-              const InputDecoration(labelText: 'Category', isDense: true),
+          decoration: InputDecoration(
+            labelText: 'Category',
+            isDense: true,
+            filled: false,
+            enabledBorder: UnderlineInputBorder(
+              borderSide: BorderSide(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            focusedBorder: UnderlineInputBorder(
+              borderSide: BorderSide(
+                color: theme.colorScheme.primary,
+              ),
+            ),
+          ),
         ),
         actions: [
           TextButton(
@@ -3072,119 +3267,131 @@ class _BrowserPageState extends State<BrowserPage>
         context: context,
         builder: (context) {
           final theme = Theme.of(context);
-          return AlertDialog(
-            title: Text(
-              'Bookmarks',
-              style: theme.textTheme.titleSmall?.copyWith(fontSize: 15),
-            ),
-            content: StatefulBuilder(
-              builder: (context, innerSetState) => bookmarkManager
-                      .bookmarks.isEmpty
-                  ? const Text('No bookmarks')
-                  : SizedBox(
-                      width: double.maxFinite,
-                      height: 300,
-                      child: ListView(
-                        children: bookmarkManager.bookmarks.entries
-                            .map((entry) => ExpansionTile(
-                                  tilePadding:
-                                      const EdgeInsets.symmetric(horizontal: 8),
-                                  title: Text(
-                                    entry.key,
-                                    style: theme.textTheme.bodyMedium
-                                        ?.copyWith(fontSize: 13),
-                                  ),
-                                  children: entry.value
-                                      .map((url) => ListTile(
-                                            dense: true,
-                                            visualDensity:
-                                                const VisualDensity(
-                                                    horizontal: -2,
-                                                    vertical: -2),
-                                            title: Text(
-                                              url,
-                                              style: theme.textTheme.bodyMedium
-                                                  ?.copyWith(fontSize: 12),
-                                            ),
-                                            hoverColor: Colors.transparent,
-                                            onTap: () {
-                                              Navigator.of(context).pop();
-                                              _loadUrl(url);
-                                            },
-                                            trailing: MouseRegion(
-                                              cursor: SystemMouseCursors.click,
-                                              child: GestureDetector(
-                                                onTap: () async {
-                                                  final confirm =
-                                                      await showDialog<bool>(
-                                                    context: context,
-                                                    builder: (context) =>
-                                                        AlertDialog(
-                                                      title: const Text(
-                                                          'Delete Bookmark?'),
-                                                      content: Text(
-                                                          'Remove "$url" from ${entry.key}?'),
-                                                      actions: [
-                                                        TextButton(
-                                                          onPressed: () =>
-                                                              Navigator.of(
-                                                                      context)
-                                                                  .pop(false),
-                                                          child: const Text(
-                                                              'Cancel'),
-                                                        ),
-                                                        TextButton(
-                                                          onPressed: () =>
-                                                              Navigator.of(
-                                                                      context)
-                                                                  .pop(true),
-                                                          child: const Text(
-                                                              'Delete'),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                  );
-                                                  if (confirm == true) {
-                                                    innerSetState(() {
-                                                      bookmarkManager.remove(
-                                                          url, entry.key);
-                                                    });
-                                                    _saveBookmarks();
-                                                  }
-                                                },
-                                                child: Padding(
-                                                  padding:
-                                                      const EdgeInsets.all(8),
-                                                  child: Icon(Icons.delete,
-                                                      color: Theme.of(context)
-                                                          .colorScheme
-                                                          .onSurfaceVariant),
+          final dialogTheme = theme.copyWith(
+            splashFactory: NoSplash.splashFactory,
+            highlightColor: Colors.transparent,
+            hoverColor: Colors.transparent,
+          );
+          return Theme(
+            data: dialogTheme,
+            child: AlertDialog(
+              title: Text(
+                'Bookmarks',
+                style: theme.textTheme.titleSmall?.copyWith(fontSize: 15),
+              ),
+              content: StatefulBuilder(
+                builder: (context, innerSetState) => bookmarkManager
+                        .bookmarks.isEmpty
+                    ? const Text('No bookmarks')
+                    : SizedBox(
+                        width: double.maxFinite,
+                        height: 300,
+                        child: ListView(
+                          children: bookmarkManager.bookmarks.entries
+                              .map((entry) => ExpansionTile(
+                                    tilePadding: const EdgeInsets.symmetric(
+                                        horizontal: 8),
+                                    shape: const Border(),
+                                    collapsedShape: const Border(),
+                                    title: Text(
+                                      entry.key,
+                                      style: theme.textTheme.bodyMedium
+                                          ?.copyWith(fontSize: 13),
+                                    ),
+                                    children: entry.value
+                                        .map((url) => ListTile(
+                                              dense: true,
+                                              visualDensity:
+                                                  const VisualDensity(
+                                                      horizontal: -2,
+                                                      vertical: -2),
+                                              title: Text(
+                                                url,
+                                                style: theme
+                                                    .textTheme.bodyMedium
+                                                    ?.copyWith(fontSize: 12),
+                                              ),
+                                              hoverColor: Colors.transparent,
+                                              onTap: () {
+                                                Navigator.of(context).pop();
+                                                _loadUrl(url);
+                                              },
+                                              trailing: MouseRegion(
+                                                cursor:
+                                                    SystemMouseCursors.click,
+                                                child: GestureDetector(
+                                                  onTap: () async {
+                                                    final confirm =
+                                                        await showDialog<bool>(
+                                                      context: context,
+                                                      builder: (context) =>
+                                                          AlertDialog(
+                                                        title: const Text(
+                                                            'Delete Bookmark?'),
+                                                        content: Text(
+                                                            'Remove "$url" from ${entry.key}?'),
+                                                        actions: [
+                                                          TextButton(
+                                                            onPressed: () =>
+                                                                Navigator.of(
+                                                                        context)
+                                                                    .pop(false),
+                                                            child: const Text(
+                                                                'Cancel'),
+                                                          ),
+                                                          TextButton(
+                                                            onPressed: () =>
+                                                                Navigator.of(
+                                                                        context)
+                                                                    .pop(true),
+                                                            child: const Text(
+                                                                'Delete'),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    );
+                                                    if (confirm == true) {
+                                                      innerSetState(() {
+                                                        bookmarkManager.remove(
+                                                            url, entry.key);
+                                                      });
+                                                      _saveBookmarks();
+                                                    }
+                                                  },
+                                                  child: Padding(
+                                                    padding:
+                                                        const EdgeInsets.all(8),
+                                                    child: Icon(Icons.delete,
+                                                        color: Theme.of(context)
+                                                            .colorScheme
+                                                            .onSurfaceVariant),
+                                                  ),
                                                 ),
                                               ),
-                                            ),
-                                          ))
-                                      .toList(),
-                                ))
-                            .toList(),
+                                            ))
+                                        .toList(),
+                                  ))
+                              .toList(),
+                        ),
                       ),
-                    ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    setState(() {
+                      bookmarkManager.clear();
+                    });
+                    _saveBookmarks();
+                    Navigator.of(context).pop();
+                  },
+                  child: const Text('Clear All'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Close'),
+                ),
+              ],
             ),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  setState(() {
-                    bookmarkManager.clear();
-                  });
-                  _saveBookmarks();
-                  Navigator.of(context).pop();
-                },
-                child: const Text('Clear All'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Close'),
-              ),
-            ],
           );
         },
       ),
@@ -3210,19 +3417,44 @@ class _BrowserPageState extends State<BrowserPage>
 
   void _showSettings() async {
     final saved = await _showWithModalInteractionBlock<bool>(
-      () => showDialog<bool>(
+      () => showGeneralDialog<bool>(
         context: context,
-        builder: (context) => SettingsDialog(
-            onSettingsChanged: () {
-              _loadReorderableTabs();
-              widget.onSettingsChanged?.call();
-            },
-            onClearCaches: _clearAllCaches,
-            onThemePreviewChanged: widget.onThemePreviewChanged,
-            currentTheme: widget.themeMode,
-            aiSearchSuggestionsEnabled: widget.aiSearchSuggestionsEnabled,
-            advancedCacheEnabled: widget.advancedCacheEnabled,
-            aiAvailable: widget.aiAvailable),
+        barrierDismissible: true,
+        barrierLabel: 'Settings',
+        barrierColor: Colors.black54,
+        transitionDuration: const Duration(milliseconds: 200),
+        pageBuilder: (context, animation, secondaryAnimation) {
+          return Align(
+            alignment: Alignment.centerRight,
+            child: Material(
+              type: MaterialType.transparency,
+              child: SettingsDialog(
+                onSettingsChanged: () {
+                  _loadReorderableTabs();
+                  widget.onSettingsChanged?.call();
+                },
+                onClearCaches: _clearAllCaches,
+                onThemePreviewChanged: widget.onThemePreviewChanged,
+                currentTheme: widget.themeMode,
+                aiSearchSuggestionsEnabled: widget.aiSearchSuggestionsEnabled,
+                advancedCacheEnabled: widget.advancedCacheEnabled,
+                aiAvailable: widget.aiAvailable,
+              ),
+            ),
+          );
+        },
+        transitionBuilder: (context, animation, secondaryAnimation, child) {
+          return SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(1.0, 0.0),
+              end: Offset.zero,
+            ).animate(CurvedAnimation(
+              parent: animation,
+              curve: Curves.easeOut,
+            )),
+            child: child,
+          );
+        },
       ),
     );
     if (saved != true) {
@@ -3290,8 +3522,8 @@ class _BrowserPageState extends State<BrowserPage>
                                     ),
                                   ],
                                   selected: {applyToCurrentSite},
-                                  style: ButtonStyle(
-                                      overlayColor: noHoverOverlay),
+                                  style:
+                                      ButtonStyle(overlayColor: noHoverOverlay),
                                   onSelectionChanged: (selection) {
                                     setStateDialog(() {
                                       applyToCurrentSite = selection.first;
@@ -3304,7 +3536,8 @@ class _BrowserPageState extends State<BrowserPage>
                             SizedBox(
                               width: double.infinity,
                               child: ConstrainedBox(
-                                constraints: const BoxConstraints(maxHeight: 220),
+                                constraints:
+                                    const BoxConstraints(maxHeight: 220),
                                 child: SingleChildScrollView(
                                   child: Column(
                                     children: [
@@ -3312,15 +3545,14 @@ class _BrowserPageState extends State<BrowserPage>
                                         (choice) => ListTile(
                                           dense: true,
                                           visualDensity: const VisualDensity(
-                                              horizontal: -2,
-                                              vertical: -2),
+                                              horizontal: -2, vertical: -2),
                                           hoverColor: Colors.transparent,
                                           title: Text(choice.label),
-                                          trailing: selectedValue ==
-                                                  choice.cssFamily
-                                              ? const Icon(Icons.check,
-                                                  size: 18)
-                                              : null,
+                                          trailing:
+                                              selectedValue == choice.cssFamily
+                                                  ? const Icon(Icons.check,
+                                                      size: 18)
+                                                  : null,
                                           onTap: () {
                                             setStateDialog(() {
                                               selectedValue = choice.cssFamily;
@@ -3333,13 +3565,12 @@ class _BrowserPageState extends State<BrowserPage>
                                         visualDensity: const VisualDensity(
                                             horizontal: -2, vertical: -2),
                                         hoverColor: Colors.transparent,
-                                        title:
-                                            const Text('Custom CSS Font Family'),
-                                        trailing:
-                                            selectedValue == customOptionValue
-                                                ? const Icon(Icons.check,
-                                                    size: 18)
-                                                : null,
+                                        title: const Text(
+                                            'Custom CSS Font Family'),
+                                        trailing: selectedValue ==
+                                                customOptionValue
+                                            ? const Icon(Icons.check, size: 18)
+                                            : null,
                                         onTap: () {
                                           setStateDialog(() {
                                             selectedValue = customOptionValue;
@@ -3366,8 +3597,7 @@ class _BrowserPageState extends State<BrowserPage>
                         ),
                         actions: [
                           TextButton(
-                            style:
-                                ButtonStyle(overlayColor: noHoverOverlay),
+                            style: ButtonStyle(overlayColor: noHoverOverlay),
                             onPressed: () => Navigator.of(context).pop(),
                             child: const Text('Cancel'),
                           ),
@@ -3375,8 +3605,7 @@ class _BrowserPageState extends State<BrowserPage>
                               hasSiteRule &&
                               applyToCurrentSite)
                             TextButton(
-                              style:
-                                  ButtonStyle(overlayColor: noHoverOverlay),
+                              style: ButtonStyle(overlayColor: noHoverOverlay),
                               onPressed: () {
                                 Navigator.of(context).pop(
                                   const _FontPickerResult(
@@ -3389,8 +3618,7 @@ class _BrowserPageState extends State<BrowserPage>
                               child: const Text('Clear Site Rule'),
                             ),
                           TextButton(
-                            style:
-                                ButtonStyle(overlayColor: noHoverOverlay),
+                            style: ButtonStyle(overlayColor: noHoverOverlay),
                             onPressed: () {
                               final chosenFont =
                                   selectedValue == customOptionValue
@@ -3399,8 +3627,8 @@ class _BrowserPageState extends State<BrowserPage>
                               Navigator.of(context).pop(
                                 _FontPickerResult(
                                   fontFamily: chosenFont,
-                                  applyToCurrentSite: currentHost != null &&
-                                      applyToCurrentSite,
+                                  applyToCurrentSite:
+                                      currentHost != null && applyToCurrentSite,
                                 ),
                               );
                             },
@@ -3915,87 +4143,95 @@ class _BrowserPageState extends State<BrowserPage>
         context: context,
         builder: (context) {
           final theme = Theme.of(context);
-          return StatefulBuilder(
-            builder: (context, setDialogState) {
-              final displayHistory = history.reversed.toList(growable: false);
-              return AlertDialog(
-                title: Text(
-                  'History',
-                  style: theme.textTheme.titleSmall?.copyWith(fontSize: 15),
-                ),
-                content: history.isEmpty
-                    ? const Text('No history')
-                    : SizedBox(
-                        width: double.maxFinite,
-                        height: 300,
-                        child: ListView.builder(
-                          itemCount: displayHistory.length,
-                          itemBuilder: (context, index) {
-                            final entry = displayHistory[index];
-                            return ListTile(
-                              dense: true,
-                              visualDensity: const VisualDensity(
-                                  horizontal: -2, vertical: -2),
-                              title: Text(
-                                entry,
-                                style: theme.textTheme.bodyMedium
-                                    ?.copyWith(fontSize: 12),
-                              ),
-                              hoverColor: Colors.transparent,
-                              onTap: () {
-                                Navigator.of(context).pop();
-                                _loadUrl(entry);
-                              },
-                              trailing: MouseRegion(
-                                cursor: SystemMouseCursors.click,
-                                child: GestureDetector(
-                                  onTap: () {
-                                    setState(() {
-                                      final removeIndex =
-                                          history.length - 1 - index;
-                                      if (removeIndex >= 0 &&
-                                          removeIndex < history.length) {
-                                        history.removeAt(removeIndex);
-                                      }
-                                    });
-                                    setDialogState(() {});
-                                    _saveHistory();
-                                  },
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(8),
-                                    child: Icon(Icons.delete,
-                                        color: Theme.of(context)
-                                            .colorScheme
-                                            .onSurfaceVariant),
+          final dialogTheme = theme.copyWith(
+            splashFactory: NoSplash.splashFactory,
+            highlightColor: Colors.transparent,
+            hoverColor: Colors.transparent,
+          );
+          return Theme(
+            data: dialogTheme,
+            child: StatefulBuilder(
+              builder: (context, setDialogState) {
+                final displayHistory = history.reversed.toList(growable: false);
+                return AlertDialog(
+                  title: Text(
+                    'History',
+                    style: theme.textTheme.titleSmall?.copyWith(fontSize: 15),
+                  ),
+                  content: history.isEmpty
+                      ? const Text('No history')
+                      : SizedBox(
+                          width: double.maxFinite,
+                          height: 300,
+                          child: ListView.builder(
+                            itemCount: displayHistory.length,
+                            itemBuilder: (context, index) {
+                              final entry = displayHistory[index];
+                              return ListTile(
+                                dense: true,
+                                visualDensity: const VisualDensity(
+                                    horizontal: -2, vertical: -2),
+                                title: Text(
+                                  entry,
+                                  style: theme.textTheme.bodyMedium
+                                      ?.copyWith(fontSize: 12),
+                                ),
+                                hoverColor: Colors.transparent,
+                                onTap: () {
+                                  Navigator.of(context).pop();
+                                  _loadUrl(entry);
+                                },
+                                trailing: MouseRegion(
+                                  cursor: SystemMouseCursors.click,
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      setState(() {
+                                        final removeIndex =
+                                            history.length - 1 - index;
+                                        if (removeIndex >= 0 &&
+                                            removeIndex < history.length) {
+                                          history.removeAt(removeIndex);
+                                        }
+                                      });
+                                      setDialogState(() {});
+                                      _saveHistory();
+                                    },
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(8),
+                                      child: Icon(Icons.delete,
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onSurfaceVariant),
+                                    ),
                                   ),
                                 ),
-                              ),
-                            );
-                          },
+                              );
+                            },
+                          ),
                         ),
-                      ),
-                actions: [
-                  TextButton(
-                    onPressed: () {
-                      setState(() {
-                        history.clear();
-                        for (final tab in tabs) {
-                          tab.history.clear();
-                        }
-                      });
-                      setDialogState(() {});
-                      _saveHistory();
-                      Navigator.of(context).pop();
-                    },
-                    child: const Text('Clear All'),
-                  ),
-                  TextButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('Close'),
-                  ),
-                ],
-              );
-            },
+                  actions: [
+                    TextButton(
+                      onPressed: () {
+                        setState(() {
+                          history.clear();
+                          for (final tab in tabs) {
+                            tab.history.clear();
+                          }
+                        });
+                        setDialogState(() {});
+                        _saveHistory();
+                        Navigator.of(context).pop();
+                      },
+                      child: const Text('Clear All'),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: const Text('Close'),
+                    ),
+                  ],
+                );
+              },
+            ),
           );
         },
       ),
@@ -4031,58 +4267,84 @@ class _BrowserPageState extends State<BrowserPage>
     var inputValue =
         activeTab.currentUrl == defaultHomepageUrl ? '' : activeTab.currentUrl;
     var dialogClosed = false;
-    final submittedValue = await showDialog<String>(
-      context: context,
-      useRootNavigator: true,
-      builder: (dialogContext) {
-        void closeDialog([String? value]) {
-          if (dialogClosed) return;
-          dialogClosed = true;
-          Navigator.of(dialogContext).pop(value);
-        }
+    final theme = Theme.of(context);
+    _quickUrlPromptOpen = true;
+    final submittedValue = await (() async {
+      try {
+        return await showDialog<String>(
+          context: context,
+          useRootNavigator: true,
+          builder: (dialogContext) {
+            void closeDialog([String? value]) {
+              if (dialogClosed) return;
+              dialogClosed = true;
+              Navigator.of(dialogContext).pop(value);
+            }
 
-        return AlertDialog(
-          title: Text(
-            'Open URL or Search',
-            style: Theme.of(dialogContext)
-                .textTheme
-                .titleSmall
-                ?.copyWith(fontSize: 15),
-          ),
-          content: TextFormField(
-            initialValue: inputValue,
-            autofocus: true,
-            textInputAction: TextInputAction.go,
-            style: Theme.of(dialogContext)
-                .textTheme
-                .bodyMedium
-                ?.copyWith(fontSize: 13),
-            decoration: const InputDecoration(
-              hintText: 'Search or enter URL',
-              isDense: true,
-            ),
-            onChanged: (value) {
-              inputValue = value;
-            },
-            onFieldSubmitted: (value) {
-              Future<void>.delayed(Duration.zero, () {
-                closeDialog(value);
-              });
-            },
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => closeDialog(),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () => closeDialog(inputValue),
-              child: const Text('Open'),
-            ),
-          ],
+            return AlertDialog(
+              contentPadding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Search or URL',
+                    style: theme.textTheme.titleSmall?.copyWith(fontSize: 13),
+                  ),
+                  const SizedBox(height: 8),
+                  TextFormField(
+                    initialValue: inputValue,
+                    autofocus: true,
+                    textInputAction: TextInputAction.go,
+                    style: theme.textTheme.bodyMedium?.copyWith(fontSize: 13),
+                    decoration: InputDecoration(
+                      hintText: 'enter url or search',
+                      hintStyle: theme.textTheme.bodySmall?.copyWith(
+                        fontSize: 11,
+                        color: theme.colorScheme.onSurfaceVariant
+                            .withValues(alpha: 0.6),
+                      ),
+                      isDense: true,
+                      filled: false,
+                      enabledBorder: UnderlineInputBorder(
+                        borderSide: BorderSide(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      focusedBorder: UnderlineInputBorder(
+                        borderSide: BorderSide(
+                          color: theme.colorScheme.primary,
+                        ),
+                      ),
+                    ),
+                    onChanged: (value) {
+                      inputValue = value;
+                    },
+                    onFieldSubmitted: (value) {
+                      Future<void>.delayed(Duration.zero, () {
+                        closeDialog(value);
+                      });
+                    },
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => closeDialog(),
+                  child: const Text('Cancel'),
+                ),
+                TextButton(
+                  onPressed: () => closeDialog(inputValue),
+                  child: const Text('Go'),
+                ),
+              ],
+            );
+          },
         );
-      },
-    );
+      } finally {
+        _quickUrlPromptOpen = false;
+      }
+    })();
 
     final value = submittedValue?.trim();
     if (value == null || value.isEmpty) return;
@@ -4403,7 +4665,11 @@ class _BrowserPageState extends State<BrowserPage>
                     visualDensity: VisualDensity.compact,
                   ).copyWith(overlayColor: noHoverOverlay),
                   onPressed: () {
-                    tab.urlFocusNode.requestFocus();
+                    if (widget.hideAppBar) {
+                      _showQuickUrlPrompt();
+                    } else {
+                      tab.urlFocusNode.requestFocus();
+                    }
                   },
                   icon: const Icon(Icons.edit),
                   label: const Text('Edit URL'),
@@ -4442,6 +4708,13 @@ class _BrowserPageState extends State<BrowserPage>
       tab.webViewController!.addJavaScriptChannel('HistoryChannel',
           onMessageReceived: (JavaScriptMessage message) {
         final url = message.message;
+        // Validate URL to prevent LFI and spoofing attacks
+        if (!_isValidHistoryUrl(url)) {
+          logger.w(
+            'Blocked invalid URL from HistoryChannel: ${_sanitizeUrlForLog(url)}',
+          );
+          return;
+        }
         _recordHistory(tab, url);
         // Update the URL bar for SPA navigation
         if (!tab.isClosed && mounted && tab.currentUrl != url) {

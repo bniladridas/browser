@@ -182,76 +182,98 @@ class _PasswordVaultScreenState extends State<PasswordVaultScreen> {
       ],
     );
 
-    return Scaffold(
-      appBar: topToolbarInset > 0
-          ? PreferredSize(
-              preferredSize: Size.fromHeight(kToolbarHeight + topToolbarInset),
-              child: Column(
-                children: [
-                  Container(
-                    height: topToolbarInset,
-                    color: theme.colorScheme.surface,
+    return Theme(
+      data: theme.copyWith(
+        splashFactory: NoSplash.splashFactory,
+        highlightColor: Colors.transparent,
+        hoverColor: Colors.transparent,
+        inputDecorationTheme: theme.inputDecorationTheme.copyWith(
+          hoverColor: Colors.transparent,
+        ),
+      ),
+      child: Scaffold(
+        appBar: topToolbarInset > 0
+            ? PreferredSize(
+                preferredSize:
+                    Size.fromHeight(kToolbarHeight + topToolbarInset),
+                child: Column(
+                  children: [
+                    Container(
+                      height: topToolbarInset,
+                      color: theme.colorScheme.surface,
+                    ),
+                    appBar,
+                  ],
+                ),
+              )
+            : appBar,
+        body: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 10, 14, 8),
+              child: TextField(
+                style: theme.textTheme.bodyMedium?.copyWith(fontSize: 13),
+                decoration: InputDecoration(
+                  labelText: 'Search',
+                  isDense: true,
+                  prefixIcon: const Icon(Icons.search, size: 18),
+                  prefixIconConstraints:
+                      const BoxConstraints(minHeight: 30, minWidth: 34),
+                  border: const OutlineInputBorder(),
+                  enabledBorder: OutlineInputBorder(
+                    borderSide: BorderSide(
+                      color: theme.colorScheme.outline,
+                    ),
                   ),
-                  appBar,
-                ],
+                  focusedBorder: OutlineInputBorder(
+                    borderSide: BorderSide(
+                      color: theme.colorScheme.primary,
+                    ),
+                  ),
+                  filled: false,
+                ),
+                onChanged: (value) {
+                  if (_debounce?.isActive ?? false) _debounce!.cancel();
+                  _debounce = Timer(const Duration(milliseconds: 300), () {
+                    setState(() => _searchQuery = value);
+                  });
+                },
               ),
-            )
-          : appBar,
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 10, 14, 8),
-            child: TextField(
-              style: theme.textTheme.bodyMedium?.copyWith(fontSize: 13),
-              decoration: InputDecoration(
-                labelText: 'Search',
-                isDense: true,
-                prefixIcon: const Icon(Icons.search, size: 18),
-                prefixIconConstraints:
-                    const BoxConstraints(minHeight: 30, minWidth: 34),
-                border: const OutlineInputBorder(),
-              ),
-              onChanged: (value) {
-                if (_debounce?.isActive ?? false) _debounce!.cancel();
-                _debounce = Timer(const Duration(milliseconds: 300), () {
-                  setState(() => _searchQuery = value);
-                });
-              },
             ),
-          ),
-          Expanded(
-            child: _loading
-                ? const Center(child: CircularProgressIndicator())
-                : _filteredCredentials.isEmpty
-                    ? Center(
-                        child: Text(
-                          _searchQuery.isEmpty
-                              ? 'No saved passwords'
-                              : 'No matching passwords',
-                          style: theme.textTheme.bodyMedium
-                              ?.copyWith(fontSize: 13),
-                        ),
-                      )
-                    : ListView.builder(
-                        itemCount: _filteredCredentials.length,
-                        itemBuilder: (context, index) {
-                          final credential = _filteredCredentials[index];
-                          return _PasswordTile(
-                            credential: credential,
-                            onDelete: () => _deleteCredential(credential),
-                            onCopyUsername: () => _copyToClipboard(
-                              credential.username,
-                              'Username',
-                            ),
-                            onCopyPassword: () => _copyToClipboard(
-                              credential.password,
-                              'Password',
-                            ),
-                          );
+            Expanded(
+              child: _loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _filteredCredentials.isEmpty
+                      ? Center(
+                          child: Text(
+                            _searchQuery.isEmpty
+                                ? 'No saved passwords'
+                                : 'No matching passwords',
+                            style: theme.textTheme.bodyMedium
+                                ?.copyWith(fontSize: 13),
+                          ),
+                        )
+                      : ListView.builder(
+                          itemCount: _filteredCredentials.length,
+                          itemBuilder: (context, index) {
+                            final credential = _filteredCredentials[index];
+                            return _PasswordTile(
+                              credential: credential,
+                              onDelete: () => _deleteCredential(credential),
+                              onCopyUsername: () => _copyToClipboard(
+                                credential.username,
+                                'Username',
+                              ),
+                              onCopyPassword: () => _copyToClipboard(
+                                credential.password,
+                                'Password',
+                              ),
+                            );
                         },
                       ),
-          ),
-        ],
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -87,4 +87,24 @@ class KeyboardUtils {
         HardwareKeyboard.instance.isControlPressed &&
         !HardwareKeyboard.instance.isShiftPressed;
   }
+
+  static bool isFullscreenKey(KeyEvent event) {
+    // Cmd+Enter on macOS, F11 on Windows/Linux
+    if (_isMacOS) {
+      return event.logicalKey == LogicalKeyboardKey.enter &&
+          HardwareKeyboard.instance.isMetaPressed;
+    }
+    return event.logicalKey == LogicalKeyboardKey.f11;
+  }
+
+  static bool isMinimizeKey(KeyEvent event) {
+    // Cmd+M on macOS, Windows+Down on Windows/Linux
+    if (_isMacOS) {
+      return event.logicalKey == LogicalKeyboardKey.keyM &&
+          HardwareKeyboard.instance.isMetaPressed &&
+          !HardwareKeyboard.instance.isShiftPressed;
+    }
+    return event.logicalKey == LogicalKeyboardKey.arrowDown &&
+        HardwareKeyboard.instance.isMetaPressed;
+  }
 }
