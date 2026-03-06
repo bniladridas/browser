@@ -95,6 +95,7 @@ class AiChatWidget extends HookWidget {
                         horizontal: 6,
                         vertical: 2,
                       ),
+                      hoverColor: Colors.transparent,
                       title: hasEmphasis ? CalloutBox(child: child) : child,
                     );
                   } else {
@@ -105,6 +106,7 @@ class AiChatWidget extends HookWidget {
                         horizontal: 6,
                         vertical: 2,
                       ),
+                      hoverColor: Colors.transparent,
                       title: Text(
                         message,
                         style: theme.textTheme.bodySmall?.copyWith(
@@ -131,11 +133,21 @@ class AiChatWidget extends HookWidget {
                 Expanded(
                   child: TextField(
                     controller: controller,
-                    autofocus: true,
                     style: theme.textTheme.bodyMedium?.copyWith(fontSize: 13),
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       hintText: 'Ask AI...',
                       isDense: true,
+                      filled: false,
+                      enabledBorder: UnderlineInputBorder(
+                        borderSide: BorderSide(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      focusedBorder: UnderlineInputBorder(
+                        borderSide: BorderSide(
+                          color: theme.colorScheme.primary,
+                        ),
+                      ),
                     ),
                     onSubmitted: (_) => sendMessage(),
                   ),
