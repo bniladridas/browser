@@ -488,7 +488,7 @@ class SettingsDialog extends HookWidget {
                       hintText: 'leave blank for welcome page',
                       hintStyle: theme.textTheme.bodySmall?.copyWith(
                         fontSize: 11,
-                        color: theme.colorScheme.onSurfaceVariant.withOpacity(0.6),
+                        color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
                       ),
                       isDense: true,
                       filled: false,
@@ -4252,7 +4252,7 @@ class _BrowserPageState extends State<BrowserPage>
                   hintText: 'enter url or search',
                   hintStyle: theme.textTheme.bodySmall?.copyWith(
                     fontSize: 11,
-                    color: theme.colorScheme.onSurfaceVariant.withOpacity(0.6),
+                    color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
                   ),
                   isDense: true,
                   filled: false,
