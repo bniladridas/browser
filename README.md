@@ -26,6 +26,26 @@ Run `./check.sh` for checks.
 
 Build: `flutter build macos`.
 
+## Keyboard Shortcuts Reference
+
+Keyboard keys are centralized in `lib/utils/keyboard_utils.dart`, plus Escape usage in integration tests.
+
+Keys currently used in codebase:
+- `[` (`LogicalKeyboardKey.bracketLeft`)
+- `]` (`LogicalKeyboardKey.bracketRight`)
+- `Left Arrow` (`LogicalKeyboardKey.arrowLeft`)
+- `Right Arrow` (`LogicalKeyboardKey.arrowRight`)
+- `R` (`LogicalKeyboardKey.keyR`)
+- `T` (`LogicalKeyboardKey.keyT`)
+- `Escape` (`LogicalKeyboardKey.escape`)
+- `Tab` (`LogicalKeyboardKey.tab`)
+
+Modifiers:
+- `Meta` (Cmd on macOS)
+- `Control`
+- `Alt`
+- `Shift`
+
 ## macOS Unsigned Install (No Paid Apple Dev Account)
 Unsigned builds will trigger macOS Gatekeeper warnings. This is expected without a
 paid Developer ID and notarization.
