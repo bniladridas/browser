@@ -350,6 +350,13 @@ class SettingsDialog extends HookWidget {
     final homepageController = useTextEditingController();
     final settingsScrollController = useScrollController();
 
+    final firebaseApiKey = useTextEditingController();
+    final firebaseAppId = useTextEditingController();
+    final firebaseSenderId = useTextEditingController();
+    final firebaseProjectId = useTextEditingController();
+    final firebaseStorageBucket = useTextEditingController();
+    final showFirebaseConfig = useState(false);
+
     useEffect(() {
       Future<void> loadPreferences() async {
         final prefs = await SharedPreferences.getInstance();
@@ -381,6 +388,12 @@ class SettingsDialog extends HookWidget {
               (m) => m.name == prefs.getString(themeModeKey),
               orElse: () => currentTheme ?? AppThemeMode.system);
         }
+
+        firebaseApiKey.text = prefs.getString(firebaseApiKeyPref) ?? '';
+        firebaseAppId.text = prefs.getString(firebaseAppIdPref) ?? '';
+        firebaseSenderId.text = prefs.getString(firebaseSenderIdPref) ?? '';
+        firebaseProjectId.text = prefs.getString(firebaseProjectIdPref) ?? '';
+        firebaseStorageBucket.text = prefs.getString(firebaseStorageBucketPref) ?? '';
       }
 
       loadPreferences();
@@ -637,6 +650,109 @@ class SettingsDialog extends HookWidget {
                             ),
                           ],
                         ),
+                        const SizedBox(height: 6),
+                        MouseRegion(
+                          cursor: SystemMouseCursors.click,
+                          child: GestureDetector(
+                            onTap: () => showFirebaseConfig.value = !showFirebaseConfig.value,
+                            child: Row(
+                              children: [
+                                Icon(
+                                  showFirebaseConfig.value
+                                      ? Icons.expand_less
+                                      : Icons.expand_more,
+                                  size: 12,
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'Config',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    fontSize: 9,
+                                    color: theme.colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        if (showFirebaseConfig.value) ...[
+                          const SizedBox(height: 4),
+                          TextField(
+                            controller: firebaseApiKey,
+                            obscureText: true,
+                            style: theme.textTheme.bodyMedium?.copyWith(fontSize: 9),
+                            decoration: InputDecoration(
+                              labelText: 'API Key',
+                              labelStyle: TextStyle(fontSize: 8),
+                              isDense: true,
+                              contentPadding: EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          TextField(
+                            controller: firebaseAppId,
+                            obscureText: true,
+                            style: theme.textTheme.bodyMedium?.copyWith(fontSize: 9),
+                            decoration: InputDecoration(
+                              labelText: 'App ID',
+                              labelStyle: TextStyle(fontSize: 8),
+                              isDense: true,
+                              contentPadding: EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          TextField(
+                            controller: firebaseSenderId,
+                            obscureText: true,
+                            style: theme.textTheme.bodyMedium?.copyWith(fontSize: 9),
+                            decoration: InputDecoration(
+                              labelText: 'Sender ID',
+                              labelStyle: TextStyle(fontSize: 8),
+                              isDense: true,
+                              contentPadding: EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          TextField(
+                            controller: firebaseProjectId,
+                            obscureText: true,
+                            style: theme.textTheme.bodyMedium?.copyWith(fontSize: 9),
+                            decoration: InputDecoration(
+                              labelText: 'Project ID',
+                              labelStyle: TextStyle(fontSize: 8),
+                              isDense: true,
+                              contentPadding: EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          TextField(
+                            controller: firebaseStorageBucket,
+                            obscureText: true,
+                            style: theme.textTheme.bodyMedium?.copyWith(fontSize: 9),
+                            decoration: InputDecoration(
+                              labelText: 'Storage',
+                              labelStyle: TextStyle(fontSize: 8),
+                              isDense: true,
+                              contentPadding: EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -668,6 +784,26 @@ class SettingsDialog extends HookWidget {
               homepageToSave = processed;
             }
             final prefs = await SharedPreferences.getInstance();
+
+            // Check if Firebase config changed
+            final oldApiKey = prefs.getString(firebaseApiKeyPref) ?? '';
+            final oldAppId = prefs.getString(firebaseAppIdPref) ?? '';
+            final oldSenderId = prefs.getString(firebaseSenderIdPref) ?? '';
+            final oldProjectId = prefs.getString(firebaseProjectIdPref) ?? '';
+            final oldStorageBucket = prefs.getString(firebaseStorageBucketPref) ?? '';
+
+            final newApiKey = firebaseApiKey.text.trim();
+            final newAppId = firebaseAppId.text.trim();
+            final newSenderId = firebaseSenderId.text.trim();
+            final newProjectId = firebaseProjectId.text.trim();
+            final newStorageBucket = firebaseStorageBucket.text.trim();
+
+            final firebaseChanged = oldApiKey != newApiKey ||
+                                    oldAppId != newAppId ||
+                                    oldSenderId != newSenderId ||
+                                    oldProjectId != newProjectId ||
+                                    oldStorageBucket != newStorageBucket;
+
             await prefs.setString(homepageKey, homepageToSave);
             await prefs.setBool(hideAppBarKey, hideAppBar.value);
             await prefs.setBool(
@@ -685,13 +821,24 @@ class SettingsDialog extends HookWidget {
                 advancedCacheEnabledKey, advancedCacheEnabled.value);
             await prefs.setString(themeModeKey, selectedTheme.value.name);
 
+            await prefs.setString(firebaseApiKeyPref, newApiKey);
+            await prefs.setString(firebaseAppIdPref, newAppId);
+            await prefs.setString(firebaseSenderIdPref, newSenderId);
+            await prefs.setString(firebaseProjectIdPref, newProjectId);
+            await prefs.setString(firebaseStorageBucketPref, newStorageBucket);
+
             onSettingsChanged?.call();
             if (privateBrowsing.value &&
                 originalPrivateBrowsing.value == false) {
               onClearCaches?.call();
             }
+
+            final message = firebaseChanged
+                ? 'Settings saved — restart required for Firebase changes'
+                : 'Settings saved';
+
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Settings saved')),
+              SnackBar(content: Text(message)),
             );
             Navigator.of(context).pop(true);
           },

@@ -4,14 +4,77 @@ import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
 import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, kIsWeb, TargetPlatform;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'constants.dart';
 
-/// Helper to get required environment variables with validation
-String _getEnv(String key) {
-  final value = dotenv.env[key];
-  if (value == null || value.isEmpty) {
-    throw ArgumentError('Missing or empty required environment variable: $key');
+/// Helper to atomically resolve Firebase config from SharedPreferences or .env
+Future<Map<String, String>> _resolveFirebaseConfig() async {
+  final prefs = await SharedPreferences.getInstance();
+
+  // Try to get all values from SharedPreferences
+  final apiKey = prefs.getString(firebaseApiKeyPref);
+  final appId = prefs.getString(firebaseAppIdPref);
+  final senderId = prefs.getString(firebaseSenderIdPref);
+  final projectId = prefs.getString(firebaseProjectIdPref);
+  final storageBucket = prefs.getString(firebaseStorageBucketPref);
+
+  // If any override exists, require all to be non-empty
+  final hasAnyOverride = apiKey != null || appId != null || senderId != null ||
+                         projectId != null || storageBucket != null;
+
+  if (hasAnyOverride) {
+    if (apiKey != null && apiKey.isNotEmpty &&
+        appId != null && appId.isNotEmpty &&
+        senderId != null && senderId.isNotEmpty &&
+        projectId != null && projectId.isNotEmpty &&
+        storageBucket != null && storageBucket.isNotEmpty) {
+      return {
+        'apiKey': apiKey,
+        'appId': appId,
+        'messagingSenderId': senderId,
+        'projectId': projectId,
+        'storageBucket': storageBucket,
+      };
+    }
+    // Incomplete overrides - fall through to .env
   }
-  return value;
+
+  // Use .env for all fields
+  final envApiKey = dotenv.env['FIREBASE_API_KEY'];
+  final envAppId = dotenv.env['FIREBASE_APP_ID'];
+  final envSenderId = dotenv.env['FIREBASE_MESSAGING_SENDER_ID'];
+  final envProjectId = dotenv.env['FIREBASE_PROJECT_ID'];
+  final envStorageBucket = dotenv.env['FIREBASE_STORAGE_BUCKET'];
+
+  if (envApiKey == null || envApiKey.isEmpty ||
+      envAppId == null || envAppId.isEmpty ||
+      envSenderId == null || envSenderId.isEmpty ||
+      envProjectId == null || envProjectId.isEmpty ||
+      envStorageBucket == null || envStorageBucket.isEmpty) {
+    throw ArgumentError('Missing Firebase config (check Settings or .env)');
+  }
+
+  return {
+    'apiKey': envApiKey,
+    'appId': envAppId,
+    'messagingSenderId': envSenderId,
+    'projectId': envProjectId,
+    'storageBucket': envStorageBucket,
+  };
+}
+
+/// Helper to get Firebase config from SharedPreferences or .env
+/// Kept for backward compatibility with tests
+Future<String> getConfig(String key, String prefKey) async {
+  final config = await _resolveFirebaseConfig();
+  final keyMap = {
+    'FIREBASE_API_KEY': 'apiKey',
+    'FIREBASE_APP_ID': 'appId',
+    'FIREBASE_MESSAGING_SENDER_ID': 'messagingSenderId',
+    'FIREBASE_PROJECT_ID': 'projectId',
+    'FIREBASE_STORAGE_BUCKET': 'storageBucket',
+  };
+  return config[keyMap[key]]!;
 }
 
 /// Default [FirebaseOptions] for use with your Firebase apps.
@@ -25,7 +88,7 @@ String _getEnv(String key) {
 /// );
 /// ```
 class DefaultFirebaseOptions {
-  static FirebaseOptions get currentPlatform {
+  static Future<FirebaseOptions> get currentPlatform async {
     if (kIsWeb) {
       throw UnsupportedError(
         'DefaultFirebaseOptions have not been configured for web - '
@@ -62,12 +125,15 @@ class DefaultFirebaseOptions {
     }
   }
 
-  static FirebaseOptions get macos => FirebaseOptions(
-        apiKey: _getEnv('FIREBASE_API_KEY'),
-        appId: _getEnv('FIREBASE_APP_ID'),
-        messagingSenderId: _getEnv('FIREBASE_MESSAGING_SENDER_ID'),
-        projectId: _getEnv('FIREBASE_PROJECT_ID'),
-        storageBucket: _getEnv('FIREBASE_STORAGE_BUCKET'),
-        iosBundleId: 'com.example.browser',
-      );
+  static Future<FirebaseOptions> get macos async {
+    final config = await _resolveFirebaseConfig();
+    return FirebaseOptions(
+      apiKey: config['apiKey']!,
+      appId: config['appId']!,
+      messagingSenderId: config['messagingSenderId']!,
+      projectId: config['projectId']!,
+      storageBucket: config['storageBucket']!,
+      iosBundleId: 'com.example.browser',
+    );
+  }
 }

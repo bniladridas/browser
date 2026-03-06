@@ -23,6 +23,13 @@ const String advancedCacheEnabledKey = 'advancedCacheEnabled';
 const String navigationCacheIndexKey = 'navigationCacheIndex';
 const String whatsNewSeenVersionKey = 'whatsNewSeenVersion';
 
+// Firebase configuration keys
+const String firebaseApiKeyPref = 'firebase_FIREBASE_API_KEY';
+const String firebaseAppIdPref = 'firebase_FIREBASE_APP_ID';
+const String firebaseSenderIdPref = 'firebase_FIREBASE_MESSAGING_SENDER_ID';
+const String firebaseProjectIdPref = 'firebase_FIREBASE_PROJECT_ID';
+const String firebaseStorageBucketPref = 'firebase_FIREBASE_STORAGE_BUCKET';
+
 const String defaultHomepageUrl = 'about:browser-home';
 
 bool get isIntegrationTest =>
