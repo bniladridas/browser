@@ -36,5 +36,9 @@
   ],
   "1.9.1": [
     "UI consistency and navigation improvements."
+  ],
+  "1.10.0": [
+    "Firebase key configuration in settings.",
+    "Improved theme color detection."
   ]
 }
