@@ -24,8 +24,10 @@ import 'package:file_selector/file_selector.dart';
 import 'package:desktop_drop/desktop_drop.dart';
 
 import '../constants.dart';
+import '../features/theme_color_parser.dart';
 import '../features/theme_utils.dart';
 import '../features/bookmark_manager.dart';
+import '../features/firebase_config_store.dart';
 import '../features/password_prompt.dart';
 import '../features/password_storage.dart';
 import 'clickable_icon.dart';
@@ -45,6 +47,8 @@ import 'package:pkg/ai_service.dart';
 import 'network_debug_dialog.dart';
 import 'save_password_prompt.dart';
 import 'password_vault_screen.dart';
+
+export '../features/theme_color_parser.dart';
 
 const _userAgents = {
   TargetPlatform.macOS: {
@@ -359,6 +363,7 @@ class SettingsDialog extends HookWidget {
     final firebaseProjectId = useTextEditingController();
     final firebaseStorageBucket = useTextEditingController();
     final showFirebaseConfig = useState(false);
+    final loadedFirebaseConfig = useRef<Map<String, String>>(<String, String>{});
 
     useEffect(() {
       Future<void> loadPreferences() async {
@@ -368,9 +373,6 @@ class SettingsDialog extends HookWidget {
             (storedHomepage == null || storedHomepage.isEmpty)
                 ? defaultHomepageUrl
                 : storedHomepage;
-        homepage.value = resolvedHomepage;
-        homepageController.text =
-            resolvedHomepage == defaultHomepageUrl ? '' : resolvedHomepage;
         hideAppBar.value = prefs.getBool(hideAppBarKey) ?? false;
         useModernUserAgent.value =
             prefs.getBool(useModernUserAgentKey) ?? false;
@@ -392,12 +394,25 @@ class SettingsDialog extends HookWidget {
               orElse: () => currentTheme ?? AppThemeMode.system);
         }
 
-        firebaseApiKey.text = prefs.getString(firebaseApiKeyPref) ?? '';
-        firebaseAppId.text = prefs.getString(firebaseAppIdPref) ?? '';
-        firebaseSenderId.text = prefs.getString(firebaseSenderIdPref) ?? '';
-        firebaseProjectId.text = prefs.getString(firebaseProjectIdPref) ?? '';
+        final firebaseConfig = await FirebaseConfigStore.loadSettingsConfig();
+        firebaseApiKey.text = firebaseConfig[firebaseApiKeyPref] ?? '';
+        firebaseAppId.text = firebaseConfig[firebaseAppIdPref] ?? '';
+        firebaseSenderId.text = firebaseConfig[firebaseSenderIdPref] ?? '';
+        firebaseProjectId.text = firebaseConfig[firebaseProjectIdPref] ?? '';
         firebaseStorageBucket.text =
-            prefs.getString(firebaseStorageBucketPref) ?? '';
+            firebaseConfig[firebaseStorageBucketPref] ?? '';
+        loadedFirebaseConfig.value = <String, String>{
+          firebaseApiKeyPref: firebaseApiKey.text,
+          firebaseAppIdPref: firebaseAppId.text,
+          firebaseSenderIdPref: firebaseSenderId.text,
+          firebaseProjectIdPref: firebaseProjectId.text,
+          firebaseStorageBucketPref: firebaseStorageBucket.text,
+        };
+
+        // Mark dialog ready only after all settings are loaded.
+        homepage.value = resolvedHomepage;
+        homepageController.text =
+            resolvedHomepage == defaultHomepageUrl ? '' : resolvedHomepage;
       }
 
       loadPreferences();
@@ -656,11 +671,14 @@ class SettingsDialog extends HookWidget {
                           ],
                         ),
                         const SizedBox(height: 6),
-                        MouseRegion(
-                          cursor: SystemMouseCursors.click,
-                          child: GestureDetector(
-                            onTap: () => showFirebaseConfig.value =
-                                !showFirebaseConfig.value,
+                        InkWell(
+                          onTap: () => showFirebaseConfig.value =
+                              !showFirebaseConfig.value,
+                          hoverColor: Colors.transparent,
+                          splashColor: Colors.transparent,
+                          highlightColor: Colors.transparent,
+                          child: MouseRegion(
+                            cursor: SystemMouseCursors.click,
                             child: Row(
                               children: [
                                 Icon(
@@ -801,13 +819,17 @@ class SettingsDialog extends HookWidget {
             }
             final prefs = await SharedPreferences.getInstance();
 
-            // Check if Firebase config changed
-            final oldApiKey = prefs.getString(firebaseApiKeyPref) ?? '';
-            final oldAppId = prefs.getString(firebaseAppIdPref) ?? '';
-            final oldSenderId = prefs.getString(firebaseSenderIdPref) ?? '';
-            final oldProjectId = prefs.getString(firebaseProjectIdPref) ?? '';
+            // Check if Firebase config changed from loaded values.
+            final oldApiKey =
+                loadedFirebaseConfig.value[firebaseApiKeyPref] ?? '';
+            final oldAppId =
+                loadedFirebaseConfig.value[firebaseAppIdPref] ?? '';
+            final oldSenderId =
+                loadedFirebaseConfig.value[firebaseSenderIdPref] ?? '';
+            final oldProjectId =
+                loadedFirebaseConfig.value[firebaseProjectIdPref] ?? '';
             final oldStorageBucket =
-                prefs.getString(firebaseStorageBucketPref) ?? '';
+                loadedFirebaseConfig.value[firebaseStorageBucketPref] ?? '';
 
             final newApiKey = firebaseApiKey.text.trim();
             final newAppId = firebaseAppId.text.trim();
@@ -838,11 +860,17 @@ class SettingsDialog extends HookWidget {
                 advancedCacheEnabledKey, advancedCacheEnabled.value);
             await prefs.setString(themeModeKey, selectedTheme.value.name);
 
-            await prefs.setString(firebaseApiKeyPref, newApiKey);
-            await prefs.setString(firebaseAppIdPref, newAppId);
-            await prefs.setString(firebaseSenderIdPref, newSenderId);
-            await prefs.setString(firebaseProjectIdPref, newProjectId);
-            await prefs.setString(firebaseStorageBucketPref, newStorageBucket);
+            try {
+              await FirebaseConfigStore.saveSettingsConfig(
+                apiKey: newApiKey,
+                appId: newAppId,
+                senderId: newSenderId,
+                projectId: newProjectId,
+                storageBucket: newStorageBucket,
+              );
+            } catch (_) {
+              // Keep settings save flow resilient even when secure storage fails.
+            }
 
             onSettingsChanged?.call();
             if (privateBrowsing.value &&
@@ -912,275 +940,6 @@ class _ThemeTone {
   final Color? seedColor;
 
   const _ThemeTone({required this.brightness, this.seedColor});
-}
-
-const Map<String, int> _namedCssColors = {
-  'black': 0xFF000000,
-  'white': 0xFFFFFFFF,
-  'red': 0xFFFF0000,
-  'green': 0xFF008000,
-  'blue': 0xFF0000FF,
-  'yellow': 0xFFFFFF00,
-  'cyan': 0xFF00FFFF,
-  'aqua': 0xFF00FFFF,
-  'magenta': 0xFFFF00FF,
-  'fuchsia': 0xFFFF00FF,
-  'orange': 0xFFFFA500,
-  'purple': 0xFF800080,
-  'rebeccapurple': 0xFF663399,
-  'gray': 0xFF808080,
-  'grey': 0xFF808080,
-  'silver': 0xFFC0C0C0,
-  'maroon': 0xFF800000,
-  'olive': 0xFF808000,
-  'lime': 0xFF00FF00,
-  'navy': 0xFF000080,
-  'teal': 0xFF008080,
-};
-
-class ThemeProbeDecision {
-  const ThemeProbeDecision({required this.brightness, this.seedColor});
-
-  final Brightness brightness;
-  final Color? seedColor;
-}
-
-@visibleForTesting
-ThemeProbeDecision? resolveThemeProbeDecision(Map<String, dynamic> probe) {
-  final sampleBg =
-      probe['sampleBg'] is String ? probe['sampleBg'] as String : null;
-  final bg = probe['bg'] is String ? probe['bg'] as String : null;
-  final themeColor =
-      probe['themeColor'] is String ? probe['themeColor'] as String : null;
-  final accentHint =
-      probe['accentHint'] is String ? probe['accentHint'] as String : null;
-  final metaColorScheme = probe['metaColorScheme'] is String
-      ? probe['metaColorScheme'] as String
-      : null;
-  final colorScheme =
-      probe['colorScheme'] is String ? probe['colorScheme'] as String : null;
-  final textColor =
-      probe['textColor'] is String ? probe['textColor'] as String : null;
-  final scheme = (metaColorScheme ?? colorScheme ?? '').toLowerCase();
-
-  Brightness? schemeBrightness;
-  if (scheme.contains('dark') && !scheme.contains('light')) {
-    schemeBrightness = Brightness.dark;
-  } else if (scheme.contains('light') && !scheme.contains('dark')) {
-    schemeBrightness = Brightness.light;
-  }
-
-  final theme = parseThemeCssColor(themeColor);
-  final accent = parseThemeCssColor(accentHint);
-  final sampled = parseThemeCssColor(sampleBg);
-  final rootBg = parseThemeCssColor(bg);
-
-  Color? preferred;
-  final reliableCandidates = [theme, accent, sampled, rootBg]
-      .whereType<Color>()
-      .where(_isReliableSeedColor)
-      .toList();
-  if (reliableCandidates.isNotEmpty) {
-    preferred = reliableCandidates.first;
-  } else {
-    preferred = theme ?? accent ?? sampled ?? rootBg;
-  }
-
-  if (preferred != null) {
-    final inferredBrightness =
-        preferred.computeLuminance() < 0.5 ? Brightness.dark : Brightness.light;
-    return ThemeProbeDecision(
-      brightness: schemeBrightness ?? inferredBrightness,
-      seedColor: preferred,
-    );
-  }
-
-  if (schemeBrightness != null) {
-    return ThemeProbeDecision(brightness: schemeBrightness);
-  }
-
-  final text = parseThemeCssColor(textColor);
-  if (text != null) {
-    final brightness =
-        text.computeLuminance() < 0.5 ? Brightness.light : Brightness.dark;
-    return ThemeProbeDecision(brightness: brightness);
-  }
-  return null;
-}
-
-@visibleForTesting
-Color? parseThemeCssColor(String? value) {
-  if (value == null) return null;
-  final normalized = value.trim().toLowerCase();
-  if (normalized.isEmpty || normalized == 'transparent') return null;
-  if (normalized.startsWith('rgb')) {
-    return _parseThemeRgbColor(normalized);
-  }
-  if (normalized.startsWith('hsl')) {
-    return _parseThemeHslColor(normalized);
-  }
-  if (normalized.startsWith('#')) {
-    return _parseThemeHexColor(normalized);
-  }
-  final named = _namedCssColors[normalized];
-  if (named != null) return Color(named);
-  return null;
-}
-
-Color? _parseThemeRgbColor(String value) {
-  final match = RegExp(r'rgba?\(([^)]+)\)').firstMatch(value);
-  if (match == null) return null;
-  final normalized = match.group(1)!.replaceAll('/', ' ');
-  final parts = normalized
-      .split(RegExp(r'[,\s]+'))
-      .map((e) => e.trim())
-      .where((e) => e.isNotEmpty)
-      .toList();
-  if (parts.length < 3) return null;
-  final r = _parseThemeRgbChannel(parts[0]);
-  final g = _parseThemeRgbChannel(parts[1]);
-  final b = _parseThemeRgbChannel(parts[2]);
-  if (r == null || g == null || b == null) return null;
-  double alpha = 1.0;
-  if (parts.length >= 4) {
-    alpha = _parseThemeAlphaChannel(parts[3]) ?? 1.0;
-  }
-  alpha = alpha.clamp(0.0, 1.0);
-  if (alpha <= 0.05) return null;
-  return Color.fromARGB(
-    (alpha * 255).round(),
-    _clampThemeChannel(r),
-    _clampThemeChannel(g),
-    _clampThemeChannel(b),
-  );
-}
-
-Color? _parseThemeHexColor(String value) {
-  var hex = value.substring(1);
-  if (hex.length == 4) {
-    // #RGBA
-    hex =
-        '${hex[0]}${hex[0]}${hex[1]}${hex[1]}${hex[2]}${hex[2]}${hex[3]}${hex[3]}';
-  }
-  if (hex.length == 3) {
-    hex = '${hex[0]}${hex[0]}${hex[1]}${hex[1]}${hex[2]}${hex[2]}';
-  }
-  if (hex.length == 6) {
-    final rgb = int.tryParse(hex, radix: 16);
-    if (rgb == null) return null;
-    return Color.fromARGB(
-      255,
-      (rgb >> 16) & 0xFF,
-      (rgb >> 8) & 0xFF,
-      rgb & 0xFF,
-    );
-  }
-  if (hex.length == 8) {
-    // CSS uses #RRGGBBAA, not ARGB.
-    final rgba = int.tryParse(hex, radix: 16);
-    if (rgba == null) return null;
-    return Color.fromARGB(
-      rgba & 0xFF,
-      (rgba >> 24) & 0xFF,
-      (rgba >> 16) & 0xFF,
-      (rgba >> 8) & 0xFF,
-    );
-  }
-  return null;
-}
-
-Color? _parseThemeHslColor(String value) {
-  final match = RegExp(r'hsla?\(([^)]+)\)').firstMatch(value);
-  if (match == null) return null;
-  final normalized = match.group(1)!.replaceAll('/', ' ');
-  final parts = normalized
-      .split(RegExp(r'[,\s]+'))
-      .map((e) => e.trim())
-      .where((e) => e.isNotEmpty)
-      .toList();
-  if (parts.length < 3) return null;
-  final h = _parseThemeAngle(parts[0]);
-  final s = _parseThemePercent(parts[1]);
-  final l = _parseThemePercent(parts[2]);
-  if (h == null || s == null || l == null) return null;
-  double alpha = 1.0;
-  if (parts.length >= 4) {
-    alpha = _parseThemeAlphaChannel(parts[3]) ?? 1.0;
-  }
-  alpha = alpha.clamp(0.0, 1.0);
-  if (alpha <= 0.05) return null;
-  final color = HSLColor.fromAHSL(alpha, h, s, l).toColor();
-  return Color.fromARGB(
-    (alpha * 255).round(),
-    (color.r * 255.0).round().clamp(0, 255),
-    (color.g * 255.0).round().clamp(0, 255),
-    (color.b * 255.0).round().clamp(0, 255),
-  );
-}
-
-double? _parseThemeAngle(String token) {
-  var value = token.trim();
-  if (value.endsWith('deg')) {
-    value = value.substring(0, value.length - 3);
-  } else if (value.endsWith('turn')) {
-    final turns = double.tryParse(value.substring(0, value.length - 4));
-    if (turns == null) return null;
-    return (turns * 360) % 360;
-  } else if (value.endsWith('rad')) {
-    final radians = double.tryParse(value.substring(0, value.length - 3));
-    if (radians == null) return null;
-    return (radians * 180 / math.pi) % 360;
-  }
-  final parsed = double.tryParse(value);
-  if (parsed == null) return null;
-  final wrapped = parsed % 360;
-  return wrapped < 0 ? wrapped + 360 : wrapped;
-}
-
-double? _parseThemePercent(String token) {
-  final trimmed = token.trim();
-  if (!trimmed.endsWith('%')) return null;
-  final value = double.tryParse(trimmed.substring(0, trimmed.length - 1));
-  if (value == null) return null;
-  return (value.clamp(0.0, 100.0) / 100.0);
-}
-
-double? _parseThemeRgbChannel(String token) {
-  if (token.endsWith('%')) {
-    final pct = double.tryParse(token.substring(0, token.length - 1));
-    if (pct == null) return null;
-    return (pct.clamp(0.0, 100.0) * 2.55);
-  }
-  return double.tryParse(token);
-}
-
-double? _parseThemeAlphaChannel(String token) {
-  if (token.endsWith('%')) {
-    final pct = double.tryParse(token.substring(0, token.length - 1));
-    if (pct == null) return null;
-    return (pct.clamp(0.0, 100.0) / 100.0);
-  }
-  return double.tryParse(token);
-}
-
-int _clampThemeChannel(double value) {
-  return value.round().clamp(0, 255).toInt();
-}
-
-bool _isReliableSeedColor(Color color) {
-  final saturation = _colorSaturation(color);
-  final luminance = color.computeLuminance();
-  return saturation >= 0.08 && luminance > 0.06 && luminance < 0.94;
-}
-
-double _colorSaturation(Color color) {
-  final r = color.r;
-  final g = color.g;
-  final b = color.b;
-  final maxChannel = math.max(r, math.max(g, b));
-  final minChannel = math.min(r, math.min(g, b));
-  if (maxChannel == 0) return 0;
-  return (maxChannel - minChannel) / maxChannel;
 }
 
 Future<Map<String, dynamic>> _fetchGitHubRepo(String url) async {
@@ -3284,6 +3043,7 @@ class _BrowserPageState extends State<BrowserPage>
                                             style: theme.textTheme.bodyMedium
                                                 ?.copyWith(fontSize: 12),
                                           ),
+                                          hoverColor: Colors.transparent,
                                           onTap: () {
                                             Navigator.of(context).pop();
                                             _loadUrl(url);
@@ -4042,6 +3802,7 @@ class _BrowserPageState extends State<BrowserPage>
                               style: theme.textTheme.bodyMedium
                                   ?.copyWith(fontSize: 12),
                             ),
+                            hoverColor: Colors.transparent,
                             onTap: () {
                               Navigator.of(context).pop();
                               _loadUrl(entry);
@@ -4876,6 +4637,10 @@ class _BrowserPageState extends State<BrowserPage>
                                       final option = optionList[index];
                                       return InkWell(
                                         onTap: () => onSelected(option),
+                                        hoverColor: Colors.transparent,
+                                        splashColor: Colors.transparent,
+                                        highlightColor: Colors.transparent,
+                                        focusColor: Colors.transparent,
                                         child: Padding(
                                           padding: const EdgeInsets.symmetric(
                                             horizontal: 12,

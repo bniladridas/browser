@@ -4,39 +4,20 @@ import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
 import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, kIsWeb, TargetPlatform;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'constants.dart';
+import 'features/firebase_config_store.dart';
 
-/// Helper to atomically resolve Firebase config from SharedPreferences or .env
+/// Helper to atomically resolve Firebase config from secure storage or .env
 Future<Map<String, String>> _resolveFirebaseConfig() async {
-  final prefs = await SharedPreferences.getInstance();
-
-  // Try to get all values from SharedPreferences
-  final apiKey = prefs.getString(firebaseApiKeyPref);
-  final appId = prefs.getString(firebaseAppIdPref);
-  final senderId = prefs.getString(firebaseSenderIdPref);
-  final projectId = prefs.getString(firebaseProjectIdPref);
-  final storageBucket = prefs.getString(firebaseStorageBucketPref);
-
-  // If any override exists, require all to be non-empty
-  final hasAnyOverride = apiKey != null || appId != null || senderId != null ||
-                         projectId != null || storageBucket != null;
-
-  if (hasAnyOverride) {
-    if (apiKey != null && apiKey.isNotEmpty &&
-        appId != null && appId.isNotEmpty &&
-        senderId != null && senderId.isNotEmpty &&
-        projectId != null && projectId.isNotEmpty &&
-        storageBucket != null && storageBucket.isNotEmpty) {
-      return {
-        'apiKey': apiKey,
-        'appId': appId,
-        'messagingSenderId': senderId,
-        'projectId': projectId,
-        'storageBucket': storageBucket,
-      };
-    }
-    // Incomplete overrides - fall through to .env
+  final secureOverrides = await FirebaseConfigStore.loadRuntimeConfig();
+  if (secureOverrides.isNotEmpty) {
+    return {
+      'apiKey': secureOverrides[firebaseApiKeyPref] ?? '',
+      'appId': secureOverrides[firebaseAppIdPref] ?? '',
+      'messagingSenderId': secureOverrides[firebaseSenderIdPref] ?? '',
+      'projectId': secureOverrides[firebaseProjectIdPref] ?? '',
+      'storageBucket': secureOverrides[firebaseStorageBucketPref] ?? '',
+    };
   }
 
   // Use .env for all fields
@@ -46,11 +27,16 @@ Future<Map<String, String>> _resolveFirebaseConfig() async {
   final envProjectId = dotenv.env['FIREBASE_PROJECT_ID'];
   final envStorageBucket = dotenv.env['FIREBASE_STORAGE_BUCKET'];
 
-  if (envApiKey == null || envApiKey.isEmpty ||
-      envAppId == null || envAppId.isEmpty ||
-      envSenderId == null || envSenderId.isEmpty ||
-      envProjectId == null || envProjectId.isEmpty ||
-      envStorageBucket == null || envStorageBucket.isEmpty) {
+  if (envApiKey == null ||
+      envApiKey.isEmpty ||
+      envAppId == null ||
+      envAppId.isEmpty ||
+      envSenderId == null ||
+      envSenderId.isEmpty ||
+      envProjectId == null ||
+      envProjectId.isEmpty ||
+      envStorageBucket == null ||
+      envStorageBucket.isEmpty) {
     throw ArgumentError('Missing Firebase config (check Settings or .env)');
   }
 

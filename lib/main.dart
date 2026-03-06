@@ -329,6 +329,10 @@ class _MyAppState extends State<MyApp> {
         outline: onBase.withValues(alpha: 0.18),
       );
     }
+    final hoverOnlyTransparentOverlay =
+        WidgetStateProperty.resolveWith<Color?>((states) {
+      return states.contains(WidgetState.hovered) ? Colors.transparent : null;
+    });
     return ThemeData(
       colorScheme: scheme,
       useMaterial3: true,
@@ -341,7 +345,29 @@ class _MyAppState extends State<MyApp> {
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           foregroundColor: scheme.onSurface,
-        ),
+        ).copyWith(overlayColor: hoverOnlyTransparentOverlay),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom()
+            .copyWith(overlayColor: hoverOnlyTransparentOverlay),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom()
+            .copyWith(overlayColor: hoverOnlyTransparentOverlay),
+      ),
+      switchTheme: SwitchThemeData(
+        overlayColor: hoverOnlyTransparentOverlay,
+      ),
+      chipTheme: ChipThemeData(
+        backgroundColor: scheme.surfaceContainerHighest,
+        selectedColor: scheme.primaryContainer,
+        disabledColor: scheme.surfaceContainerHighest,
+        side: BorderSide.none,
+        pressElevation: 0,
+      ),
+      iconButtonTheme: IconButtonThemeData(
+        style: IconButton.styleFrom()
+            .copyWith(overlayColor: hoverOnlyTransparentOverlay),
       ),
     );
   }
