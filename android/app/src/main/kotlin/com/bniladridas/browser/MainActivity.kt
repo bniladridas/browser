@@ -1,4 +1,4 @@
-package com.example.browser
+package com.bniladridas.browser
 
 import io.flutter.embedding.android.FlutterActivity
 

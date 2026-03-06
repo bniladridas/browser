@@ -9,7 +9,7 @@ PRODUCT_NAME = browser
 
 // The application's bundle identifier
 // Override APP_BUNDLE_ID in CI for release builds.
-APP_BUNDLE_ID = com.example.browser
+APP_BUNDLE_ID = com.bniladridas.browser
 PRODUCT_BUNDLE_IDENTIFIER = $(APP_BUNDLE_ID)
 
 // The copyright displayed in application information
