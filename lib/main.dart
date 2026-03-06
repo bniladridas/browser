@@ -294,8 +294,8 @@ class _MyAppState extends State<MyApp> {
           onSettingsChanged: _loadSettings,
           onThemePreviewChanged: _setPreviewThemeMode,
           onThemePreviewReset: _clearPreviewThemeMode,
-          onShowWhatsNew: () {
-            _showWhatsNewDialog(ignoreSeenVersion: true);
+          onShowWhatsNew: () async {
+            await _showWhatsNewDialog(ignoreSeenVersion: true);
           },
         ),
       ),

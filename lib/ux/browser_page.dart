@@ -47,6 +47,7 @@ import 'package:pkg/ai_service.dart';
 import 'network_debug_dialog.dart';
 import 'save_password_prompt.dart';
 import 'password_vault_screen.dart';
+import 'interaction_blocker.dart';
 
 export '../features/theme_color_parser.dart';
 
@@ -927,6 +928,7 @@ class TabData {
   SavePasswordPromptData? pendingPasswordPrompt;
   String? faviconUrl;
   String? forwardUrl; // URL to go forward to when on home page
+  bool hideStaleWebViewUntilPageFinish = false;
 
   TabData(this.currentUrl, {String? displayUrl})
       : urlController = TextEditingController(text: displayUrl ?? currentUrl),
@@ -1152,7 +1154,7 @@ class BrowserPage extends StatefulWidget {
   final void Function(ThemeMode mode, Color? seedColor)? onPageThemeChanged;
   final void Function(AppThemeMode mode)? onThemePreviewChanged;
   final void Function()? onThemePreviewReset;
-  final void Function()? onShowWhatsNew;
+  final Future<void> Function()? onShowWhatsNew;
 
   @override
   State<BrowserPage> createState() => _BrowserPageState();
@@ -1280,7 +1282,9 @@ class _BrowserPageState extends State<BrowserPage>
   Timer? _overflowMenuCloseTimer;
   bool _isOverflowTriggerHovered = false;
   bool _isOverflowMenuHovered = false;
+  bool _overflowMenuOpen = false;
   bool _urlAutocompleteOpen = false;
+  bool _modalInteractionBlockOpen = false;
   bool _windowButtonsSyncRetryQueued = false;
   Timer? _windowButtonsSyncRetryTimer;
   final Map<String, String> _faviconCacheByHost = {};
@@ -1538,9 +1542,32 @@ class _BrowserPageState extends State<BrowserPage>
     });
   }
 
+  void _setModalInteractionBlockOpen(bool open) {
+    if (_modalInteractionBlockOpen == open) return;
+    _modalInteractionBlockOpen = open;
+    _syncPagePointerEvents(activeTab);
+  }
+
+  void _setOverflowMenuOpen(bool open) {
+    if (_overflowMenuOpen == open) return;
+    _overflowMenuOpen = open;
+    _syncPagePointerEvents(activeTab);
+  }
+
+  Future<T?> _showWithModalInteractionBlock<T>(
+      Future<T?> Function() showModal) async {
+    _setModalInteractionBlockOpen(true);
+    try {
+      return await showModal();
+    } finally {
+      _setModalInteractionBlockOpen(false);
+    }
+  }
+
   void _syncPagePointerEvents(TabData tab) {
     if (tab.isClosed) return;
-    final shouldBlock = identical(tab, activeTab) && _urlAutocompleteOpen;
+    final shouldBlock = identical(tab, activeTab) &&
+        (_urlAutocompleteOpen || _modalInteractionBlockOpen || _overflowMenuOpen);
     unawaited(_setTabPointerEventsEnabled(tab, !shouldBlock));
   }
 
@@ -2945,8 +2972,18 @@ class _BrowserPageState extends State<BrowserPage>
             if (activeTab.currentUrl != widget.initialUrl) {
               activeTab.forwardUrl = activeTab.currentUrl;
             }
+            activeTab.hideStaleWebViewUntilPageFinish = true;
             activeTab.currentUrl = widget.initialUrl;
-            activeTab.urlController.text = _displayUrl(widget.initialUrl);
+            final homeDisplayUrl = _displayUrl(widget.initialUrl);
+            activeTab.urlController.value = TextEditingValue(
+              text: homeDisplayUrl,
+              selection: TextSelection.collapsed(
+                offset: homeDisplayUrl.length,
+              ),
+            );
+            activeTab.faviconUrl = _defaultFaviconUrlFor(widget.initialUrl);
+            activeTab.webViewController = null;
+            activeTab.hideStaleWebViewUntilPageFinish = false;
             activeTab.state = BrowserState.success(widget.initialUrl);
           });
         }
@@ -2979,6 +3016,21 @@ class _BrowserPageState extends State<BrowserPage>
 
   Future<void> _refresh() async {
     _refreshIconController.forward(from: 0.0);
+    if (activeTab.currentUrl == defaultHomepageUrl) {
+      if (mounted) {
+        setState(() {
+          final homeDisplayUrl = _displayUrl(defaultHomepageUrl);
+          activeTab.urlController.value = TextEditingValue(
+            text: homeDisplayUrl,
+            selection: TextSelection.collapsed(
+              offset: homeDisplayUrl.length,
+            ),
+          );
+          activeTab.state = BrowserState.success(defaultHomepageUrl);
+        });
+      }
+      return;
+    }
     try {
       await activeTab.webViewController?.reload();
     } on PlatformException catch (e, s) {
@@ -2989,141 +3041,147 @@ class _BrowserPageState extends State<BrowserPage>
     }
   }
 
-  void _showBookmarks() {
+  void _showBookmarks() async {
     if (widget.privateBrowsing) {
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Bookmarks'),
-          content: const Text(
-              'Bookmarks are not accessible in private browsing mode'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Close'),
-            ),
-          ],
+      await _showWithModalInteractionBlock<void>(
+        () => showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Bookmarks'),
+            content: const Text(
+                'Bookmarks are not accessible in private browsing mode'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Close'),
+              ),
+            ],
+          ),
         ),
       );
       return;
     }
-    showDialog(
-      context: context,
-      builder: (context) {
-        final theme = Theme.of(context);
-        return AlertDialog(
-          title: Text(
-            'Bookmarks',
-            style: theme.textTheme.titleSmall?.copyWith(fontSize: 15),
-          ),
-          content: StatefulBuilder(
-            builder: (context, innerSetState) => bookmarkManager
-                    .bookmarks.isEmpty
-                ? const Text('No bookmarks')
-                : SizedBox(
-                    width: double.maxFinite,
-                    height: 300,
-                    child: ListView(
-                      children: bookmarkManager.bookmarks.entries
-                          .map((entry) => ExpansionTile(
-                                tilePadding:
-                                    const EdgeInsets.symmetric(horizontal: 8),
-                                title: Text(
-                                  entry.key,
-                                  style: theme.textTheme.bodyMedium
-                                      ?.copyWith(fontSize: 13),
-                                ),
-                                children: entry.value
-                                    .map((url) => ListTile(
-                                          dense: true,
-                                          visualDensity: const VisualDensity(
-                                              horizontal: -2, vertical: -2),
-                                          title: Text(
-                                            url,
-                                            style: theme.textTheme.bodyMedium
-                                                ?.copyWith(fontSize: 12),
-                                          ),
-                                          hoverColor: Colors.transparent,
-                                          onTap: () {
-                                            Navigator.of(context).pop();
-                                            _loadUrl(url);
-                                          },
-                                          trailing: MouseRegion(
-                                            cursor: SystemMouseCursors.click,
-                                            child: GestureDetector(
-                                              onTap: () async {
-                                                final confirm =
-                                                    await showDialog<bool>(
-                                                  context: context,
-                                                  builder: (context) =>
-                                                      AlertDialog(
-                                                    title: const Text(
-                                                        'Delete Bookmark?'),
-                                                    content: Text(
-                                                        'Remove "$url" from ${entry.key}?'),
-                                                    actions: [
-                                                      TextButton(
-                                                        onPressed: () =>
-                                                            Navigator.of(
-                                                                    context)
-                                                                .pop(false),
-                                                        child: const Text(
-                                                            'Cancel'),
-                                                      ),
-                                                      TextButton(
-                                                        onPressed: () =>
-                                                            Navigator.of(
-                                                                    context)
-                                                                .pop(true),
-                                                        child: const Text(
-                                                            'Delete'),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                );
-                                                if (confirm == true) {
-                                                  innerSetState(() {
-                                                    bookmarkManager.remove(
-                                                        url, entry.key);
-                                                  });
-                                                  _saveBookmarks();
-                                                }
-                                              },
-                                              child: Padding(
-                                                padding:
-                                                    const EdgeInsets.all(8),
-                                                child: Icon(Icons.delete,
-                                                    color: Theme.of(context)
-                                                        .colorScheme
-                                                        .onSurfaceVariant),
+    await _showWithModalInteractionBlock<void>(
+      () => showDialog(
+        context: context,
+        builder: (context) {
+          final theme = Theme.of(context);
+          return AlertDialog(
+            title: Text(
+              'Bookmarks',
+              style: theme.textTheme.titleSmall?.copyWith(fontSize: 15),
+            ),
+            content: StatefulBuilder(
+              builder: (context, innerSetState) => bookmarkManager
+                      .bookmarks.isEmpty
+                  ? const Text('No bookmarks')
+                  : SizedBox(
+                      width: double.maxFinite,
+                      height: 300,
+                      child: ListView(
+                        children: bookmarkManager.bookmarks.entries
+                            .map((entry) => ExpansionTile(
+                                  tilePadding:
+                                      const EdgeInsets.symmetric(horizontal: 8),
+                                  title: Text(
+                                    entry.key,
+                                    style: theme.textTheme.bodyMedium
+                                        ?.copyWith(fontSize: 13),
+                                  ),
+                                  children: entry.value
+                                      .map((url) => ListTile(
+                                            dense: true,
+                                            visualDensity:
+                                                const VisualDensity(
+                                                    horizontal: -2,
+                                                    vertical: -2),
+                                            title: Text(
+                                              url,
+                                              style: theme.textTheme.bodyMedium
+                                                  ?.copyWith(fontSize: 12),
+                                            ),
+                                            hoverColor: Colors.transparent,
+                                            onTap: () {
+                                              Navigator.of(context).pop();
+                                              _loadUrl(url);
+                                            },
+                                            trailing: MouseRegion(
+                                              cursor: SystemMouseCursors.click,
+                                              child: GestureDetector(
+                                                onTap: () async {
+                                                  final confirm =
+                                                      await showDialog<bool>(
+                                                    context: context,
+                                                    builder: (context) =>
+                                                        AlertDialog(
+                                                      title: const Text(
+                                                          'Delete Bookmark?'),
+                                                      content: Text(
+                                                          'Remove "$url" from ${entry.key}?'),
+                                                      actions: [
+                                                        TextButton(
+                                                          onPressed: () =>
+                                                              Navigator.of(
+                                                                      context)
+                                                                  .pop(false),
+                                                          child: const Text(
+                                                              'Cancel'),
+                                                        ),
+                                                        TextButton(
+                                                          onPressed: () =>
+                                                              Navigator.of(
+                                                                      context)
+                                                                  .pop(true),
+                                                          child: const Text(
+                                                              'Delete'),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  );
+                                                  if (confirm == true) {
+                                                    innerSetState(() {
+                                                      bookmarkManager.remove(
+                                                          url, entry.key);
+                                                    });
+                                                    _saveBookmarks();
+                                                  }
+                                                },
+                                                child: Padding(
+                                                  padding:
+                                                      const EdgeInsets.all(8),
+                                                  child: Icon(Icons.delete,
+                                                      color: Theme.of(context)
+                                                          .colorScheme
+                                                          .onSurfaceVariant),
+                                                ),
                                               ),
                                             ),
-                                          ),
-                                        ))
-                                    .toList(),
-                              ))
-                          .toList(),
+                                          ))
+                                      .toList(),
+                                ))
+                            .toList(),
+                      ),
                     ),
-                  ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                setState(() {
-                  bookmarkManager.clear();
-                });
-                _saveBookmarks();
-                Navigator.of(context).pop();
-              },
-              child: const Text('Clear All'),
             ),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Close'),
-            ),
-          ],
-        );
-      },
+            actions: [
+              TextButton(
+                onPressed: () {
+                  setState(() {
+                    bookmarkManager.clear();
+                  });
+                  _saveBookmarks();
+                  Navigator.of(context).pop();
+                },
+                child: const Text('Clear All'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Close'),
+              ),
+            ],
+          );
+        },
+      ),
     );
   }
 
@@ -3145,19 +3203,21 @@ class _BrowserPageState extends State<BrowserPage>
   }
 
   void _showSettings() async {
-    final saved = await showDialog<bool>(
-      context: context,
-      builder: (context) => SettingsDialog(
-          onSettingsChanged: () {
-            _loadReorderableTabs();
-            widget.onSettingsChanged?.call();
-          },
-          onClearCaches: _clearAllCaches,
-          onThemePreviewChanged: widget.onThemePreviewChanged,
-          currentTheme: widget.themeMode,
-          aiSearchSuggestionsEnabled: widget.aiSearchSuggestionsEnabled,
-          advancedCacheEnabled: widget.advancedCacheEnabled,
-          aiAvailable: widget.aiAvailable),
+    final saved = await _showWithModalInteractionBlock<bool>(
+      () => showDialog<bool>(
+        context: context,
+        builder: (context) => SettingsDialog(
+            onSettingsChanged: () {
+              _loadReorderableTabs();
+              widget.onSettingsChanged?.call();
+            },
+            onClearCaches: _clearAllCaches,
+            onThemePreviewChanged: widget.onThemePreviewChanged,
+            currentTheme: widget.themeMode,
+            aiSearchSuggestionsEnabled: widget.aiSearchSuggestionsEnabled,
+            advancedCacheEnabled: widget.advancedCacheEnabled,
+            aiAvailable: widget.aiAvailable),
+      ),
     );
     if (saved != true) {
       widget.onThemePreviewReset?.call();
@@ -3180,129 +3240,146 @@ class _BrowserPageState extends State<BrowserPage>
       text: hasPreset ? '' : initialFont,
     );
 
-    final result = await showDialog<_FontPickerResult>(
+    _setModalInteractionBlockOpen(true);
+    final result = await showGeneralDialog<_FontPickerResult>(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setStateDialog) => AlertDialog(
-          title: const Text('Page Font'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (currentHost != null) ...[
-                SizedBox(
-                  width: double.infinity,
-                  child: SegmentedButton<bool>(
-                    segments: [
-                      const ButtonSegment<bool>(
-                        value: false,
-                        label: Text('Global'),
-                      ),
-                      ButtonSegment<bool>(
-                        value: true,
-                        label: Text(currentHost),
-                      ),
-                    ],
-                    selected: {applyToCurrentSite},
-                    onSelectionChanged: (selection) {
-                      setStateDialog(() {
-                        applyToCurrentSite = selection.first;
-                      });
-                    },
-                  ),
-                ),
-                const SizedBox(height: 8),
-              ],
-              SizedBox(
-                width: double.infinity,
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxHeight: 220),
-                  child: SingleChildScrollView(
-                    child: Column(
-                      children: [
-                        ..._pageFontChoices.map(
-                          (choice) => ListTile(
-                            dense: true,
-                            visualDensity: const VisualDensity(
-                                horizontal: -2, vertical: -2),
-                            title: Text(choice.label),
-                            trailing: selectedValue == choice.cssFamily
-                                ? const Icon(Icons.check, size: 18)
-                                : null,
-                            onTap: () {
+      barrierDismissible: false,
+      barrierLabel: 'Page Font',
+      barrierColor: Colors.transparent,
+      pageBuilder: (context, _, __) => Material(
+        type: MaterialType.transparency,
+        child: Stack(
+          children: [
+            const InteractionBlocker(),
+            Align(
+              alignment: Alignment.center,
+              child: StatefulBuilder(
+                builder: (context, setStateDialog) => AlertDialog(
+                  title: const Text('Page Font'),
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (currentHost != null) ...[
+                        SizedBox(
+                          width: double.infinity,
+                          child: SegmentedButton<bool>(
+                            segments: [
+                              const ButtonSegment<bool>(
+                                value: false,
+                                label: Text('Global'),
+                              ),
+                              ButtonSegment<bool>(
+                                value: true,
+                                label: Text(currentHost),
+                              ),
+                            ],
+                            selected: {applyToCurrentSite},
+                            onSelectionChanged: (selection) {
                               setStateDialog(() {
-                                selectedValue = choice.cssFamily;
+                                applyToCurrentSite = selection.first;
                               });
                             },
                           ),
                         ),
-                        ListTile(
-                          dense: true,
-                          visualDensity:
-                              const VisualDensity(horizontal: -2, vertical: -2),
-                          title: const Text('Custom CSS Font Family'),
-                          trailing: selectedValue == customOptionValue
-                              ? const Icon(Icons.check, size: 18)
-                              : null,
-                          onTap: () {
-                            setStateDialog(() {
-                              selectedValue = customOptionValue;
-                            });
-                          },
+                        const SizedBox(height: 8),
+                      ],
+                      SizedBox(
+                        width: double.infinity,
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxHeight: 220),
+                          child: SingleChildScrollView(
+                            child: Column(
+                              children: [
+                                ..._pageFontChoices.map(
+                                  (choice) => ListTile(
+                                    dense: true,
+                                    visualDensity: const VisualDensity(
+                                        horizontal: -2, vertical: -2),
+                                    hoverColor: Colors.transparent,
+                                    title: Text(choice.label),
+                                    trailing: selectedValue == choice.cssFamily
+                                        ? const Icon(Icons.check, size: 18)
+                                        : null,
+                                    onTap: () {
+                                      setStateDialog(() {
+                                        selectedValue = choice.cssFamily;
+                                      });
+                                    },
+                                  ),
+                                ),
+                                ListTile(
+                                  dense: true,
+                                  visualDensity: const VisualDensity(
+                                      horizontal: -2, vertical: -2),
+                                  hoverColor: Colors.transparent,
+                                  title: const Text('Custom CSS Font Family'),
+                                  trailing: selectedValue == customOptionValue
+                                      ? const Icon(Icons.check, size: 18)
+                                      : null,
+                                  onTap: () {
+                                    setStateDialog(() {
+                                      selectedValue = customOptionValue;
+                                    });
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      if (selectedValue == customOptionValue) ...[
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: customFontController,
+                          decoration: const InputDecoration(
+                            labelText: 'Custom font-family value',
+                            hintText: 'e.g. "Fira Sans", Arial, sans-serif',
+                          ),
                         ),
                       ],
-                    ),
+                    ],
                   ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: const Text('Cancel'),
+                    ),
+                    if (currentHost != null && hasSiteRule && applyToCurrentSite)
+                      TextButton(
+                        onPressed: () {
+                          Navigator.of(context).pop(
+                            const _FontPickerResult(
+                              fontFamily: '',
+                              applyToCurrentSite: true,
+                              clearCurrentSiteRule: true,
+                            ),
+                          );
+                        },
+                        child: const Text('Clear Site Rule'),
+                      ),
+                    TextButton(
+                      onPressed: () {
+                        final chosenFont = selectedValue == customOptionValue
+                            ? customFontController.text.trim()
+                            : selectedValue;
+                        Navigator.of(context).pop(
+                          _FontPickerResult(
+                            fontFamily: chosenFont,
+                            applyToCurrentSite:
+                                currentHost != null && applyToCurrentSite,
+                          ),
+                        );
+                      },
+                      child: const Text('Apply'),
+                    ),
+                  ],
                 ),
               ),
-              if (selectedValue == customOptionValue) ...[
-                const SizedBox(height: 12),
-                TextField(
-                  controller: customFontController,
-                  decoration: const InputDecoration(
-                    labelText: 'Custom font-family value',
-                    hintText: 'e.g. "Fira Sans", Arial, sans-serif',
-                  ),
-                ),
-              ],
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
-            ),
-            if (currentHost != null && hasSiteRule && applyToCurrentSite)
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop(
-                    const _FontPickerResult(
-                      fontFamily: '',
-                      applyToCurrentSite: true,
-                      clearCurrentSiteRule: true,
-                    ),
-                  );
-                },
-                child: const Text('Clear Site Rule'),
-              ),
-            TextButton(
-              onPressed: () {
-                final chosenFont = selectedValue == customOptionValue
-                    ? customFontController.text.trim()
-                    : selectedValue;
-                Navigator.of(context).pop(
-                  _FontPickerResult(
-                    fontFamily: chosenFont,
-                    applyToCurrentSite:
-                        currentHost != null && applyToCurrentSite,
-                  ),
-                );
-              },
-              child: const Text('Apply'),
             ),
           ],
         ),
       ),
-    );
+    ).whenComplete(() => _setModalInteractionBlockOpen(false));
 
     customFontController.dispose();
 
@@ -3349,14 +3426,16 @@ class _BrowserPageState extends State<BrowserPage>
     );
   }
 
-  void _showNetworkDebug() {
-    showDialog(
-      context: context,
-      builder: (context) => const NetworkDebugDialog(),
+  void _showNetworkDebug() async {
+    await _showWithModalInteractionBlock<void>(
+      () => showDialog(
+        context: context,
+        builder: (context) => const NetworkDebugDialog(),
+      ),
     );
   }
 
-  void _handleMenuSelection(String value) {
+  Future<void> _handleMenuSelection(String value) async {
     switch (value) {
       case 'add_bookmark':
         _addBookmark();
@@ -3383,7 +3462,9 @@ class _BrowserPageState extends State<BrowserPage>
         _showNetworkDebug();
         break;
       case 'whats_new':
-        widget.onShowWhatsNew?.call();
+        if (widget.onShowWhatsNew != null) {
+          await _showWithModalInteractionBlock<void>(widget.onShowWhatsNew!);
+        }
         break;
     }
   }
@@ -3408,7 +3489,7 @@ class _BrowserPageState extends State<BrowserPage>
       child: GestureDetector(
         onTap: () {
           _overflowMenuController.close();
-          _handleMenuSelection(value);
+          unawaited(_handleMenuSelection(value));
         },
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -3508,6 +3589,7 @@ class _BrowserPageState extends State<BrowserPage>
         _isOverflowMenuHovered = false;
         _isOverflowTriggerHovered = false;
         _cancelOverflowMenuClose();
+        _setOverflowMenuOpen(false);
       },
       menuChildren: _buildMenuEntries(context),
       builder: (context, controller, child) {
@@ -3526,9 +3608,11 @@ class _BrowserPageState extends State<BrowserPage>
               onTap: () {
                 if (controller.isOpen) {
                   controller.close();
+                  _setOverflowMenuOpen(false);
                   return;
                 }
                 controller.open();
+                _setOverflowMenuOpen(true);
               },
               child: Padding(
                 padding: const EdgeInsets.all(8),
@@ -3599,10 +3683,12 @@ class _BrowserPageState extends State<BrowserPage>
     } catch (e) {
       debugPrint('Error fetching page info: $e');
     }
-    showDialog(
-      context: context,
-      builder: (context) =>
-          AiChatWidget(pageTitle: pageTitle, pageUrl: pageUrl),
+    await _showWithModalInteractionBlock<void>(
+      () => showDialog(
+        context: context,
+        builder: (context) =>
+            AiChatWidget(pageTitle: pageTitle, pageUrl: pageUrl),
+      ),
     );
   }
 
@@ -3711,6 +3797,7 @@ class _BrowserPageState extends State<BrowserPage>
                           dense: true,
                           visualDensity:
                               const VisualDensity(horizontal: -2, vertical: -2),
+                          hoverColor: Colors.transparent,
                           contentPadding:
                               const EdgeInsets.symmetric(horizontal: 14),
                           minLeadingWidth: 18,
@@ -3724,7 +3811,9 @@ class _BrowserPageState extends State<BrowserPage>
                             style: theme.textTheme.bodyMedium
                                 ?.copyWith(fontSize: 13),
                           ),
-                          onTap: () {
+                          onTap: () async {
+                            activeTab.urlFocusNode.unfocus();
+                            _setUrlAutocompleteOpen(false);
                             if (_isDisallowedAiSuggestion(suggestion)) {
                               Navigator.of(context).pop();
                               if (mounted) {
@@ -3739,7 +3828,16 @@ class _BrowserPageState extends State<BrowserPage>
                               return;
                             }
                             Navigator.of(context).pop();
-                            _loadUrl(suggestion);
+                            await Future<void>.delayed(Duration.zero);
+                            if (!mounted) return;
+                            FocusManager.instance.primaryFocus?.unfocus();
+                            activeTab.urlFocusNode.unfocus();
+                            await _loadUrl(suggestion);
+                            if (!mounted) return;
+                            activeTab.urlController.selection =
+                                TextSelection.collapsed(
+                              offset: activeTab.urlController.text.length,
+                            );
                           },
                         );
                       },
@@ -3754,111 +3852,116 @@ class _BrowserPageState extends State<BrowserPage>
     );
   }
 
-  void _showHistory() {
+  void _showHistory() async {
     if (widget.privateBrowsing) {
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('History'),
-          content: const Text('History is not saved in private browsing mode'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Close'),
-            ),
-          ],
+      await _showWithModalInteractionBlock<void>(
+        () => showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('History'),
+            content:
+                const Text('History is not saved in private browsing mode'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Close'),
+              ),
+            ],
+          ),
         ),
       );
       return;
     }
     final history = _history;
-    showDialog(
-      context: context,
-      builder: (context) {
-        final theme = Theme.of(context);
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            final displayHistory = history.reversed.toList(growable: false);
-            return AlertDialog(
-              title: Text(
-                'History',
-                style: theme.textTheme.titleSmall?.copyWith(fontSize: 15),
-              ),
-              content: history.isEmpty
-                  ? const Text('No history')
-                  : SizedBox(
-                      width: double.maxFinite,
-                      height: 300,
-                      child: ListView.builder(
-                        itemCount: displayHistory.length,
-                        itemBuilder: (context, index) {
-                          final entry = displayHistory[index];
-                          return ListTile(
-                            dense: true,
-                            visualDensity: const VisualDensity(
-                                horizontal: -2, vertical: -2),
-                            title: Text(
-                              entry,
-                              style: theme.textTheme.bodyMedium
-                                  ?.copyWith(fontSize: 12),
-                            ),
-                            hoverColor: Colors.transparent,
-                            onTap: () {
-                              Navigator.of(context).pop();
-                              _loadUrl(entry);
-                            },
-                            trailing: MouseRegion(
-                              cursor: SystemMouseCursors.click,
-                              child: GestureDetector(
-                                onTap: () {
-                                  setState(() {
-                                    final removeIndex =
-                                        history.length - 1 - index;
-                                    if (removeIndex >= 0 &&
-                                        removeIndex < history.length) {
-                                      history.removeAt(removeIndex);
-                                    }
-                                  });
-                                  setDialogState(() {});
-                                  _saveHistory();
-                                },
-                                child: Padding(
-                                  padding: const EdgeInsets.all(8),
-                                  child: Icon(Icons.delete,
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .onSurfaceVariant),
+    await _showWithModalInteractionBlock<void>(
+      () => showDialog(
+        context: context,
+        builder: (context) {
+          final theme = Theme.of(context);
+          return StatefulBuilder(
+            builder: (context, setDialogState) {
+              final displayHistory = history.reversed.toList(growable: false);
+              return AlertDialog(
+                title: Text(
+                  'History',
+                  style: theme.textTheme.titleSmall?.copyWith(fontSize: 15),
+                ),
+                content: history.isEmpty
+                    ? const Text('No history')
+                    : SizedBox(
+                        width: double.maxFinite,
+                        height: 300,
+                        child: ListView.builder(
+                          itemCount: displayHistory.length,
+                          itemBuilder: (context, index) {
+                            final entry = displayHistory[index];
+                            return ListTile(
+                              dense: true,
+                              visualDensity: const VisualDensity(
+                                  horizontal: -2, vertical: -2),
+                              title: Text(
+                                entry,
+                                style: theme.textTheme.bodyMedium
+                                    ?.copyWith(fontSize: 12),
+                              ),
+                              hoverColor: Colors.transparent,
+                              onTap: () {
+                                Navigator.of(context).pop();
+                                _loadUrl(entry);
+                              },
+                              trailing: MouseRegion(
+                                cursor: SystemMouseCursors.click,
+                                child: GestureDetector(
+                                  onTap: () {
+                                    setState(() {
+                                      final removeIndex =
+                                          history.length - 1 - index;
+                                      if (removeIndex >= 0 &&
+                                          removeIndex < history.length) {
+                                        history.removeAt(removeIndex);
+                                      }
+                                    });
+                                    setDialogState(() {});
+                                    _saveHistory();
+                                  },
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(8),
+                                    child: Icon(Icons.delete,
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onSurfaceVariant),
+                                  ),
                                 ),
                               ),
-                            ),
-                          );
-                        },
+                            );
+                          },
+                        ),
                       ),
-                    ),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    setState(() {
-                      history.clear();
-                      for (final tab in tabs) {
-                        tab.history.clear();
-                      }
-                    });
-                    setDialogState(() {});
-                    _saveHistory();
-                    Navigator.of(context).pop();
-                  },
-                  child: const Text('Clear All'),
-                ),
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Close'),
-                ),
-              ],
-            );
-          },
-        );
-      },
+                actions: [
+                  TextButton(
+                    onPressed: () {
+                      setState(() {
+                        history.clear();
+                        for (final tab in tabs) {
+                          tab.history.clear();
+                        }
+                      });
+                      setDialogState(() {});
+                      _saveHistory();
+                      Navigator.of(context).pop();
+                    },
+                    child: const Text('Clear All'),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('Close'),
+                  ),
+                ],
+              );
+            },
+          );
+        },
+      ),
     );
   }
 
@@ -3986,6 +4089,9 @@ class _BrowserPageState extends State<BrowserPage>
           setState(() {
             activeTab.currentUrl = url;
             activeTab.urlController.text = _displayUrl(url);
+            activeTab.faviconUrl = _defaultFaviconUrlFor(url);
+            activeTab.webViewController = null;
+            activeTab.hideStaleWebViewUntilPageFinish = false;
             activeTab.state = BrowserState.success(url);
           });
         }
@@ -3994,6 +4100,7 @@ class _BrowserPageState extends State<BrowserPage>
       // about:blank falls through to normal WebView load
     }
 
+    final wasOnHome = activeTab.currentUrl == defaultHomepageUrl;
     final processedUrl = UrlUtils.processUrl(url);
 
     if (!UrlUtils.isValidUrl(processedUrl)) {
@@ -4010,6 +4117,7 @@ class _BrowserPageState extends State<BrowserPage>
     }
     activeTab.currentUrl = processedUrl;
     activeTab.urlController.text = _displayUrl(processedUrl);
+    activeTab.hideStaleWebViewUntilPageFinish = wasOnHome;
     if (activeTab.webViewController == null && mounted) {
       setState(() {});
     }
@@ -4172,6 +4280,9 @@ class _BrowserPageState extends State<BrowserPage>
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final errorActionColor = colorScheme.onSurface;
+    final noHoverOverlay = WidgetStateProperty.resolveWith<Color?>((states) {
+      return states.contains(WidgetState.hovered) ? Colors.transparent : null;
+    });
     final errorMessage = tab.state is BrowserError
         ? (tab.state as BrowserError).message
         : 'We could not load that page.';
@@ -4231,6 +4342,12 @@ class _BrowserPageState extends State<BrowserPage>
                   FilledButton.icon(
                     style: FilledButton.styleFrom(
                       visualDensity: VisualDensity.compact,
+                    ).copyWith(
+                      overlayColor: noHoverOverlay,
+                      elevation: WidgetStateProperty.resolveWith<double?>(
+                        (states) =>
+                            states.contains(WidgetState.hovered) ? 0 : null,
+                      ),
                     ),
                     onPressed: () {
                       setState(() {
@@ -4248,7 +4365,7 @@ class _BrowserPageState extends State<BrowserPage>
                       color: errorActionColor.withValues(alpha: 0.45),
                     ),
                     visualDensity: VisualDensity.compact,
-                  ),
+                  ).copyWith(overlayColor: noHoverOverlay),
                   onPressed: () {
                     tab.urlFocusNode.requestFocus();
                   },
@@ -4371,6 +4488,7 @@ class _BrowserPageState extends State<BrowserPage>
           }
         },
         onPageFinished: (url) {
+          tab.hideStaleWebViewUntilPageFinish = false;
           if (mounted) {
             setState(() {
               if (tab.state is! BrowserError) {
@@ -4471,6 +4589,12 @@ class _BrowserPageState extends State<BrowserPage>
         child: Stack(
           children: [
             WebViewWidget(controller: tab.webViewController!),
+            if (tab.hideStaleWebViewUntilPageFinish)
+              Positioned.fill(
+                child: ColoredBox(
+                  color: Theme.of(context).colorScheme.surface,
+                ),
+              ),
             if (tab.state is Loading)
               Positioned(
                 top: 0,
@@ -4606,15 +4730,11 @@ class _BrowserPageState extends State<BrowserPage>
                         final theme = Theme.of(context);
                         return Stack(
                           children: [
-                            Positioned.fill(
-                              child: GestureDetector(
-                                behavior: HitTestBehavior.opaque,
-                                onTap: () {
-                                  activeTab.urlFocusNode.unfocus();
-                                  _setUrlAutocompleteOpen(false);
-                                },
-                                child: const SizedBox.expand(),
-                              ),
+                            InteractionBlocker(
+                              onTap: () {
+                                activeTab.urlFocusNode.unfocus();
+                                _setUrlAutocompleteOpen(false);
+                              },
                             ),
                             Align(
                               alignment: Alignment.topLeft,
@@ -4711,7 +4831,6 @@ class _BrowserPageState extends State<BrowserPage>
                             if (decision.shouldLoadUrl) {
                               _loadUrl(decision.normalizedInput);
                             }
-                            onFieldSubmitted();
                           },
                         );
                       },
