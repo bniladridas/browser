@@ -5,6 +5,7 @@
 // found in the LICENSE file.
 
 import 'package:browser/ux/browser_page.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -113,6 +114,44 @@ void main() {
         ),
         isTrue,
       );
+    });
+  });
+
+  group('Theme probe parsing', () {
+    test('parses hsl colors', () {
+      final color = parseThemeCssColor('hsl(210 100% 50%)');
+
+      expect(color, isNotNull);
+      expect(color, const Color(0xFF0080FF));
+    });
+
+    test('parses named colors', () {
+      final color = parseThemeCssColor('rebeccapurple');
+
+      expect(color, const Color(0xFF663399));
+    });
+
+    test('prefers reliable accent/theme color over neutral backgrounds', () {
+      final decision = resolveThemeProbeDecision({
+        'sampleBg': 'rgb(255, 255, 255)',
+        'bg': 'rgb(255, 255, 255)',
+        'themeColor': '#ffffff',
+        'accentHint': 'rgb(9, 105, 218)',
+      });
+
+      expect(decision, isNotNull);
+      expect(decision!.seedColor, const Color(0xFF0969DA));
+    });
+
+    test('uses color-scheme when no parseable colors exist', () {
+      final decision = resolveThemeProbeDecision({
+        'themeColor': 'none',
+        'metaColorScheme': 'dark',
+      });
+
+      expect(decision, isNotNull);
+      expect(decision!.brightness, Brightness.dark);
+      expect(decision.seedColor, isNull);
     });
   });
 }
