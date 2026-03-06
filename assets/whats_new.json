@@ -40,5 +40,11 @@
   "1.10.0": [
     "Firebase key configuration in settings.",
     "Improved theme color detection."
+  ],
+  "1.10.1": [
+    "Release identifiers align with expectations.",
+    "Signing metadata is now up to date.",
+    "Integration fixes are included.",
+    "Home-page navigation stability has improved."
   ]
 }
