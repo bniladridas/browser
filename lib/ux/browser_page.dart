@@ -4617,6 +4617,10 @@ class _BrowserPageState extends State<BrowserPage>
                                       final option = optionList[index];
                                       return InkWell(
                                         onTap: () => onSelected(option),
+                                        hoverColor: Colors.transparent,
+                                        splashColor: Colors.transparent,
+                                        highlightColor: Colors.transparent,
+                                        focusColor: Colors.transparent,
                                         child: Padding(
                                           padding: const EdgeInsets.symmetric(
                                             horizontal: 12,
