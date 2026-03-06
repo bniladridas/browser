@@ -4,14 +4,23 @@ import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
 import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, kIsWeb, TargetPlatform;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-/// Helper to get required environment variables with validation
-String _getEnv(String key) {
-  final value = dotenv.env[key];
-  if (value == null || value.isEmpty) {
-    throw ArgumentError('Missing or empty required environment variable: $key');
+/// Helper to get Firebase config from SharedPreferences or .env
+Future<String> _getConfig(String key) async {
+  final prefs = await SharedPreferences.getInstance();
+  final prefKey = 'firebase_$key';
+  final prefValue = prefs.getString(prefKey);
+
+  if (prefValue != null && prefValue.isNotEmpty) {
+    return prefValue;
   }
-  return value;
+
+  final envValue = dotenv.env[key];
+  if (envValue == null || envValue.isEmpty) {
+    throw ArgumentError('Missing Firebase config: $key (check Settings or .env)');
+  }
+  return envValue;
 }
 
 /// Default [FirebaseOptions] for use with your Firebase apps.
@@ -25,7 +34,7 @@ String _getEnv(String key) {
 /// );
 /// ```
 class DefaultFirebaseOptions {
-  static FirebaseOptions get currentPlatform {
+  static Future<FirebaseOptions> get currentPlatform async {
     if (kIsWeb) {
       throw UnsupportedError(
         'DefaultFirebaseOptions have not been configured for web - '
@@ -62,12 +71,12 @@ class DefaultFirebaseOptions {
     }
   }
 
-  static FirebaseOptions get macos => FirebaseOptions(
-        apiKey: _getEnv('FIREBASE_API_KEY'),
-        appId: _getEnv('FIREBASE_APP_ID'),
-        messagingSenderId: _getEnv('FIREBASE_MESSAGING_SENDER_ID'),
-        projectId: _getEnv('FIREBASE_PROJECT_ID'),
-        storageBucket: _getEnv('FIREBASE_STORAGE_BUCKET'),
+  static Future<FirebaseOptions> get macos async => FirebaseOptions(
+        apiKey: await _getConfig('FIREBASE_API_KEY'),
+        appId: await _getConfig('FIREBASE_APP_ID'),
+        messagingSenderId: await _getConfig('FIREBASE_MESSAGING_SENDER_ID'),
+        projectId: await _getConfig('FIREBASE_PROJECT_ID'),
+        storageBucket: await _getConfig('FIREBASE_STORAGE_BUCKET'),
         iosBundleId: 'com.example.browser',
       );
 }

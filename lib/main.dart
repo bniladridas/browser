@@ -395,7 +395,7 @@ void main() async {
     if (!isIntegrationTest) {
       try {
         await Firebase.initializeApp(
-            options: DefaultFirebaseOptions.currentPlatform);
+            options: await DefaultFirebaseOptions.currentPlatform);
         AiService().initialize();
         aiAvailable = true;
       } catch (e) {

@@ -350,6 +350,12 @@ class SettingsDialog extends HookWidget {
     final homepageController = useTextEditingController();
     final settingsScrollController = useScrollController();
 
+    final firebaseApiKey = useTextEditingController();
+    final firebaseAppId = useTextEditingController();
+    final firebaseSenderId = useTextEditingController();
+    final firebaseProjectId = useTextEditingController();
+    final firebaseStorageBucket = useTextEditingController();
+
     useEffect(() {
       Future<void> loadPreferences() async {
         final prefs = await SharedPreferences.getInstance();
@@ -381,6 +387,12 @@ class SettingsDialog extends HookWidget {
               (m) => m.name == prefs.getString(themeModeKey),
               orElse: () => currentTheme ?? AppThemeMode.system);
         }
+
+        firebaseApiKey.text = prefs.getString('firebase_FIREBASE_API_KEY') ?? '';
+        firebaseAppId.text = prefs.getString('firebase_FIREBASE_APP_ID') ?? '';
+        firebaseSenderId.text = prefs.getString('firebase_FIREBASE_MESSAGING_SENDER_ID') ?? '';
+        firebaseProjectId.text = prefs.getString('firebase_FIREBASE_PROJECT_ID') ?? '';
+        firebaseStorageBucket.text = prefs.getString('firebase_FIREBASE_STORAGE_BUCKET') ?? '';
       }
 
       loadPreferences();
@@ -640,6 +652,61 @@ class SettingsDialog extends HookWidget {
                       ],
                     ),
                   ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Firebase Configuration',
+                    style: theme.textTheme.titleSmall?.copyWith(fontSize: 12),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: firebaseApiKey,
+                    style: theme.textTheme.bodyMedium?.copyWith(fontSize: 11),
+                    decoration: const InputDecoration(
+                      labelText: 'API Key',
+                      hintText: 'Leave blank to use .env',
+                      isDense: true,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: firebaseAppId,
+                    style: theme.textTheme.bodyMedium?.copyWith(fontSize: 11),
+                    decoration: const InputDecoration(
+                      labelText: 'App ID',
+                      hintText: 'Leave blank to use .env',
+                      isDense: true,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: firebaseSenderId,
+                    style: theme.textTheme.bodyMedium?.copyWith(fontSize: 11),
+                    decoration: const InputDecoration(
+                      labelText: 'Messaging Sender ID',
+                      hintText: 'Leave blank to use .env',
+                      isDense: true,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: firebaseProjectId,
+                    style: theme.textTheme.bodyMedium?.copyWith(fontSize: 11),
+                    decoration: const InputDecoration(
+                      labelText: 'Project ID',
+                      hintText: 'Leave blank to use .env',
+                      isDense: true,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: firebaseStorageBucket,
+                    style: theme.textTheme.bodyMedium?.copyWith(fontSize: 11),
+                    decoration: const InputDecoration(
+                      labelText: 'Storage Bucket',
+                      hintText: 'Leave blank to use .env',
+                      isDense: true,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -684,6 +751,12 @@ class SettingsDialog extends HookWidget {
             await prefs.setBool(
                 advancedCacheEnabledKey, advancedCacheEnabled.value);
             await prefs.setString(themeModeKey, selectedTheme.value.name);
+
+            await prefs.setString('firebase_FIREBASE_API_KEY', firebaseApiKey.text.trim());
+            await prefs.setString('firebase_FIREBASE_APP_ID', firebaseAppId.text.trim());
+            await prefs.setString('firebase_FIREBASE_MESSAGING_SENDER_ID', firebaseSenderId.text.trim());
+            await prefs.setString('firebase_FIREBASE_PROJECT_ID', firebaseProjectId.text.trim());
+            await prefs.setString('firebase_FIREBASE_STORAGE_BUCKET', firebaseStorageBucket.text.trim());
 
             onSettingsChanged?.call();
             if (privateBrowsing.value &&
