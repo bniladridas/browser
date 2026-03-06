@@ -1661,7 +1661,7 @@ class _BrowserPageState extends State<BrowserPage>
   }
 
   bool get _isDesktopPlatform =>
-      Platform.isWindows || Platform.isLinux || Platform.isMacOS;
+      !kIsWeb && (Platform.isWindows || Platform.isLinux || Platform.isMacOS);
 
   bool _isValidHistoryUrl(String url) {
     try {
@@ -1672,7 +1672,7 @@ class _BrowserPageState extends State<BrowserPage>
           uri.scheme != 'about') {
         return false;
       }
-      // Reject URLs with suspicious patterns
+      // Defense-in-depth: block dangerous substrings even with a strict scheme allowlist.
       if (url.contains('file://') || url.contains('javascript:')) {
         return false;
       }
