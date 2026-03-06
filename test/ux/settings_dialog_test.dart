@@ -8,6 +8,7 @@ import 'package:browser/constants.dart';
 import 'package:browser/features/theme_utils.dart';
 import 'package:browser/ux/browser_page.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -199,6 +200,7 @@ void main() {
 
     testWidgets('loads Firebase keys from SharedPreferences',
         (WidgetTester tester) async {
+      FlutterSecureStorage.setMockInitialValues({});
       SharedPreferences.setMockInitialValues({
         firebaseApiKeyPref: 'test-api-key',
         firebaseAppIdPref: 'test-app-id',
@@ -256,8 +258,9 @@ void main() {
       expect(projectIdField.controller?.text, 'test-project');
     });
 
-    testWidgets('saves Firebase keys to SharedPreferences',
+    testWidgets('saves Firebase keys to secure storage',
         (WidgetTester tester) async {
+      FlutterSecureStorage.setMockInitialValues({});
       SharedPreferences.setMockInitialValues({});
 
       await _openSettingsDialog(
@@ -304,9 +307,9 @@ void main() {
       await tester.tap(find.text('Save'));
       await tester.pumpAndSettle();
 
-      final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getString(firebaseApiKeyPref), 'new-api-key');
-      expect(prefs.getString(firebaseAppIdPref), 'new-app-id');
+      const secureStorage = FlutterSecureStorage();
+      expect(await secureStorage.read(key: firebaseApiKeyPref), 'new-api-key');
+      expect(await secureStorage.read(key: firebaseAppIdPref), 'new-app-id');
     });
   });
 }
