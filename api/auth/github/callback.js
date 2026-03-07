@@ -4,10 +4,12 @@ const { verifySignedPayload, createSessionToken, isAllowedReturnTo } = require('
 
 module.exports = async (req, res) => {
   try {
-    if (!config.apiBase || !config.sessionSecret) {
-      res.statusCode = 500;
-      return res.end('Missing auth configuration');
-    }
+    config.requireConfig([
+      'apiBase',
+      'sessionSecret',
+      'githubClientId',
+      'githubClientSecret',
+    ]);
 
     const url = new URL(req.url, config.apiBase);
     const code = url.searchParams.get('code');

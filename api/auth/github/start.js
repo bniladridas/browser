@@ -3,9 +3,11 @@ const config = require('../../_lib/config');
 const { createSignedPayload, isAllowedReturnTo } = require('../../_lib/session');
 
 module.exports = async (req, res) => {
-  if (!config.githubClientId || !config.sessionSecret || !config.apiBase) {
+  try {
+    config.requireConfig(['githubClientId', 'sessionSecret', 'apiBase']);
+  } catch (error) {
     res.statusCode = 500;
-    return res.end('Missing auth configuration');
+    return res.end(error.message || 'Missing auth configuration');
   }
 
   const url = new URL(req.url, config.apiBase);
