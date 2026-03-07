@@ -1,6 +1,6 @@
 const config = require('../../_lib/config');
 const { ghFetch } = require('../../_lib/github');
-const { verifySignedPayload, createSessionToken } = require('../../_lib/session');
+const { verifySignedPayload, createSessionToken, isAllowedReturnTo } = require('../../_lib/session');
 
 module.exports = async (req, res) => {
   try {
@@ -27,7 +27,7 @@ module.exports = async (req, res) => {
       res.statusCode = 400;
       return res.end('Expired OAuth state');
     }
-    if (!statePayload.returnTo.startsWith(config.frontendOrigin)) {
+    if (!isAllowedReturnTo(statePayload.returnTo, config.frontendOrigin)) {
       res.statusCode = 400;
       return res.end('Invalid return target');
     }

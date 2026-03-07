@@ -1,18 +1,11 @@
 const config = require('./_lib/config');
 const { getFile, putFile } = require('./_lib/github');
-const { verifySessionToken } = require('./_lib/session');
+const { verifySessionToken, parseBearerToken } = require('./_lib/session');
 const { handlePreflight, sendJson } = require('./_lib/http');
 
 const decodeContent = (base64Content) => {
   const normalized = (base64Content || '').replace(/\n/g, '');
   return Buffer.from(normalized, 'base64').toString('utf8');
-};
-
-const parseBearer = (req) => {
-  const auth = req.headers.authorization || '';
-  const parts = auth.split(' ');
-  if (parts.length === 2 && parts[0].toLowerCase() === 'bearer') return parts[1];
-  return '';
 };
 
 module.exports = async (req, res) => {
@@ -28,7 +21,7 @@ module.exports = async (req, res) => {
         token: config.githubToken,
       });
       const parsed = JSON.parse(decodeContent(file.content));
-      const token = parseBearer(req);
+      const token = parseBearerToken(req);
       const session = verifySessionToken(token, config.sessionSecret);
       return sendJson(req, res, 200, {
         notes: Array.isArray(parsed.notes) ? parsed.notes : [],
@@ -38,7 +31,7 @@ module.exports = async (req, res) => {
     }
 
     if (req.method === 'POST') {
-      const token = parseBearer(req);
+      const token = parseBearerToken(req);
       const session = verifySessionToken(token, config.sessionSecret);
       if (!session) return sendJson(req, res, 401, { error: 'Unauthorized' });
       if (!config.githubToken) return sendJson(req, res, 500, { error: 'Missing GITHUB_TOKEN' });

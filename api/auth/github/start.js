@@ -1,6 +1,6 @@
 const crypto = require('crypto');
 const config = require('../../_lib/config');
-const { createSignedPayload } = require('../../_lib/session');
+const { createSignedPayload, isAllowedReturnTo } = require('../../_lib/session');
 
 module.exports = async (req, res) => {
   if (!config.githubClientId || !config.sessionSecret || !config.apiBase) {
@@ -10,7 +10,7 @@ module.exports = async (req, res) => {
 
   const url = new URL(req.url, config.apiBase);
   const returnTo = url.searchParams.get('return_to') || `${config.frontendOrigin}/browser/book-of-faith.html`;
-  if (!returnTo.startsWith(config.frontendOrigin)) {
+  if (!isAllowedReturnTo(returnTo, config.frontendOrigin)) {
     res.statusCode = 400;
     return res.end('Invalid return_to origin');
   }

@@ -62,10 +62,31 @@ const parseCookies = (cookieHeader) => {
   return out;
 };
 
+const parseBearerToken = (req) => {
+  const auth = req?.headers?.authorization || '';
+  const parts = auth.split(' ');
+  if (parts.length === 2 && parts[0].toLowerCase() === 'bearer') return parts[1];
+  return '';
+};
+
+const isAllowedReturnTo = (returnTo, frontendOrigin) => {
+  if (!returnTo || !frontendOrigin) return false;
+  try {
+    const target = new URL(returnTo);
+    const allowed = new URL(frontendOrigin);
+    if (!['http:', 'https:'].includes(target.protocol)) return false;
+    return target.origin === allowed.origin;
+  } catch (_) {
+    return false;
+  }
+};
+
 module.exports = {
   createSessionToken,
   verifySessionToken,
   createSignedPayload,
   verifySignedPayload,
   parseCookies,
+  parseBearerToken,
+  isAllowedReturnTo,
 };
