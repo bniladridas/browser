@@ -8,6 +8,19 @@
 </head>
 <body>
   <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
+  <button class="settings-fab" type="button" aria-label="Settings" title="Settings" aria-expanded="false" onclick="toggleSettingsModal(event)">⚙</button>
+  <div class="settings-modal" id="settingsModal" role="dialog" aria-label="Settings" aria-hidden="true">
+    <div class="settings-modal-title">Settings</div>
+    <div class="settings-modal-note">Theme</div>
+    <div class="settings-theme-options">
+      <button class="settings-theme-btn" type="button" data-theme="default" onclick="setTheme('default')">Default</button>
+    </div>
+    <div class="settings-release">
+      <div class="settings-release-row"><span>Current</span><strong id="currentRelease">1.1.15+9</strong></div>
+      <div class="settings-release-row"><span>Latest</span><strong id="latestRelease">n/a</strong></div>
+      <div class="settings-release-row"><span>Installer</span><strong>DMG (macOS)</strong></div>
+    </div>
+  </div>
 
   <aside class="sidebar">
     <img src="https://avatars.githubusercontent.com/u/258653415?s=200&v=4" class="sidebar-logo" style="width: 32px; height: 32px; border-radius: 6px; margin-bottom: 0.5rem;">
@@ -60,7 +73,100 @@
         document.body.classList.contains('sidebar-hidden') ? '☰' : '✕';
     }
 
+    function toggleSettingsModal(event) {
+      event.stopPropagation();
+      const modal = document.getElementById("settingsModal");
+      const fab = document.querySelector(".settings-fab");
+      if (!modal || !fab) return;
+      const isOpen = modal.classList.toggle("open");
+      modal.setAttribute("aria-hidden", isOpen ? "false" : "true");
+      fab.setAttribute("aria-expanded", isOpen ? "true" : "false");
+    }
+
+    function closeSettingsModal() {
+      const modal = document.getElementById("settingsModal");
+      const fab = document.querySelector(".settings-fab");
+      if (!modal || !fab) return;
+      modal.classList.remove("open");
+      modal.setAttribute("aria-hidden", "true");
+      fab.setAttribute("aria-expanded", "false");
+    }
+
+    function syncThemeButtons(theme) {
+      document.querySelectorAll(".settings-theme-btn").forEach((btn) => {
+        btn.classList.toggle("active", btn.dataset.theme === theme);
+      });
+    }
+
+    function applyTheme(theme) {
+      document.body.setAttribute("data-theme", theme);
+      syncThemeButtons(theme);
+    }
+
+    function setTheme(theme) {
+      localStorage.setItem("browser-theme", theme);
+      applyTheme(theme);
+    }
+
+    function initTheme() {
+      const savedTheme = localStorage.getItem("browser-theme") || "default";
+      applyTheme(savedTheme);
+    }
+
+    async function loadReleaseInfo() {
+      const currentEl = document.getElementById("currentRelease");
+      const latestEl = document.getElementById("latestRelease");
+      if (!currentEl || !latestEl) return;
+
+      currentEl.textContent = "n/a";
+      latestEl.textContent = "n/a";
+
+      let fallbackCurrent = "";
+      try {
+        const currentRes = await fetch("VERSION", { cache: "no-store" });
+        if (currentRes.ok) {
+          fallbackCurrent = (await currentRes.text()).trim();
+        }
+      } catch (_) {}
+
+      try {
+        const latestRes = await fetch("https://api.github.com/repos/bniladridas/browser/releases/latest", {
+          headers: { "Accept": "application/vnd.github+json" },
+        });
+        if (latestRes.ok) {
+          const latest = await latestRes.json();
+          const tag = String(latest.tag_name || "").replace(/^desktop\/app-/, "");
+          if (tag) {
+            latestEl.textContent = tag;
+            currentEl.textContent = tag;
+            return;
+          }
+        }
+      } catch (_) {}
+
+      if (fallbackCurrent) {
+        currentEl.textContent = fallbackCurrent;
+      }
+    }
+
+    document.addEventListener("click", (event) => {
+      const modal = document.getElementById("settingsModal");
+      const fab = document.querySelector(".settings-fab");
+      if (!modal || !fab) return;
+      if (!modal.contains(event.target) && !fab.contains(event.target)) {
+        closeSettingsModal();
+      }
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        closeSettingsModal();
+      }
+    });
+
     (function () {
+      initTheme();
+      loadReleaseInfo();
       const toggleBtn = document.querySelector('.sidebar-toggle');
       if (!toggleBtn) return;
       const getScrollPosition = () => window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
