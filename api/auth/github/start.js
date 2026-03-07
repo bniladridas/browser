@@ -10,7 +10,7 @@ module.exports = async (req, res) => {
 
   const url = new URL(req.url, config.apiBase);
   const returnTo = url.searchParams.get('return_to') || `${config.frontendOrigin}/browser/book-of-faith.html`;
-  if (!isAllowedReturnTo(returnTo, config.frontendOrigin)) {
+  if (!isAllowedReturnTo(returnTo, config.frontendOrigin, config.allowedOrigins)) {
     res.statusCode = 400;
     return res.end('Invalid return_to origin');
   }

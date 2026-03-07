@@ -36,7 +36,16 @@ module.exports = async (req, res) => {
       if (!session) return sendJson(req, res, 401, { error: 'Unauthorized' });
       if (!config.githubToken) return sendJson(req, res, 500, { error: 'Missing GITHUB_TOKEN' });
 
-      const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {};
+      let body;
+      if (typeof req.body === 'string') {
+        try {
+          body = JSON.parse(req.body || '{}');
+        } catch (_) {
+          return sendJson(req, res, 400, { error: 'Invalid JSON body' });
+        }
+      } else {
+        body = req.body || {};
+      }
       const notes = Array.isArray(body.notes) ? body.notes : [];
       const sanitized = notes
         .map((n) => String(n || '').trim())

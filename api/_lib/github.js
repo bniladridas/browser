@@ -27,17 +27,21 @@ const ghFetch = async (url, token, init = {}) => {
 };
 
 const getFile = async ({ owner, repo, path, branch, token }) => {
+  const encodedOwner = encodeURIComponent(owner);
+  const encodedRepo = encodeURIComponent(repo);
   const encodedPath = encodeURIComponent(path).replace(/%2F/g, '/');
   return ghFetch(
-    `https://api.github.com/repos/${owner}/${repo}/contents/${encodedPath}?ref=${encodeURIComponent(branch)}`,
+    `https://api.github.com/repos/${encodedOwner}/${encodedRepo}/contents/${encodedPath}?ref=${encodeURIComponent(branch)}`,
     token
   );
 };
 
 const putFile = async ({ owner, repo, path, branch, token, message, contentBase64, sha }) => {
+  const encodedOwner = encodeURIComponent(owner);
+  const encodedRepo = encodeURIComponent(repo);
   const encodedPath = encodeURIComponent(path).replace(/%2F/g, '/');
   return ghFetch(
-    `https://api.github.com/repos/${owner}/${repo}/contents/${encodedPath}`,
+    `https://api.github.com/repos/${encodedOwner}/${encodedRepo}/contents/${encodedPath}`,
     token,
     {
       method: 'PUT',

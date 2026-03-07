@@ -27,7 +27,7 @@ module.exports = async (req, res) => {
       res.statusCode = 400;
       return res.end('Expired OAuth state');
     }
-    if (!isAllowedReturnTo(statePayload.returnTo, config.frontendOrigin)) {
+    if (!isAllowedReturnTo(statePayload.returnTo, config.frontendOrigin, config.allowedOrigins)) {
       res.statusCode = 400;
       return res.end('Invalid return target');
     }
@@ -66,7 +66,8 @@ module.exports = async (req, res) => {
     res.setHeader('Location', target.toString());
     res.end();
   } catch (error) {
+    console.error(error);
     res.statusCode = 500;
-    res.end(error.message || 'OAuth callback failed');
+    res.end('OAuth callback failed');
   }
 };

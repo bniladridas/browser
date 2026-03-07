@@ -27,7 +27,10 @@ const verifySignedPayload = (token, secret) => {
   const [encoded, sig] = token.split('.');
   if (!encoded || !sig) return null;
   const expected = sign(encoded, secret);
-  if (!crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return null;
+  const sigBuf = Buffer.from(sig);
+  const expectedBuf = Buffer.from(expected);
+  if (sigBuf.length !== expectedBuf.length) return null;
+  if (!crypto.timingSafeEqual(sigBuf, expectedBuf)) return null;
   try {
     return JSON.parse(fromBase64url(encoded));
   } catch (_) {
@@ -69,13 +72,14 @@ const parseBearerToken = (req) => {
   return '';
 };
 
-const isAllowedReturnTo = (returnTo, frontendOrigin) => {
+const isAllowedReturnTo = (returnTo, frontendOrigin, allowedOrigins = []) => {
   if (!returnTo || !frontendOrigin) return false;
   try {
     const target = new URL(returnTo);
-    const allowed = new URL(frontendOrigin);
+    const allowedOriginsSet = new Set([frontendOrigin, ...allowedOrigins]);
+    const normalizedAllowed = [...allowedOriginsSet].map((origin) => new URL(origin).origin);
     if (!['http:', 'https:'].includes(target.protocol)) return false;
-    return target.origin === allowed.origin;
+    return normalizedAllowed.includes(target.origin);
   } catch (_) {
     return false;
   }
