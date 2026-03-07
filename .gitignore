@@ -60,3 +60,4 @@ app.*.map.json
 # Suppress untracked files
 LICENSE.txt
 man/
+.vercel
