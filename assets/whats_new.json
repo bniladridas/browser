@@ -46,5 +46,8 @@
     "Signing metadata is now up to date.",
     "Integration fixes are included.",
     "Home-page navigation stability has improved."
+  ],
+  "1.10.2": [
+    "Removed hover effects and refined keyboard shortcuts."
   ]
 }
