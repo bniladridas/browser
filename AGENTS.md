@@ -146,7 +146,7 @@ When creating version bump PRs (e.g., `version-bump-X.Y.Z` branch):
    gh pr list --head <branch-name> --json number,title
    ```
 
-2. Find all PRs merged since the last version bump PR by checking `git log --oneline main` to identify PRs merged after the previous version bump PR (e.g., #240 for version-bump-1.2.4 -> #261).
+2. Find all PRs merged since the last version bump PR using merge timestamps (`mergedAt`), not PR number ordering. Include only PRs with `mergedAt` strictly later than the previous version bump PR's `mergedAt` (e.g., via `gh pr view <previous-version-pr> --json mergedAt` and `gh pr list --state merged --base main --json number,title,mergedAt`).
 
 3. Categorize changes using the release template format:
    - **What's New**: New features (feat PRs)
@@ -206,7 +206,7 @@ Use this sequence for version bump work:
 2. Switch to the version bump branch (for example, `version-bump-X.Y.Z`) or create it if needed.
 3. Run the project version bump script/process for that release target.
 4. Validate generated version changes and run required checks.
-5. Normalize the `assets/whats_new.json` entry for the target release to a minimal sentence when needed (for example):
+5. Immediately after running the version bump script, normalize the `assets/whats_new.json` entry for the target release using `jq` (required step), for example:
    ```bash
    jq '.\"X.Y.Z\" = [\"<minimal release note sentence>\"]' assets/whats_new.json > /tmp/whats_new.json \
      && mv /tmp/whats_new.json assets/whats_new.json
@@ -215,6 +215,7 @@ Use this sequence for version bump work:
 7. Commit and push the version bump branch.
 8. Create or update the version bump PR using the template above.
 9. Ensure PR `## Related Items` uses GitHub keyword syntax (`Resolves #<id>`, `Closes #<id>` as applicable).
+10. Validate the `Merged PRs` list against `mergedAt` boundaries so PRs merged before the previous version bump are excluded.
 
 This keeps release/version PRs repeatable and reviewable.
 
