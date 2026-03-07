@@ -1,0 +1,18 @@
+version: 2.1
+
+jobs:
+  noop:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - run:
+          name: No-op
+          command: echo "CircleCI noop for gh-pages"
+
+workflows:
+  gh_pages_noop:
+    jobs:
+      - noop:
+          filters:
+            branches:
+              only: gh-pages

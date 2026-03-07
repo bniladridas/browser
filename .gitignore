@@ -65,3 +65,4 @@ android/
 ios/
 linux/
 windows/
+.vercel
