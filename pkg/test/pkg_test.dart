@@ -7,7 +7,8 @@ void main() {
   test('AiService handles no model gracefully', () async {
     final service = AiService();
     // Without Firebase init, model is null
-    final response = await service.generateResponse('test');
+    final (thought, response) = await service.generateResponse('test');
+    expect(thought, isNull);
     expect(response, 'AI is not available. Please configure Firebase.');
   });
 }

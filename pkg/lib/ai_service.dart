@@ -18,10 +18,10 @@ class AiService {
   void initialize() {
     try {
       _model ??= FirebaseAI.googleAI().generativeModel(
-        model: 'gemini-2.5-flash-lite',
+        model: 'gemini-2.5-flash',
         generationConfig: GenerationConfig(
           temperature: 0.7,
-          maxOutputTokens: 1000,
+          maxOutputTokens: 2000,
         ),
       );
       _chatSession = _model?.startChat();
@@ -32,17 +32,29 @@ class AiService {
     }
   }
 
-  Future<String> generateResponse(String prompt) async {
+  Future<(String? thought, String text)> generateResponse(String prompt) async {
     if (_chatSession == null) {
-      return 'AI is not available. Please configure Firebase.';
+      return (null, 'AI is not available. Please configure Firebase.');
     }
     final content = Content.text(prompt);
     final response = await _chatSession!.sendMessage(content);
-    return response.text ?? 'No response generated.';
+
+    String? thought;
+    if (response.candidates.isNotEmpty) {
+      for (final part in response.candidates.first.content.parts) {
+        if (part.runtimeType.toString().contains('Thought')) {
+          thought = (part as dynamic).text;
+          break;
+        }
+      }
+    }
+
+    return (thought, response.text ?? 'No response generated.');
   }
 
   Future<String> summarizeText(String text) async {
     final prompt = 'Summarize the following text:\n\n$text';
-    return generateResponse(prompt);
+    final (_, response) = await generateResponse(prompt);
+    return response;
   }
 }

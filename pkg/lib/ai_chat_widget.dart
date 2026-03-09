@@ -45,7 +45,10 @@ class AiChatWidget extends HookWidget {
               'Current page: ${pageTitle != null ? 'Title: "$pageTitle"' : 'Title unknown'}, URL: ${pageUrl ?? 'unknown'}. ';
           prompt = context + text;
         }
-        final response = await aiService.generateResponse(prompt);
+        final (thought, response) = await aiService.generateResponse(prompt);
+        if (thought != null && thought.isNotEmpty) {
+          messages.value = [...messages.value, 'AI_THOUGHT: $thought'];
+        }
         messages.value = [...messages.value, 'AI: $response'];
       } catch (e) {
         messages.value = [...messages.value, 'AI: Error: $e'];
@@ -97,6 +100,44 @@ class AiChatWidget extends HookWidget {
                       ),
                       hoverColor: Colors.transparent,
                       title: hasEmphasis ? CalloutBox(child: child) : child,
+                    );
+                  } else if (message.startsWith('AI_THOUGHT: ')) {
+                    final content = message.substring(12);
+                    return ListTile(
+                      dense: true,
+                      visualDensity: compactDensity,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
+                      hoverColor: Colors.transparent,
+                      title: CalloutBox(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Reasoning',
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                fontSize: 10,
+                                color: theme.colorScheme.onSurfaceVariant,
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            MarkdownBody(
+                              data: content,
+                              styleSheet:
+                                  MarkdownStyleSheet.fromTheme(theme).copyWith(
+                                p: theme.textTheme.bodySmall?.copyWith(
+                                  fontSize: 11,
+                                  color: theme.colorScheme.onSurfaceVariant
+                                      .withValues(alpha: 0.8),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     );
                   } else {
                     return ListTile(

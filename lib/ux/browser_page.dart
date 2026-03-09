@@ -4004,11 +4004,11 @@ class _BrowserPageState extends State<BrowserPage>
       suggestions = _fallbackSearchSuggestions();
     } else {
       try {
-        final response = await _aiService?.generateResponse(
+        final (_, response) = (await _aiService?.generateResponse(
               'Suggest 6 short, interesting web search ideas for a general audience. '
               'Return only one idea per line. No numbering. No extra text.',
-            ) ??
-            '';
+            )) ??
+            (null, '');
         final parsed = _parseAiSuggestions(response);
         suggestions = parsed.isEmpty ? _fallbackSearchSuggestions() : parsed;
       } catch (_) {
