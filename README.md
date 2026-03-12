@@ -19,7 +19,7 @@ flutter pub get
 cp .env.example .env  # populate Firebase values before running
 flutterfire configure --platforms macos
 git checkout -- lib/firebase_options.dart  # keep runtime env vars
-flutter run
+flutter run -d macos
 ```
 
 Do not commit `.env`; it contains private Firebase keys.
@@ -35,6 +35,8 @@ All Firebase values live in `.env`. The app expects the variables at runtime so 
 2. Run `flutterfire configure --platforms macos` to refresh the generated files.
 3. Immediately run `git checkout -- lib/firebase_options.dart` to revert the generated file back to the version that references environment variables.
 4. Restart `flutter run` to pick up the new settings.
+
+macOS additionally requires `macos/Runner/GoogleService-Info.plist`; `flutterfire configure` creates it automatically, or copy it from your Firebase console. Confirm the plist lives next to the generated macOS runner, and keep `.env.example` as a template for local copies so you can safely generate new `.env` files with valid credentials.
 
 </details>
 
