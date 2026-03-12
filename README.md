@@ -100,4 +100,6 @@ Fork, create a branch, run the checks, then open a pull request with a descripti
 
 ## License
 
-This project is proprietary. See `LICENSE` for the full terms. Copyright 2026 Niladri Das.
+This project is proprietary. See `LICENSE` for the full terms.
+
+Copyright (c) 2026 Niladri Das (bniladridas). All Rights Reserved.
