@@ -35,7 +35,7 @@ jobs:
           } > .env
       - name: Create dummy GoogleService-Info.plist for macOS
         run: |
-          cat > macos/Runner/GoogleService-Info.plist << 'EOF'
+          cat << 'EOF' | sed 's/^          //' > macos/Runner/GoogleService-Info.plist
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
           <plist version="1.0">
