@@ -51,14 +51,14 @@ Keys are defined in `lib/utils/keyboard_utils.dart` with platform-neutral aliase
 
 | Key | Action |
 | --- | ------ |
-| `[` / `ConsoleKey.bracketLeft` | Move to the previous tab |
-| `]` / `ConsoleKey.bracketRight` | Advance to the next tab |
-| `Left Arrow` / `ConsoleKey.arrowLeft` | Navigate backwards in history |
-| `Right Arrow` / `ConsoleKey.arrowRight` | Navigate forwards in history |
-| `R` / `ConsoleKey.keyR` | Reload the current tab |
-| `T` / `ConsoleKey.keyT` | Open a new tab |
-| `Escape` / `ConsoleKey.escape` | Close dialogs or stop loading |
-| `Tab` / `ConsoleKey.tab` | Focus the address bar or tool strip |
+| `[` / `LogicalKeyboardKey.bracketLeft` | Move to the previous tab |
+| `]` / `LogicalKeyboardKey.bracketRight` | Advance to the next tab |
+| `Left Arrow` / `LogicalKeyboardKey.arrowLeft` | Navigate backwards in history |
+| `Right Arrow` / `LogicalKeyboardKey.arrowRight` | Navigate forwards in history |
+| `R` / `LogicalKeyboardKey.keyR` | Reload the current tab |
+| `T` / `LogicalKeyboardKey.keyT` | Open a new tab |
+| `Escape` / `LogicalKeyboardKey.escape` | Close dialogs or stop loading |
+| `Tab` / `LogicalKeyboardKey.tab` | Focus the address bar or tool strip |
 
 Modifier keys include `Meta` (Cmd on macOS), `Control`, `Alt`, and `Shift`.
 
