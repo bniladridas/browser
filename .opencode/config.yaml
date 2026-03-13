@@ -1,0 +1,45 @@
+---
+# SPDX-License-Identifier: MIT
+#
+# Copyright 2026 bniladridas. All rights reserved.
+# Use of this source code is governed by a MIT license that can be
+# found in the LICENSE file.
+
+# OpenCode Configuration
+# This file centralizes development workflow configuration
+
+commit:
+  message:
+    format: "type: description"
+    maxFirstLineLength: 40
+    lowercase: true
+    prohibitedWords:
+      - add
+    validation:
+      command: "git log --oneline -1 | grep -qiw \"add\""
+      errorMessage: "Commit message contains prohibited word 'add'. Use alternatives like integrate, implement, include, etc."
+
+pr:
+  title:
+    format: "type[scope] :: description"
+    prohibitedWords:
+      - add
+    validation:
+      command: "printf \"%s\\n\" \"$PR_TITLE\" | grep -qiw \"add\""
+      errorMessage: "PR title contains prohibited word 'add'. Use alternatives like integrate, implement, include, etc."
+  
+  description:
+    template: "templates/pr-description.md"
+    sections:
+      - Summary
+      - Impact
+      - Related Items
+      - Notes for reviewers
+
+interactive:
+  prTitlePrompt: "Enter your PR title: "
+
+validation:
+  wordBoundary:
+    command: "grep -qiw \"add\""
+    description: "Whole-word matching to avoid false positives (e.g., 'address', 'padding')"

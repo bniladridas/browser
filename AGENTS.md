@@ -96,8 +96,10 @@ Follow the repository's pre-commit hooks for commit messages:
 
 Validation Rule: Before committing, verify the commit message does not contain the word "add" (case-insensitive). Use:
 ```bash
-git log --oneline -1 | grep -qi "\badd\b" && echo "ERROR: Commit message contains 'add'" || echo "OK"
+git log --oneline -1 | grep -qiw "add" && echo "ERROR: Commit message contains 'add'" || echo "OK"
 ```
+
+Note: For robust handling of user input (e.g., PR titles), use `printf "%s\n" "$VAR" | grep -qiw "add"` instead of `echo "$VAR" | grep -qiw "add"` to avoid issues with input starting with hyphens.
 
 Agents must adhere to these rules to pass CI checks. Do not use --no-verify or bypass hooks; fix issues to ensure code quality.
 
@@ -267,9 +269,11 @@ This is because Firebase tries to initialize with invalid configuration.
 Use the `gh pr create` command with the full PR body in HEREDOC format:
 
 ```bash
+# Prompt for PR title interactively
+read -p "Enter your PR title: " PR_TITLE
+
 # Validate PR title does not contain "add"
-PR_TITLE="<your-pr-title>"
-if echo "$PR_TITLE" | grep -qi "\badd\b"; then
+if printf "%s\n" "$PR_TITLE" | grep -qiw "add"; then
   echo "ERROR: PR title contains 'add'. Use alternative verbs like integrate, implement, include, etc."
   exit 1
 fi
@@ -307,33 +311,33 @@ gh pr create \
 > **Test word boundary matching**
 > ```bash
 > # Should match (contains standalone "add")
-> echo "fix: add address handling" | grep -qi "\badd\b" && echo "FOUND" || echo "NOT FOUND"
+> printf "%s\n" "fix: add address handling" | grep -qiw "add" && echo "FOUND" || echo "NOT FOUND"
 > 
 > # Should NOT match (no standalone "add")
-> echo "fix: integrate address handling" | grep -qi "\badd\b" && echo "FOUND" || echo "NOT FOUND"
+> printf "%s\n" "fix: integrate address handling" | grep -qiw "add" && echo "FOUND" || echo "NOT FOUND"
 > 
 > # Should NOT match (contains "padding" not "add")
-> echo "fix: padding issue" | grep -qi "\badd\b" && echo "FOUND" || echo "NOT FOUND"
+> printf "%s\n" "fix: padding issue" | grep -qiw "add" && echo "FOUND" || echo "NOT FOUND"
 > ```
 
 > [!WARNING]
 > **Verify commit message validation**
 > ```bash
 > # Test with prohibited word
-> echo "feat: add crashlytics integration" | grep -qi "\badd\b" && echo "ERROR: Contains 'add'" || echo "OK"
+> printf "%s\n" "feat: add crashlytics integration" | grep -qiw "add" && echo "ERROR: Contains 'add'" || echo "OK"
 > 
 > # Test with allowed alternative
-> echo "feat: integrate crashlytics for crash reporting" | grep -qi "\badd\b" && echo "ERROR: Contains 'add'" || echo "OK"
+> printf "%s\n" "feat: integrate crashlytics for crash reporting" | grep -qiw "add" && echo "ERROR: Contains 'add'" || echo "OK"
 > ```
 
 > [!TIP]
 > **Verify PR title format**
 > ```bash
 > # This PR title (valid)
-> echo "chore[guidelines] :: integrate commit message and pr title validation" | grep -E "^(feat|fix|docs|refactor|chore|deps|perf|ci|build|revert)\[[a-zA-Z0-9]+\]\ ::\ .+" && echo "Format valid" || echo "Format invalid"
+> printf "%s\n" "chore[guidelines] :: integrate commit message and pr title validation" | grep -E "^(feat|fix|docs|refactor|chore|deps|perf|ci|build|revert)\[[a-zA-Z0-9]+\]\ ::\ .+" && echo "Format valid" || echo "Format invalid"
 > 
 > # This would be invalid (contains "add")
-> echo "chore[guidelines] :: add validation for pr titles" | grep -qi "\badd\b" && echo "Contains prohibited word" || echo "OK"
+> printf "%s\n" "chore[guidelines] :: add validation for pr titles" | grep -qiw "add" && echo "Contains prohibited word" || echo "OK"
 > ```
 EOF
 )"
