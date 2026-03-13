@@ -87,9 +87,17 @@ Follow the repository's pre-commit hooks for commit messages:
 - Use conventional commit format without scope punctuation: `type: description`
 - Keep the first line lowercase
 - Keep the first line concise (max 40 characters) to satisfy hook checks
+- NEVER use the word "add" in commit messages - Use alternative verbs like "integrate", "implement", "include", "attach", "configure", "setup", "enable", "support", etc.
 - Examples:
-  - `feat: add crashlytics integration`
-  - `fix: resolve button alignment`
+  - `feat: add crashlytics integration` (NOT ALLOWED)
+  - `feat: integrate crashlytics for crash reporting` (USE THIS INSTEAD)
+  - `fix: add button alignment fix` (NOT ALLOWED)
+  - `fix: resolve button alignment issue` (USE THIS INSTEAD)
+
+Validation Rule: Before committing, verify the commit message does not contain the word "add" (case-insensitive). Use:
+```bash
+git log --oneline -1 | grep -qi "\badd\b" && echo "ERROR: Commit message contains 'add'" || echo "OK"
+```
 
 Agents must adhere to these rules to pass CI checks. Do not use --no-verify or bypass hooks; fix issues to ensure code quality.
 
@@ -259,10 +267,17 @@ This is because Firebase tries to initialize with invalid configuration.
 Use the `gh pr create` command with the full PR body in HEREDOC format:
 
 ```bash
+# Validate PR title does not contain "add"
+PR_TITLE="<your-pr-title>"
+if echo "$PR_TITLE" | grep -qi "\badd\b"; then
+  echo "ERROR: PR title contains 'add'. Use alternative verbs like integrate, implement, include, etc."
+  exit 1
+fi
+
 gh pr create \
   --base main \
   --head <branch-name> \
-  --title "<pr-title>" \
+  --title "$PR_TITLE" \
   --body "$(cat <<'EOF'
 ## Summary
 - Bullet point descriptions of changes
@@ -285,8 +300,43 @@ gh pr create \
 
 ## Notes for reviewers
 - Additional details or context
+
+## Verification Steps
+
+> [!NOTE]
+> **Test word boundary matching**
+> ```bash
+> # Should match (contains standalone "add")
+> echo "fix: add address handling" | grep -qi "\badd\b" && echo "FOUND" || echo "NOT FOUND"
+> 
+> # Should NOT match (no standalone "add")
+> echo "fix: integrate address handling" | grep -qi "\badd\b" && echo "FOUND" || echo "NOT FOUND"
+> 
+> # Should NOT match (contains "padding" not "add")
+> echo "fix: padding issue" | grep -qi "\badd\b" && echo "FOUND" || echo "NOT FOUND"
+> ```
+
+> [!WARNING]
+> **Verify commit message validation**
+> ```bash
+> # Test with prohibited word
+> echo "feat: add crashlytics integration" | grep -qi "\badd\b" && echo "ERROR: Contains 'add'" || echo "OK"
+> 
+> # Test with allowed alternative
+> echo "feat: integrate crashlytics for crash reporting" | grep -qi "\badd\b" && echo "ERROR: Contains 'add'" || echo "OK"
+> ```
+
+> [!TIP]
+> **Verify PR title format**
+> ```bash
+> # This PR title (valid)
+> echo "chore[guidelines] :: integrate commit message and pr title validation" | grep -E "^(feat|fix|docs|refactor|chore|deps|perf|ci|build|revert)\[[a-zA-Z0-9]+\]\ ::\ .+" && echo "Format valid" || echo "Format invalid"
+> 
+> # This would be invalid (contains "add")
+> echo "chore[guidelines] :: add validation for pr titles" | grep -qi "\badd\b" && echo "Contains prohibited word" || echo "OK"
+> ```
 EOF
 )"
 ```
 
-This ensures proper formatting with multiline body text.
+This ensures proper formatting with multiline body text and validates that PR titles do not contain "add" using word boundaries.
