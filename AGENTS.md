@@ -87,9 +87,17 @@ Follow the repository's pre-commit hooks for commit messages:
 - Use conventional commit format without scope punctuation: `type: description`
 - Keep the first line lowercase
 - Keep the first line concise (max 40 characters) to satisfy hook checks
+- NEVER use the word "add" in commit messages - Use alternative verbs like "integrate", "implement", "include", "attach", "configure", "setup", "enable", "support", etc.
 - Examples:
-  - `feat: add crashlytics integration`
-  - `fix: resolve button alignment`
+  - `feat: add crashlytics integration` (NOT ALLOWED)
+  - `feat: integrate crashlytics for crash reporting` (USE THIS INSTEAD)
+  - `fix: add button alignment fix` (NOT ALLOWED)
+  - `fix: resolve button alignment issue` (USE THIS INSTEAD)
+
+Validation Rule: Before committing, verify the commit message does not contain the word "add" (case-insensitive). Use:
+```bash
+git log --oneline -1 | grep -i "add" && echo "ERROR: Commit message contains 'add'" || echo "OK"
+```
 
 Agents must adhere to these rules to pass CI checks. Do not use --no-verify or bypass hooks; fix issues to ensure code quality.
 
@@ -259,10 +267,17 @@ This is because Firebase tries to initialize with invalid configuration.
 Use the `gh pr create` command with the full PR body in HEREDOC format:
 
 ```bash
+# Validate PR title does not contain "add"
+PR_TITLE="<your-pr-title>"
+if echo "$PR_TITLE" | grep -qi "add"; then
+  echo "ERROR: PR title contains 'add'. Use alternative verbs like integrate, implement, include, etc."
+  exit 1
+fi
+
 gh pr create \
   --base main \
   --head <branch-name> \
-  --title "<pr-title>" \
+  --title "$PR_TITLE" \
   --body "$(cat <<'EOF'
 ## Summary
 - Bullet point descriptions of changes
@@ -289,4 +304,4 @@ EOF
 )"
 ```
 
-This ensures proper formatting with multiline body text.
+This ensures proper formatting with multiline body text and validates that PR titles do not contain "add".
