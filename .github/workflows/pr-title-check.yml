@@ -24,4 +24,8 @@ jobs:
             echo "PR title does not match format: type[scope] :: description"
             exit 1
           fi
+          if echo "$TITLE" | grep -qi "\badd\b"; then
+            echo "ERROR: PR title contains 'add'. Use alternative verbs like integrate, implement, include, etc."
+            exit 1
+          fi
           echo "PR title format valid"
