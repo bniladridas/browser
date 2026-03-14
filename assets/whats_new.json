@@ -49,5 +49,9 @@
   ],
   "1.10.2": [
     "Removed hover effects and refined keyboard shortcuts."
+  ],
+  "1.10.3": [
+    "Tightened camera and microphone permissions.",
+    "Guarded iOS until the Info.plist names camera and mic."
   ]
 }
