@@ -27,7 +27,7 @@ pr:
     validation:
       command: "printf \"%s\\n\" \"$PR_TITLE\" | grep -qiw \"add\""
       errorMessage: "PR title contains prohibited word 'add'. Use alternatives like integrate, implement, include, etc."
-  
+
   description:
     template: "templates/pr-description.md"
     sections:

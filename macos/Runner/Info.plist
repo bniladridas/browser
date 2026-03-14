@@ -30,6 +30,10 @@
 	<string>NSApplication</string>
 	<key>io.flutter.embedded_views_preview</key>
 	<string>YES</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Allow camera access so web content can capture video when requested.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Allow microphone access so web content can capture audio when requested.</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>
