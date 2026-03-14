@@ -312,10 +312,10 @@ gh pr create \
 > ```bash
 > # Should match (contains standalone "add")
 > printf "%s\n" "fix: add address handling" | grep -qiw "add" && echo "FOUND" || echo "NOT FOUND"
-> 
+>
 > # Should NOT match (no standalone "add")
 > printf "%s\n" "fix: integrate address handling" | grep -qiw "add" && echo "FOUND" || echo "NOT FOUND"
-> 
+>
 > # Should NOT match (contains "padding" not "add")
 > printf "%s\n" "fix: padding issue" | grep -qiw "add" && echo "FOUND" || echo "NOT FOUND"
 > ```
@@ -325,7 +325,7 @@ gh pr create \
 > ```bash
 > # Test with prohibited word
 > printf "%s\n" "feat: add crashlytics integration" | grep -qiw "add" && echo "ERROR: Contains 'add'" || echo "OK"
-> 
+>
 > # Test with allowed alternative
 > printf "%s\n" "feat: integrate crashlytics for crash reporting" | grep -qiw "add" && echo "ERROR: Contains 'add'" || echo "OK"
 > ```
@@ -335,7 +335,7 @@ gh pr create \
 > ```bash
 > # This PR title (valid)
 > printf "%s\n" "chore[guidelines] :: integrate commit message and pr title validation" | grep -E "^(feat|fix|docs|refactor|chore|deps|perf|ci|build|revert)\[[a-zA-Z0-9]+\]\ ::\ .+" && echo "Format valid" || echo "Format invalid"
-> 
+>
 > # This would be invalid (contains "add")
 > printf "%s\n" "chore[guidelines] :: add validation for pr titles" | grep -qiw "add" && echo "Contains prohibited word" || echo "OK"
 > ```

@@ -2431,6 +2431,30 @@ class _BrowserPageState extends State<BrowserPage>
     }));
   }
 
+  Future<void> _handlePermissionRequest(
+    TabData tab,
+    WebViewPermissionRequest request,
+  ) async {
+    const allowedMediaPermissions = {
+      WebViewPermissionResourceType.camera,
+      WebViewPermissionResourceType.microphone,
+    };
+    final requestedTypes = request.types;
+    final granted = requestedTypes.isNotEmpty &&
+        requestedTypes.every(allowedMediaPermissions.contains);
+    final sanitizedUrl = _sanitizeUrlForLog(tab.currentUrl);
+    final typeList = requestedTypes.map((type) => type.name).join(', ');
+    logger.d(
+      'WebView permission ${granted ? 'granted' : 'denied'} '
+      'for $sanitizedUrl [${typeList.isEmpty ? '<none>' : typeList}]',
+    );
+    if (granted) {
+      await request.grant();
+      return;
+    }
+    await request.deny();
+  }
+
   bool _shouldIgnoreWebResourceError(WebResourceError error) {
     // Subresource failures should not replace the full page with an error view.
     if (error.isForMainFrame == false) {
@@ -4696,7 +4720,15 @@ class _BrowserPageState extends State<BrowserPage>
     }
 
     if (tab.webViewController == null) {
-      tab.webViewController = WebViewController();
+      final shouldHookPermissions =
+          defaultTargetPlatform != TargetPlatform.iOS;
+      tab.webViewController = WebViewController(
+        onPermissionRequest: shouldHookPermissions
+            ? (request) {
+                unawaited(_handlePermissionRequest(tab, request));
+              }
+            : null,
+      );
       tab.webViewController!.setJavaScriptMode(widget.strictMode
           ? JavaScriptMode.disabled
           : JavaScriptMode.unrestricted);
