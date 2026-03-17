@@ -3726,6 +3726,9 @@ class _BrowserPageState extends State<BrowserPage>
 
   Future<void> _handleMenuSelection(String value) async {
     switch (value) {
+      case 'open_external':
+        await _openInDefaultBrowser(activeTab.currentUrl);
+        break;
       case 'add_bookmark':
         _addBookmark();
         break;
@@ -3755,6 +3758,44 @@ class _BrowserPageState extends State<BrowserPage>
           await _showWithModalInteractionBlock<void>(widget.onShowWhatsNew!);
         }
         break;
+    }
+  }
+
+  Future<void> _openInDefaultBrowser(String url) async {
+    final uri = Uri.tryParse(url);
+    if (uri == null || (uri.scheme != 'http' && uri.scheme != 'https')) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Unsupported URL')),
+      );
+      return;
+    }
+
+    try {
+      if (Platform.isMacOS) {
+        await Process.start('open', [uri.toString()]);
+      } else if (Platform.isWindows) {
+        await Process.start('cmd', ['/c', 'start', '', uri.toString()]);
+      } else if (Platform.isLinux) {
+        await Process.start('xdg-open', [uri.toString()]);
+      } else {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Open-in-browser not supported')),
+        );
+        return;
+      }
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Opened in default browser')),
+      );
+    } catch (e, s) {
+      logger.w('Failed to open external browser', error: e, stackTrace: s);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to open default browser')),
+      );
     }
   }
 
@@ -3801,7 +3842,17 @@ class _BrowserPageState extends State<BrowserPage>
   }
 
   List<Widget> _buildMenuEntries(BuildContext context) {
+    final showOpenExternal = defaultTargetPlatform == TargetPlatform.macOS ||
+        defaultTargetPlatform == TargetPlatform.windows ||
+        defaultTargetPlatform == TargetPlatform.linux;
     return [
+      if (showOpenExternal)
+        _buildMenuItem(
+          context,
+          value: 'open_external',
+          icon: Icons.open_in_new,
+          label: 'Open in Default Browser',
+        ),
       _buildMenuItem(
         context,
         value: 'add_bookmark',
