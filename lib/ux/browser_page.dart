@@ -5602,143 +5602,141 @@ class _BrowserPageState extends State<BrowserPage>
         children: [
           Column(
             children: [
-              useAmbient
-                  ? const SizedBox(height: 34, child: SizedBox())
-                  : Container(
-                      height: 34,
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.surface,
-                        border: Border(
+              Container(
+                height: 34,
+                decoration: BoxDecoration(
+                  color: useAmbient
+                      ? Colors.transparent
+                      : Theme.of(context).colorScheme.surface,
+                  border: useAmbient
+                      ? null
+                      : Border(
                           bottom: BorderSide(
                             color: toolbarDividerColor,
                             width: 1,
                           ),
                         ),
-                      ),
-                      child: MouseRegion(
-                        onEnter: (_) {
-                          if (defaultTargetPlatform == TargetPlatform.macOS &&
-                              widget.hideAppBar &&
-                              _reorderableTabs) {
-                            _setWindowMovable(false);
-                          }
-                        },
-                        onExit: (_) {
-                          if (defaultTargetPlatform == TargetPlatform.macOS &&
-                              widget.hideAppBar &&
-                              _reorderableTabs) {
-                            _setWindowMovable(true);
-                          }
-                        },
-                        child: Listener(
-                          behavior: HitTestBehavior.translucent,
-                          onPointerDown: (_) {
-                            if (widget.hideAppBar && _reorderableTabs) {
+                ),
+                child: MouseRegion(
+                  onEnter: (_) {
+                    if (defaultTargetPlatform == TargetPlatform.macOS &&
+                        widget.hideAppBar &&
+                        _reorderableTabs) {
+                      _setWindowMovable(false);
+                    }
+                  },
+                  onExit: (_) {
+                    if (defaultTargetPlatform == TargetPlatform.macOS &&
+                        widget.hideAppBar &&
+                        _reorderableTabs) {
+                      _setWindowMovable(true);
+                    }
+                  },
+                  child: Listener(
+                    behavior: HitTestBehavior.translucent,
+                    onPointerDown: (_) {
+                      if (widget.hideAppBar && _reorderableTabs) {
+                        _setWindowMovable(false);
+                      }
+                    },
+                    onPointerUp: (_) {
+                      if (widget.hideAppBar && _reorderableTabs) {
+                        _setWindowMovable(true);
+                      }
+                    },
+                    onPointerCancel: (_) {
+                      if (widget.hideAppBar && _reorderableTabs) {
+                        _setWindowMovable(true);
+                      }
+                    },
+                    child: _reorderableTabs
+                        ? ReorderableListView.builder(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: tabs.length,
+                            onReorder: _reorderTab,
+                            onReorderStart: (_) {
                               _setWindowMovable(false);
-                            }
-                          },
-                          onPointerUp: (_) {
-                            if (widget.hideAppBar && _reorderableTabs) {
+                            },
+                            onReorderEnd: (_) {
                               _setWindowMovable(true);
-                            }
-                          },
-                          onPointerCancel: (_) {
-                            if (widget.hideAppBar && _reorderableTabs) {
-                              _setWindowMovable(true);
-                            }
-                          },
-                          child: _reorderableTabs
-                              ? ReorderableListView.builder(
-                                  scrollDirection: Axis.horizontal,
-                                  itemCount: tabs.length,
-                                  onReorder: _reorderTab,
-                                  onReorderStart: (_) {
-                                    _setWindowMovable(false);
-                                  },
-                                  onReorderEnd: (_) {
-                                    _setWindowMovable(true);
-                                  },
-                                  buildDefaultDragHandles: false,
-                                  itemBuilder: (context, index) {
-                                    final tab = tabs[index];
-                                    final isSelected =
-                                        tabController.index == index;
-                                    return ReorderableDragStartListener(
-                                      key: ObjectKey(tab),
-                                      index: index,
-                                      child: MouseRegion(
-                                        cursor: SystemMouseCursors.click,
-                                        child: GestureDetector(
-                                          onTap: () => setState(() =>
-                                              tabController.index = index),
-                                          child: Container(
-                                            padding: const EdgeInsets.symmetric(
-                                                horizontal: 12, vertical: 4),
-                                            decoration: BoxDecoration(
-                                              border: Border(
-                                                bottom: BorderSide(
-                                                  color:
-                                                      isSelected && !useAmbient
-                                                          ? Theme.of(context)
-                                                              .colorScheme
-                                                              .primary
-                                                          : Colors.transparent,
-                                                  width: 2,
-                                                ),
-                                              ),
-                                            ),
-                                            child: _buildTabItem(
-                                                tab, index, isSelected,
-                                                showDragHandle: true),
+                            },
+                            buildDefaultDragHandles: false,
+                            itemBuilder: (context, index) {
+                              final tab = tabs[index];
+                              final isSelected = tabController.index == index;
+                              return ReorderableDragStartListener(
+                                key: ObjectKey(tab),
+                                index: index,
+                                child: MouseRegion(
+                                  cursor: SystemMouseCursors.click,
+                                  child: GestureDetector(
+                                    onTap: () => setState(
+                                        () => tabController.index = index),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 12, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        border: Border(
+                                          bottom: BorderSide(
+                                            color: isSelected && !useAmbient
+                                                ? Theme.of(context)
+                                                    .colorScheme
+                                                    .primary
+                                                : Colors.transparent,
+                                            width: 2,
                                           ),
                                         ),
                                       ),
-                                    );
-                                  },
-                                )
-                              : Theme(
-                                  data: Theme.of(context).copyWith(
-                                    hoverColor: Colors.transparent,
-                                    splashColor: Colors.transparent,
-                                    highlightColor: Colors.transparent,
-                                  ),
-                                  child: TabBar(
-                                    controller: tabController,
-                                    isScrollable: true,
-                                    tabAlignment: TabAlignment.start,
-                                    padding: EdgeInsets.zero,
-                                    dividerHeight: useAmbient ? 0.0 : 1.0,
-                                    overlayColor: WidgetStateProperty.all(
-                                        Colors.transparent),
-                                    indicatorColor: widget.themeMode ==
-                                            AppThemeMode.adjust
-                                        ? Colors.transparent
-                                        : Theme.of(context).colorScheme.primary,
-                                    dividerColor: useAmbient
-                                        ? Colors.transparent
-                                        : toolbarDividerColor,
-                                    labelColor:
-                                        Theme.of(context).colorScheme.onSurface,
-                                    unselectedLabelColor: Theme.of(context)
-                                        .colorScheme
-                                        .onSurface
-                                        .withValues(alpha: 0.6),
-                                    tabs: tabs.asMap().entries.map((entry) {
-                                      final index = entry.key;
-                                      final tab = entry.value;
-                                      final isSelected =
-                                          tabController.index == index;
-                                      return Tab(
-                                        height: 30,
-                                        child: _buildTabItem(
-                                            tab, index, isSelected),
-                                      );
-                                    }).toList(),
+                                      child: _buildTabItem(
+                                          tab, index, isSelected,
+                                          showDragHandle: true),
+                                    ),
                                   ),
                                 ),
-                        ),
-                      ),
-                    ),
+                              );
+                            },
+                          )
+                        : Theme(
+                            data: Theme.of(context).copyWith(
+                              hoverColor: Colors.transparent,
+                              splashColor: Colors.transparent,
+                              highlightColor: Colors.transparent,
+                            ),
+                            child: TabBar(
+                              controller: tabController,
+                              isScrollable: true,
+                              tabAlignment: TabAlignment.start,
+                              padding: EdgeInsets.zero,
+                              dividerHeight: useAmbient ? 0.0 : 1.0,
+                              overlayColor:
+                                  WidgetStateProperty.all(Colors.transparent),
+                              indicatorColor:
+                                  widget.themeMode == AppThemeMode.adjust
+                                      ? Colors.transparent
+                                      : Theme.of(context).colorScheme.primary,
+                              dividerColor: useAmbient
+                                  ? Colors.transparent
+                                  : toolbarDividerColor,
+                              labelColor:
+                                  Theme.of(context).colorScheme.onSurface,
+                              unselectedLabelColor: Theme.of(context)
+                                  .colorScheme
+                                  .onSurface
+                                  .withValues(alpha: 0.6),
+                              tabs: tabs.asMap().entries.map((entry) {
+                                final index = entry.key;
+                                final tab = entry.value;
+                                final isSelected = tabController.index == index;
+                                return Tab(
+                                  height: 30,
+                                  child: _buildTabItem(tab, index, isSelected),
+                                );
+                              }).toList(),
+                            ),
+                          ),
+                  ),
+                ),
+              ),
               Expanded(
                 child: IgnorePointer(
                   ignoring:
