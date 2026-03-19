@@ -3486,6 +3486,7 @@ class _BrowserPageState extends State<BrowserPage>
     if (activeTab.currentUrl == defaultHomepageUrl) {
       if (mounted) {
         setState(() {
+          activeTab.ambientSeedColor = null;
           final homeDisplayUrl = _displayUrl(defaultHomepageUrl);
           activeTab.urlController.value = TextEditingValue(
             text: homeDisplayUrl,
@@ -5427,7 +5428,7 @@ class _BrowserPageState extends State<BrowserPage>
     final toolbarForeground = useAmbient
         ? theme.colorScheme.onSurface.withValues(alpha: 0.90)
         : theme.colorScheme.onSurfaceVariant;
-    final toolbarDividerColor = widget.themeMode == AppThemeMode.adjust
+    final toolbarDividerColor = useAmbient
         ? Colors.transparent
         : theme.colorScheme.outline.withValues(alpha: 0.2);
 
@@ -5492,18 +5493,18 @@ class _BrowserPageState extends State<BrowserPage>
                       child: GestureDetector(
                         onTap: () {
                           final text = activeTab.urlController.text;
-                          if (text.isNotEmpty) {
-                            final decision = resolveUrlSubmission(
-                              submittedValue: text,
-                              aiSearchSuggestionsEnabled:
-                                  widget.aiSearchSuggestionsEnabled,
-                            );
-                            if (decision.shouldShowAiSuggestions) {
-                              _showAiSearchSuggestionsSheet();
-                            }
-                            if (decision.shouldLoadUrl) {
-                              _loadUrl(decision.normalizedInput);
-                            }
+                          final decision = resolveUrlSubmission(
+                            submittedValue: text,
+                            aiSearchSuggestionsEnabled:
+                                widget.aiSearchSuggestionsEnabled,
+                          );
+                          if (decision.shouldShowAiSuggestions) {
+                            _showAiSearchSuggestionsSheet();
+                          }
+                          if (decision.shouldLoadUrl) {
+                            _removeUrlAutocompleteOverlay();
+                            activeTab.urlFocusNode.unfocus();
+                            _loadUrl(decision.normalizedInput);
                           }
                         },
                         child: Icon(
