@@ -5604,6 +5604,7 @@ class _BrowserPageState extends State<BrowserPage>
             children: [
               Container(
                 height: 34,
+                width: double.infinity,
                 decoration: BoxDecoration(
                   color: useAmbient
                       ? Colors.transparent
