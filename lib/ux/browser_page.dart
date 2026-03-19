@@ -313,6 +313,7 @@ class SettingsDialog extends HookWidget {
     required this.aiAvailable,
     this.aiSearchSuggestionsEnabled = false,
     this.advancedCacheEnabled = false,
+    this.ambientToolbarEnabled = false,
   });
 
   final void Function()? onSettingsChanged;
@@ -322,6 +323,7 @@ class SettingsDialog extends HookWidget {
   final bool aiAvailable;
   final bool aiSearchSuggestionsEnabled;
   final bool advancedCacheEnabled;
+  final bool ambientToolbarEnabled;
 
   String _themeLabel(AppThemeMode mode) {
     switch (mode) {
@@ -354,7 +356,7 @@ class SettingsDialog extends HookWidget {
     final aiSearchSuggestionsEnabled =
         useState(this.aiSearchSuggestionsEnabled);
     final advancedCacheEnabled = useState(this.advancedCacheEnabled);
-    final ambientToolbarEnabled = useState(false);
+    final ambientToolbarEnabled = useState(this.ambientToolbarEnabled);
     final selectedTheme =
         useState<AppThemeMode>(currentTheme ?? AppThemeMode.system);
     final homepageController = useTextEditingController();
@@ -3703,6 +3705,7 @@ class _BrowserPageState extends State<BrowserPage>
                 aiSearchSuggestionsEnabled: widget.aiSearchSuggestionsEnabled,
                 advancedCacheEnabled: widget.advancedCacheEnabled,
                 aiAvailable: widget.aiAvailable,
+                ambientToolbarEnabled: widget.ambientToolbarEnabled,
               ),
             ),
           );
