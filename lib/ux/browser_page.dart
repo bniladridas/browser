@@ -4713,9 +4713,12 @@ class _BrowserPageState extends State<BrowserPage>
   Widget _buildTorryHomeView(TabData tab) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final useAmbient = _ambientActive;
 
     return Container(
-      color: colorScheme.surface,
+      color: useAmbient
+          ? colorScheme.surface.withValues(alpha: 0.64)
+          : colorScheme.surface,
       child: SafeArea(
         bottom: false,
         child: Align(
@@ -5264,39 +5267,44 @@ class _BrowserPageState extends State<BrowserPage>
       child: Stack(
         fit: StackFit.expand,
         children: [
-          DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: begin,
-                end: end,
-                colors: [
-                  glowA,
-                  glowB,
-                  Colors.transparent,
-                ],
-                stops: const [0.0, 0.55, 1.0],
-              ),
-            ),
-          ),
-          BackdropFilter(
-            filter: ui.ImageFilter.blur(sigmaX: 34, sigmaY: 34),
-            child: ColoredBox(
-              color: scheme.surface.withValues(alpha: 0.10),
-            ),
-          ),
-          DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: RadialGradient(
-                center: Alignment(0.0 + 0.3 * dx, -1.1 + 0.25 * dy),
-                radius: 1.8,
-                colors: [
-                  base.withValues(
-                    alpha: theme.brightness == Brightness.dark ? 0.24 : 0.18,
+          // Background layer with both gradients
+          Stack(
+            fit: StackFit.expand,
+            children: [
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: begin,
+                    end: end,
+                    colors: [glowA, glowB, Colors.transparent],
+                    stops: const [0.0, 0.6, 1.0],
                   ),
-                  Colors.transparent,
-                ],
+                ),
               ),
-            ),
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: RadialGradient(
+                    center: Alignment(0.0 + 0.3 * dx, -1.1 + 0.25 * dy),
+                    radius: 2.2,
+                    colors: [
+                      base.withValues(
+                        alpha: theme.brightness == Brightness.dark ? 0.24 : 0.18,
+                      ),
+                      Colors.transparent,
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          // Blur everything below (both gradients)
+          BackdropFilter(
+            filter: ui.ImageFilter.blur(sigmaX: 60, sigmaY: 60),
+            child: const SizedBox.expand(),
+          ),
+          // Subtle surface tint overlay on top of the blur
+          ColoredBox(
+            color: scheme.surface.withValues(alpha: 0.08),
           ),
         ],
       ),
@@ -5321,7 +5329,8 @@ class _BrowserPageState extends State<BrowserPage>
           colors: [
             Colors.white.withValues(alpha: isDark ? 0.06 : 0.10),
             Colors.transparent,
-            Colors.black.withValues(alpha: isDark ? 0.08 : 0.03),
+            (frosted ? Colors.transparent : Colors.black)
+                .withValues(alpha: isDark ? 0.08 : 0.03),
           ],
           stops: const [0.0, 0.6, 1.0],
         ),
@@ -5425,6 +5434,7 @@ class _BrowserPageState extends State<BrowserPage>
                 ? Colors.transparent
                 : theme.appBarTheme.backgroundColor,
             elevation: 0,
+            scrolledUnderElevation: 0,
             flexibleSpace: null,
             actions: [
               Container(
@@ -5576,7 +5586,7 @@ class _BrowserPageState extends State<BrowserPage>
           useAmbient ? Colors.transparent : theme.scaffoldBackgroundColor,
       appBar: topToolbarInset > 0 && appBarWidget != null
           ? PreferredSize(
-              preferredSize: Size.fromHeight(kToolbarHeight + topToolbarInset),
+              preferredSize: Size.fromHeight(52.0 + topToolbarInset),
               child: Column(
                 children: [
                   SizedBox(height: topToolbarInset),
@@ -5595,12 +5605,14 @@ class _BrowserPageState extends State<BrowserPage>
                   color: useAmbient
                       ? Colors.transparent
                       : Theme.of(context).colorScheme.surface,
-                  border: Border(
-                    bottom: BorderSide(
-                      color: toolbarDividerColor,
-                      width: 1,
-                    ),
-                  ),
+                  border: useAmbient
+                      ? null
+                      : Border(
+                          bottom: BorderSide(
+                            color: toolbarDividerColor,
+                            width: 1,
+                          ),
+                        ),
                 ),
                 child: MouseRegion(
                   onEnter: (_) {
@@ -5663,7 +5675,7 @@ class _BrowserPageState extends State<BrowserPage>
                                       decoration: BoxDecoration(
                                         border: Border(
                                           bottom: BorderSide(
-                                            color: isSelected
+                                            color: (isSelected && !useAmbient)
                                                 ? Theme.of(context)
                                                     .colorScheme
                                                     .primary
@@ -5692,6 +5704,7 @@ class _BrowserPageState extends State<BrowserPage>
                               isScrollable: true,
                               tabAlignment: TabAlignment.start,
                               padding: EdgeInsets.zero,
+                              dividerHeight: useAmbient ? 0 : null,
                               overlayColor:
                                   WidgetStateProperty.all(Colors.transparent),
                               indicatorColor:
