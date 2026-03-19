@@ -20,6 +20,7 @@ const String bookmarksStorageKey = 'bookmarks';
 const String browsingHistoryKey = 'browsingHistory';
 const String aiSearchSuggestionsEnabledKey = 'aiSearchSuggestionsEnabled';
 const String advancedCacheEnabledKey = 'advancedCacheEnabled';
+const String ambientToolbarEnabledKey = 'ambientToolbarEnabled';
 const String navigationCacheIndexKey = 'navigationCacheIndex';
 const String whatsNewSeenVersionKey = 'whatsNewSeenVersion';
 
