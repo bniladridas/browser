@@ -59,6 +59,7 @@ class _MyAppState extends State<MyApp> {
   String pageFontFamily = '';
   bool aiSearchSuggestionsEnabled = false;
   bool advancedCacheEnabled = false;
+  bool ambientToolbarEnabled = false;
   bool _didCheckWhatsNew = false;
   final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
 
@@ -188,6 +189,8 @@ class _MyAppState extends State<MyApp> {
         aiSearchSuggestionsEnabled =
             prefs.getBool(aiSearchSuggestionsEnabledKey) ?? false;
         advancedCacheEnabled = prefs.getBool(advancedCacheEnabledKey) ?? false;
+        ambientToolbarEnabled =
+            prefs.getBool(ambientToolbarEnabledKey) ?? false;
         final themeString = prefs.getString(themeModeKey);
         if (themeString != null) {
           themeMode = AppThemeMode.values.firstWhere(
@@ -289,6 +292,7 @@ class _MyAppState extends State<MyApp> {
           pageFontFamily: pageFontFamily,
           aiSearchSuggestionsEnabled: aiSearchSuggestionsEnabled,
           advancedCacheEnabled: advancedCacheEnabled,
+          ambientToolbarEnabled: ambientToolbarEnabled,
           themeMode: effectiveThemeMode,
           onPageThemeChanged: _setAdjustedThemeMode,
           onSettingsChanged: _loadSettings,

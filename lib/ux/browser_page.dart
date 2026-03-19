@@ -18,6 +18,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:file_selector/file_selector.dart';
@@ -312,6 +313,7 @@ class SettingsDialog extends HookWidget {
     required this.aiAvailable,
     this.aiSearchSuggestionsEnabled = false,
     this.advancedCacheEnabled = false,
+    this.ambientToolbarEnabled = false,
   });
 
   final void Function()? onSettingsChanged;
@@ -321,6 +323,7 @@ class SettingsDialog extends HookWidget {
   final bool aiAvailable;
   final bool aiSearchSuggestionsEnabled;
   final bool advancedCacheEnabled;
+  final bool ambientToolbarEnabled;
 
   String _themeLabel(AppThemeMode mode) {
     switch (mode) {
@@ -353,6 +356,7 @@ class SettingsDialog extends HookWidget {
     final aiSearchSuggestionsEnabled =
         useState(this.aiSearchSuggestionsEnabled);
     final advancedCacheEnabled = useState(this.advancedCacheEnabled);
+    final ambientToolbarEnabled = useState(this.ambientToolbarEnabled);
     final selectedTheme =
         useState<AppThemeMode>(currentTheme ?? AppThemeMode.system);
     final homepageController = useTextEditingController();
@@ -390,6 +394,8 @@ class SettingsDialog extends HookWidget {
             prefs.getBool(aiSearchSuggestionsEnabledKey) ?? false;
         advancedCacheEnabled.value =
             prefs.getBool(advancedCacheEnabledKey) ?? false;
+        ambientToolbarEnabled.value =
+            prefs.getBool(ambientToolbarEnabledKey) ?? false;
         if (prefs.getString(themeModeKey) != null) {
           selectedTheme.value = AppThemeMode.values.firstWhere(
               (m) => m.name == prefs.getString(themeModeKey),
@@ -613,6 +619,15 @@ class SettingsDialog extends HookWidget {
                       title: const Text('Advanced Cache'),
                       value: advancedCacheEnabled.value,
                       onChanged: (value) => advancedCacheEnabled.value = value,
+                      hoverColor: Colors.transparent,
+                    ),
+                  ),
+                  MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: SwitchListTile(
+                      title: const Text('Ambient Mode'),
+                      value: ambientToolbarEnabled.value,
+                      onChanged: (value) => ambientToolbarEnabled.value = value,
                       hoverColor: Colors.transparent,
                     ),
                   ),
@@ -966,6 +981,8 @@ class SettingsDialog extends HookWidget {
                 aiSearchSuggestionsEnabled.value);
             await prefs.setBool(
                 advancedCacheEnabledKey, advancedCacheEnabled.value);
+            await prefs.setBool(
+                ambientToolbarEnabledKey, ambientToolbarEnabled.value);
             await prefs.setString(themeModeKey, selectedTheme.value.name);
 
             try {
@@ -1032,6 +1049,8 @@ class TabData {
   DateTime? lastErrorAt;
   Brightness? detectedBrightness;
   Color? detectedSeedColor;
+  Color? ambientSeedColor;
+  DateTime? lastAmbientProbeAt;
   SavePasswordPromptData? pendingPasswordPrompt;
   String? faviconUrl;
   String? forwardUrl; // URL to go forward to when on home page
@@ -1248,6 +1267,7 @@ class BrowserPage extends StatefulWidget {
       this.pageFontFamily = '',
       this.aiSearchSuggestionsEnabled = false,
       this.advancedCacheEnabled = false,
+      this.ambientToolbarEnabled = false,
       this.themeMode = AppThemeMode.system,
       this.aiAvailable = true,
       this.onSettingsChanged,
@@ -1266,6 +1286,7 @@ class BrowserPage extends StatefulWidget {
   final String pageFontFamily;
   final bool aiSearchSuggestionsEnabled;
   final bool advancedCacheEnabled;
+  final bool ambientToolbarEnabled;
   final AppThemeMode themeMode;
   final bool aiAvailable;
   final void Function()? onSettingsChanged;
@@ -1326,6 +1347,13 @@ class _BrowserPageState extends State<BrowserPage>
   final ConnectivityService _connectivityService = ConnectivityService();
   StreamSubscription<bool>? _connectivitySubscription;
   late AnimationController _refreshIconController;
+  AnimationController? _ambientController;
+  final LayerLink _urlAutocompleteLink = LayerLink();
+  final GlobalKey _urlAutocompleteTargetKey = GlobalKey();
+  OverlayEntry? _urlAutocompleteOverlayEntry;
+  List<String> _urlAutocompleteOptions = const <String>[];
+  double? _urlAutocompleteTargetWidth;
+  bool _urlAutocompleteOverlayUpdateQueued = false;
   final Set<String> _downloadableExtensions = {
     'dmg',
     'zip',
@@ -1530,6 +1558,20 @@ class _BrowserPageState extends State<BrowserPage>
     }
   }
 
+  bool get _ambientActive => widget.ambientToolbarEnabled;
+
+  void _syncAmbientAnimation() {
+    if (_ambientActive) {
+      _ambientController ??= AnimationController(
+        vsync: this,
+        duration: const Duration(seconds: 14),
+      )..repeat();
+      return;
+    }
+    _ambientController?.dispose();
+    _ambientController = null;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -1542,6 +1584,7 @@ class _BrowserPageState extends State<BrowserPage>
       duration: const Duration(milliseconds: 500),
       vsync: this,
     );
+    _syncAmbientAnimation();
     _pageFontFamily = widget.pageFontFamily;
     _loadReorderableTabs();
     _loadFontOverrides();
@@ -1701,15 +1744,161 @@ class _BrowserPageState extends State<BrowserPage>
   TabData _createTab(String initialUrl) {
     final tab = TabData(initialUrl, displayUrl: _displayUrl(initialUrl));
     tab.urlFocusNode.addListener(() => _onUrlFocusChanged(tab));
+    tab.urlController.addListener(() => _onUrlTextChanged(tab));
     return tab;
   }
 
   void _onUrlFocusChanged(TabData tab) {
     if (!mounted || tab.isClosed) return;
-    if (!tab.urlFocusNode.hasFocus && _urlAutocompleteOpen) {
-      _setUrlAutocompleteOpen(false);
+    if (!identical(tab, activeTab)) return;
+    if (!tab.urlFocusNode.hasFocus) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || tab.isClosed) return;
+        if (tab.urlFocusNode.hasFocus) return;
+        _removeUrlAutocompleteOverlay();
+      });
+      _syncPagePointerEvents(tab);
+      return;
     }
+    _updateUrlAutocompleteOverlay(tab);
     _syncPagePointerEvents(tab);
+  }
+
+  void _onUrlTextChanged(TabData tab) {
+    if (!mounted || tab.isClosed) return;
+    if (!identical(tab, activeTab)) return;
+    if (!tab.urlFocusNode.hasFocus) return;
+    _updateUrlAutocompleteOverlay(tab);
+  }
+
+  void _selectUrlAutocompleteOption(String value) {
+    activeTab.urlFocusNode.unfocus();
+    _removeUrlAutocompleteOverlay();
+    _loadUrl(value);
+  }
+
+  void _removeUrlAutocompleteOverlay({bool updatePointerEvents = true}) {
+    _urlAutocompleteOptions = const <String>[];
+    if (_urlAutocompleteOverlayEntry == null) {
+      if (updatePointerEvents) {
+        _setUrlAutocompleteOpen(false);
+      } else {
+        _urlAutocompleteOpen = false;
+      }
+      return;
+    }
+    _urlAutocompleteOverlayEntry?.remove();
+    _urlAutocompleteOverlayEntry = null;
+    if (updatePointerEvents) {
+      _setUrlAutocompleteOpen(false);
+    } else {
+      _urlAutocompleteOpen = false;
+    }
+  }
+
+  void _updateUrlAutocompleteOverlay(TabData tab) {
+    if (_urlAutocompleteOverlayUpdateQueued) return;
+    _urlAutocompleteOverlayUpdateQueued = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _urlAutocompleteOverlayUpdateQueued = false;
+      if (!mounted || tab.isClosed || !identical(tab, activeTab)) return;
+      if (!tab.urlFocusNode.hasFocus) {
+        _removeUrlAutocompleteOverlay();
+        return;
+      }
+      final targetBox =
+          _urlAutocompleteTargetKey.currentContext?.findRenderObject();
+      if (targetBox is RenderBox && targetBox.hasSize) {
+        _urlAutocompleteTargetWidth = targetBox.size.width;
+      }
+      final options = _historyUrlSuggestions(tab.urlController.text)
+          .toList(growable: false);
+      if (options.isEmpty) {
+        _removeUrlAutocompleteOverlay();
+        return;
+      }
+      _urlAutocompleteOptions = options;
+      _setUrlAutocompleteOpen(true);
+
+      if (_urlAutocompleteOverlayEntry == null) {
+        _urlAutocompleteOverlayEntry = OverlayEntry(
+          builder: (overlayContext) {
+            final theme = Theme.of(overlayContext);
+            final optionList = _urlAutocompleteOptions;
+            if (optionList.isEmpty) {
+              return const SizedBox.shrink();
+            }
+            final minWidth = (_urlAutocompleteTargetWidth ?? 300.0)
+                .clamp(300.0, 720.0)
+                .toDouble();
+            return Stack(
+              children: [
+                InteractionBlocker(
+                  onTap: () {
+                    activeTab.urlFocusNode.unfocus();
+                    _removeUrlAutocompleteOverlay();
+                  },
+                ),
+                CompositedTransformFollower(
+                  link: _urlAutocompleteLink,
+                  showWhenUnlinked: false,
+                  targetAnchor: Alignment.bottomLeft,
+                  followerAnchor: Alignment.topLeft,
+                  offset: const Offset(0, 6),
+                  child: Material(
+                    elevation: 6,
+                    color: theme.colorScheme.surfaceContainerHigh,
+                    borderRadius: BorderRadius.circular(12),
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxHeight: 240,
+                        minWidth: minWidth,
+                        maxWidth: 720,
+                      ),
+                      child: ListView.builder(
+                        padding: const EdgeInsets.symmetric(vertical: 6),
+                        shrinkWrap: true,
+                        itemCount: optionList.length,
+                        itemBuilder: (context, index) {
+                          final option = optionList[index];
+                          return InkWell(
+                            onTapDown: (_) =>
+                                _selectUrlAutocompleteOption(option),
+                            onTap: () {},
+                            hoverColor: Colors.transparent,
+                            splashColor: Colors.transparent,
+                            highlightColor: Colors.transparent,
+                            focusColor: Colors.transparent,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
+                              child: Text(
+                                option,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+        Overlay.of(context, rootOverlay: true)
+            .insert(_urlAutocompleteOverlayEntry!);
+      } else {
+        _urlAutocompleteOverlayEntry?.markNeedsBuild();
+      }
+    });
   }
 
   void _setUrlAutocompleteOpen(bool open) {
@@ -1776,6 +1965,10 @@ class _BrowserPageState extends State<BrowserPage>
     super.didUpdateWidget(oldWidget);
     if (oldWidget.hideAppBar != widget.hideAppBar) {
       _syncMacWindowButtonsVisibility();
+    }
+    if (oldWidget.ambientToolbarEnabled != widget.ambientToolbarEnabled ||
+        oldWidget.hideAppBar != widget.hideAppBar) {
+      _syncAmbientAnimation();
     }
     if (oldWidget.pageFontFamily != widget.pageFontFamily) {
       _pageFontFamily = widget.pageFontFamily;
@@ -1870,6 +2063,8 @@ class _BrowserPageState extends State<BrowserPage>
     final controller = tab.webViewController;
     if (controller == null) return;
     try {
+      final previousBrightness = tab.detectedBrightness;
+      final previousSeed = tab.detectedSeedColor;
       final result =
           await controller.runJavaScriptReturningResult(_themeProbeScript);
       final probe = _parseThemeProbe(result);
@@ -1886,10 +2081,54 @@ class _BrowserPageState extends State<BrowserPage>
         tab.detectedSeedColor = null;
         widget.onPageThemeChanged?.call(ThemeMode.system, null);
       }
+      if (mounted &&
+          (previousBrightness != tab.detectedBrightness ||
+              previousSeed != tab.detectedSeedColor)) {
+        setState(() {});
+      }
     } catch (_) {
       tab.detectedBrightness = null;
       tab.detectedSeedColor = null;
       widget.onPageThemeChanged?.call(ThemeMode.system, null);
+    }
+  }
+
+  Future<void> _updateAmbientFromTab(TabData tab) async {
+    if (!widget.ambientToolbarEnabled) return;
+    if (widget.strictMode) return;
+    if (tab.currentUrl == defaultHomepageUrl || tab.state is BrowserError) {
+      if (tab.ambientSeedColor != null) {
+        tab.ambientSeedColor = null;
+        if (mounted && identical(tab, activeTab)) {
+          setState(() {});
+        }
+      }
+      return;
+    }
+    final now = DateTime.now();
+    final last = tab.lastAmbientProbeAt;
+    if (last != null &&
+        now.difference(last) < const Duration(milliseconds: 900)) {
+      return;
+    }
+    tab.lastAmbientProbeAt = now;
+
+    final controller = tab.webViewController;
+    if (controller == null) return;
+    try {
+      final previousSeed = tab.ambientSeedColor;
+      final result =
+          await controller.runJavaScriptReturningResult(_themeProbeScript);
+      final probe = _parseThemeProbe(result);
+      final decision = probe == null ? null : resolveThemeProbeDecision(probe);
+      tab.ambientSeedColor = decision?.seedColor;
+      if (mounted &&
+          identical(tab, activeTab) &&
+          previousSeed != tab.ambientSeedColor) {
+        setState(() {});
+      }
+    } catch (_) {
+      // Best-effort only.
     }
   }
 
@@ -2057,6 +2296,7 @@ class _BrowserPageState extends State<BrowserPage>
   }
 
   void _onTabChanged() {
+    _removeUrlAutocompleteOverlay();
     previousTabIndex = tabController.index;
     _syncPointerEventsForAllTabs();
     _applyThemeForTab(tabs[tabController.index]);
@@ -2928,6 +3168,8 @@ class _BrowserPageState extends State<BrowserPage>
     HardwareKeyboard.instance.removeHandler(_handleKeyEvent);
     _connectivitySubscription?.cancel();
     _refreshIconController.dispose();
+    _ambientController?.dispose();
+    _removeUrlAutocompleteOverlay(updatePointerEvents: false);
     _overflowMenuCloseTimer?.cancel();
     _windowButtonsSyncRetryTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
@@ -3244,6 +3486,7 @@ class _BrowserPageState extends State<BrowserPage>
     if (activeTab.currentUrl == defaultHomepageUrl) {
       if (mounted) {
         setState(() {
+          activeTab.ambientSeedColor = null;
           final homeDisplayUrl = _displayUrl(defaultHomepageUrl);
           activeTab.urlController.value = TextEditingValue(
             text: homeDisplayUrl,
@@ -3463,6 +3706,7 @@ class _BrowserPageState extends State<BrowserPage>
                 aiSearchSuggestionsEnabled: widget.aiSearchSuggestionsEnabled,
                 advancedCacheEnabled: widget.advancedCacheEnabled,
                 aiAvailable: widget.aiAvailable,
+                ambientToolbarEnabled: widget.ambientToolbarEnabled,
               ),
             ),
           );
@@ -4473,9 +4717,12 @@ class _BrowserPageState extends State<BrowserPage>
   Widget _buildTorryHomeView(TabData tab) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final useAmbient = _ambientActive;
 
     return Container(
-      color: colorScheme.surface,
+      color: useAmbient
+          ? colorScheme.surface.withValues(alpha: 0.64)
+          : colorScheme.surface,
       child: SafeArea(
         bottom: false,
         child: Align(
@@ -4720,8 +4967,7 @@ class _BrowserPageState extends State<BrowserPage>
     }
 
     if (tab.webViewController == null) {
-      final shouldHookPermissions =
-          defaultTargetPlatform != TargetPlatform.iOS;
+      final shouldHookPermissions = defaultTargetPlatform != TargetPlatform.iOS;
       tab.webViewController = WebViewController(
         onPermissionRequest: shouldHookPermissions
             ? (request) {
@@ -4756,6 +5002,7 @@ class _BrowserPageState extends State<BrowserPage>
           });
         }
         _updateThemeFromTab(tab);
+        _updateAmbientFromTab(tab);
       });
       tab.webViewController!.addJavaScriptChannel('PageTapChannel',
           onMessageReceived: (JavaScriptMessage message) {
@@ -4815,6 +5062,8 @@ class _BrowserPageState extends State<BrowserPage>
                 tab.state = const BrowserState.loading();
                 tab.detectedBrightness = null;
                 tab.detectedSeedColor = null;
+                tab.ambientSeedColor = null;
+                tab.lastAmbientProbeAt = null;
                 final host = _hostFromUrl(url);
                 final nextFavicon = host != null
                     ? (_faviconCacheByHost[host] ?? _defaultFaviconUrlFor(url))
@@ -4877,13 +5126,16 @@ class _BrowserPageState extends State<BrowserPage>
           }
           _syncPagePointerEvents(tab);
           _updateThemeFromTab(tab);
+          _updateAmbientFromTab(tab);
           Future.delayed(const Duration(milliseconds: 400), () {
             if (!mounted) return;
             _updateThemeFromTab(tab);
+            _updateAmbientFromTab(tab);
           });
           Future.delayed(const Duration(milliseconds: 1200), () {
             if (!mounted) return;
             _updateThemeFromTab(tab);
+            _updateAmbientFromTab(tab);
           });
         },
         onNavigationRequest: (request) {
@@ -4969,8 +5221,194 @@ class _BrowserPageState extends State<BrowserPage>
     }
   }
 
+  Color _resolveAmbientToolbarTint(BuildContext context) {
+    final theme = Theme.of(context);
+    final seed = activeTab.ambientSeedColor ?? activeTab.detectedSeedColor;
+    final base = seed ?? theme.colorScheme.primary;
+    final blendTarget =
+        theme.brightness == Brightness.dark ? Colors.black : Colors.white;
+    final blendAmount = theme.brightness == Brightness.dark ? 0.12 : 0.08;
+    return Color.lerp(base, blendTarget, blendAmount) ?? base;
+  }
+
+  Widget _buildAmbientBackground(BuildContext context) {
+    final controller = _ambientController;
+    final base = _resolveAmbientToolbarTint(context);
+    if (controller == null) {
+      return _buildAmbientBackgroundFrame(context, 0.0, base);
+    }
+    return AnimatedBuilder(
+      animation: controller,
+      builder: (context, _) => _buildAmbientBackgroundFrame(
+        context,
+        controller.value,
+        base,
+      ),
+    );
+  }
+
+  Widget _buildAmbientBackgroundFrame(
+    BuildContext context,
+    double t,
+    Color base,
+  ) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final phase = t * 2 * math.pi;
+    final dx = math.cos(phase);
+    final dy = math.sin(phase);
+    final begin = Alignment(-0.9 + 0.5 * dx, -1.0 + 0.2 * dy);
+    final end = Alignment(0.9 - 0.5 * dx, 1.0 - 0.2 * dy);
+
+    final glowA = base.withValues(
+      alpha: theme.brightness == Brightness.dark ? 0.42 : 0.34,
+    );
+    final glowB = (Color.lerp(base, scheme.secondary, 0.35) ?? base).withValues(
+      alpha: theme.brightness == Brightness.dark ? 0.28 : 0.22,
+    );
+
+    return ClipRect(
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          // Background layer with both gradients
+          Stack(
+            fit: StackFit.expand,
+            children: [
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: begin,
+                    end: end,
+                    colors: [glowA, glowB, Colors.transparent],
+                    stops: const [0.0, 0.55, 1.2],
+                  ),
+                ),
+              ),
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: RadialGradient(
+                    center: Alignment(0.0 + 0.3 * dx, -1.1 + 0.25 * dy),
+                    radius: 2.2,
+                    colors: [
+                      base.withValues(
+                        alpha:
+                            theme.brightness == Brightness.dark ? 0.24 : 0.18,
+                      ),
+                      Colors.transparent,
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          // Blur everything below (both gradients)
+          BackdropFilter(
+            filter: ui.ImageFilter.blur(sigmaX: 60, sigmaY: 60),
+            child: const SizedBox.expand(),
+          ),
+          // Subtle surface tint overlay on top of the blur
+          ColoredBox(
+            color: scheme.surface.withValues(alpha: 0.08),
+            child: const SizedBox.expand(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildToolbarPill({
+    required Widget child,
+    required BorderRadius borderRadius,
+    required Color tintColor,
+    required bool frosted,
+    BoxBorder? border,
+  }) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final highlight = DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: borderRadius,
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: frosted
+              ? [Colors.transparent, Colors.transparent, Colors.transparent]
+              : [
+                  Colors.white.withValues(alpha: isDark ? 0.06 : 0.10),
+                  Colors.transparent,
+                  Colors.black.withValues(alpha: isDark ? 0.08 : 0.03),
+                ],
+          stops: frosted ? null : const [0.0, 0.6, 1.0],
+        ),
+      ),
+    );
+
+    if (!frosted) {
+      return DecoratedBox(
+        decoration: BoxDecoration(
+          color: tintColor,
+          borderRadius: borderRadius,
+          border: border,
+        ),
+        child: child,
+      );
+    }
+
+    final shadow = frosted
+        ? BoxShadow(
+            color: Colors.black.withValues(alpha: 0.0),
+            blurRadius: 0,
+            spreadRadius: 0,
+            offset: const Offset(0, 0),
+          )
+        : BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.28 : 0.10),
+            blurRadius: 22,
+            spreadRadius: -10,
+            offset: const Offset(0, 10),
+          );
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: borderRadius,
+        boxShadow: [shadow],
+      ),
+      child: ClipRRect(
+        borderRadius: borderRadius,
+        clipBehavior: Clip.antiAliasWithSaveLayer,
+        child: Stack(
+          fit: StackFit.passthrough,
+          children: [
+            Positioned.fill(
+              child: BackdropFilter(
+                filter: ui.ImageFilter.blur(sigmaX: 22, sigmaY: 22),
+                child: const SizedBox(),
+              ),
+            ),
+            DecoratedBox(
+              decoration: BoxDecoration(
+                color: tintColor,
+                borderRadius: borderRadius,
+                border: border,
+              ),
+              child: Stack(
+                fit: StackFit.passthrough,
+                children: [
+                  Positioned.fill(child: IgnorePointer(child: highlight)),
+                  child,
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final isMacDesktop = defaultTargetPlatform == TargetPlatform.macOS;
     final leadingInset = (isMacDesktop && !widget.hideAppBar)
         ? _kMacOsLeadingInsetWithTrafficLights
@@ -4978,57 +5416,83 @@ class _BrowserPageState extends State<BrowserPage>
     final addressBarLeftOffset = (isMacDesktop && !widget.hideAppBar)
         ? _kMacOsAddressBarLeftOffset
         : 0.0;
+    final double topToolbarInset =
+        (isMacDesktop && !widget.hideAppBar) ? _kMacOsTopToolbarInset : 0.0;
+    final useAmbient = _ambientActive;
+    final toolbarPillColor = useAmbient
+        ? theme.colorScheme.surfaceContainerHigh.withValues(alpha: 0.65)
+        : theme.colorScheme.surfaceContainerHigh;
+    final addressPillColor = useAmbient
+        ? theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.65)
+        : theme.colorScheme.surfaceContainerHighest;
+    final toolbarForeground = useAmbient
+        ? theme.colorScheme.onSurface.withValues(alpha: 0.90)
+        : theme.colorScheme.onSurfaceVariant;
+    final toolbarDividerColor = useAmbient
+        ? Colors.transparent
+        : theme.colorScheme.outline.withValues(alpha: 0.2);
 
     final PreferredSizeWidget? appBarWidget = widget.hideAppBar
         ? null
         : AppBar(
             primary: false,
             toolbarHeight: 52,
+            backgroundColor: useAmbient
+                ? Colors.transparent
+                : theme.appBarTheme.backgroundColor,
+            elevation: 0,
+            scrolledUnderElevation: 0,
+            flexibleSpace: null,
             actions: [
               Container(
                 margin: const EdgeInsets.symmetric(horizontal: 2),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surfaceContainerHigh,
+                child: _buildToolbarPill(
                   borderRadius: BorderRadius.circular(15),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    ClickableIcon(
-                      icon: Icons.arrow_back_ios,
-                      size: 16,
-                      onTap: _goBack,
-                    ),
-                    ClickableIcon(
-                      icon: Icons.arrow_forward_ios,
-                      size: 16,
-                      onTap: _goForward,
-                    ),
-                  ],
+                  tintColor: toolbarPillColor,
+                  frosted: useAmbient,
+                  border: null,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      ClickableIcon(
+                        icon: Icons.arrow_back_ios,
+                        size: 16,
+                        color: toolbarForeground,
+                        onTap: _goBack,
+                      ),
+                      ClickableIcon(
+                        icon: Icons.arrow_forward_ios,
+                        size: 16,
+                        color: toolbarForeground,
+                        onTap: _goForward,
+                      ),
+                    ],
+                  ),
                 ),
               ),
               ClickableIcon(
                 icon: Icons.add,
                 size: 22,
+                color: toolbarForeground,
                 onTap: _addNewTab,
               ),
               _buildMenuButton(),
             ],
             title: Container(
               margin: EdgeInsets.only(left: addressBarLeftOffset),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surfaceContainerHighest,
+              child: _buildToolbarPill(
                 borderRadius: BorderRadius.circular(20),
-              ),
-              child: Row(
-                children: [
-                  SizedBox(width: leadingInset),
-                  MouseRegion(
-                    cursor: SystemMouseCursors.click,
-                    child: GestureDetector(
-                      onTap: () {
-                        final text = activeTab.urlController.text;
-                        if (text.isNotEmpty) {
+                tintColor: addressPillColor,
+                frosted: useAmbient,
+                border: null,
+                child: Row(
+                  children: [
+                    SizedBox(width: leadingInset),
+                    MouseRegion(
+                      cursor: SystemMouseCursors.click,
+                      child: GestureDetector(
+                        onTap: () {
+                          final text = activeTab.urlController.text;
                           final decision = resolveUrlSubmission(
                             submittedValue: text,
                             aiSearchSuggestionsEnabled:
@@ -5038,114 +5502,37 @@ class _BrowserPageState extends State<BrowserPage>
                             _showAiSearchSuggestionsSheet();
                           }
                           if (decision.shouldLoadUrl) {
+                            _removeUrlAutocompleteOverlay();
+                            activeTab.urlFocusNode.unfocus();
                             _loadUrl(decision.normalizedInput);
                           }
-                        }
-                      },
-                      child: Icon(
-                        Icons.search,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        size: 18,
+                        },
+                        child: Icon(
+                          Icons.search,
+                          color: toolbarForeground,
+                          size: 18,
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: RawAutocomplete<String>(
-                      focusNode: activeTab.urlFocusNode,
-                      textEditingController: activeTab.urlController,
-                      optionsBuilder: (value) =>
-                          _historyUrlSuggestions(value.text),
-                      onSelected: (value) {
-                        activeTab.urlFocusNode.unfocus();
-                        _setUrlAutocompleteOpen(false);
-                        _loadUrl(value);
-                      },
-                      optionsViewBuilder: (context, onSelected, options) {
-                        final optionList = options.toList(growable: false);
-                        if (optionList.isEmpty) {
-                          _setUrlAutocompleteOpen(false);
-                          return const SizedBox.shrink();
-                        }
-                        _setUrlAutocompleteOpen(true);
-                        final theme = Theme.of(context);
-                        return Stack(
-                          children: [
-                            InteractionBlocker(
-                              onTap: () {
-                                activeTab.urlFocusNode.unfocus();
-                                _setUrlAutocompleteOpen(false);
-                              },
-                            ),
-                            Align(
-                              alignment: Alignment.topLeft,
-                              child: Material(
-                                elevation: 6,
-                                color: theme.colorScheme.surfaceContainerHigh,
-                                borderRadius: BorderRadius.circular(12),
-                                child: ConstrainedBox(
-                                  constraints: const BoxConstraints(
-                                    maxHeight: 240,
-                                    minWidth: 300,
-                                    maxWidth: 720,
-                                  ),
-                                  child: ListView.builder(
-                                    padding:
-                                        const EdgeInsets.symmetric(vertical: 6),
-                                    shrinkWrap: true,
-                                    itemCount: optionList.length,
-                                    itemBuilder: (context, index) {
-                                      final option = optionList[index];
-                                      return InkWell(
-                                        onTap: () => onSelected(option),
-                                        hoverColor: Colors.transparent,
-                                        splashColor: Colors.transparent,
-                                        highlightColor: Colors.transparent,
-                                        focusColor: Colors.transparent,
-                                        child: Padding(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 12,
-                                            vertical: 8,
-                                          ),
-                                          child: Text(
-                                            option,
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: theme.textTheme.bodySmall
-                                                ?.copyWith(
-                                              fontSize: 12,
-                                            ),
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        );
-                      },
-                      fieldViewBuilder:
-                          (context, controller, focusNode, onFieldSubmitted) {
-                        return TextField(
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: CompositedTransformTarget(
+                        key: _urlAutocompleteTargetKey,
+                        link: _urlAutocompleteLink,
+                        child: TextField(
                           key: const Key('browser.url_field'),
-                          controller: controller,
-                          focusNode: focusNode,
-                          onTapOutside: (_) {
-                            focusNode.unfocus();
-                            _setUrlAutocompleteOpen(false);
-                          },
+                          controller: activeTab.urlController,
+                          focusNode: activeTab.urlFocusNode,
+                          onChanged: (_) =>
+                              _updateUrlAutocompleteOverlay(activeTab),
                           style: TextStyle(
-                            color: Theme.of(context).colorScheme.onSurface,
+                            color: toolbarForeground,
                             fontSize: 13,
                           ),
                           decoration: InputDecoration(
                             hintText: 'Search or enter URL',
                             hintStyle: TextStyle(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurfaceVariant,
+                              color: toolbarForeground.withValues(alpha: 0.72),
                               fontSize: 13,
                             ),
                             border: InputBorder.none,
@@ -5154,13 +5541,15 @@ class _BrowserPageState extends State<BrowserPage>
                           ),
                           onTap: () {
                             if (widget.aiSearchSuggestionsEnabled &&
-                                controller.text.trim().isEmpty) {
+                                activeTab.urlController.text.trim().isEmpty) {
                               _showAiSearchSuggestionsSheet();
+                            } else {
+                              _updateUrlAutocompleteOverlay(activeTab);
                             }
                           },
                           onSubmitted: (value) {
-                            _setUrlAutocompleteOpen(false);
-                            focusNode.unfocus();
+                            _removeUrlAutocompleteOverlay();
+                            activeTab.urlFocusNode.unfocus();
                             final decision = resolveUrlSubmission(
                               submittedValue: value,
                               aiSearchSuggestionsEnabled:
@@ -5173,34 +5562,373 @@ class _BrowserPageState extends State<BrowserPage>
                               _loadUrl(decision.normalizedInput);
                             }
                           },
-                        );
-                      },
+                        ),
+                      ),
                     ),
-                  ),
-                  Padding(
-                    padding: EdgeInsets.only(right: leadingInset),
-                    child: MouseRegion(
-                      cursor: SystemMouseCursors.click,
-                      child: GestureDetector(
-                        onTap: _refresh,
-                        child: RotationTransition(
-                          turns: _refreshIconController,
-                          child: Icon(
-                            Icons.refresh,
-                            color:
-                                Theme.of(context).colorScheme.onSurfaceVariant,
-                            size: 18,
+                    Padding(
+                      padding: EdgeInsets.only(right: leadingInset),
+                      child: MouseRegion(
+                        cursor: SystemMouseCursors.click,
+                        child: GestureDetector(
+                          onTap: _refresh,
+                          child: RotationTransition(
+                            turns: _refreshIconController,
+                            child: Icon(
+                              Icons.refresh,
+                              color: toolbarForeground,
+                              size: 18,
+                            ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           );
-    final double topToolbarInset =
-        (isMacDesktop && !widget.hideAppBar) ? _kMacOsTopToolbarInset : 0.0;
+
+    final scaffold = Scaffold(
+      backgroundColor:
+          useAmbient ? Colors.transparent : theme.scaffoldBackgroundColor,
+      appBar: topToolbarInset > 0 && appBarWidget != null
+          ? PreferredSize(
+              preferredSize: Size.fromHeight(52.0 + topToolbarInset),
+              child: Column(
+                children: [
+                  SizedBox(height: topToolbarInset),
+                  appBarWidget,
+                ],
+              ),
+            )
+          : appBarWidget,
+      body: Stack(
+        children: [
+          Column(
+            children: [
+              Container(
+                height: 34,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: useAmbient
+                      ? Colors.transparent
+                      : Theme.of(context).colorScheme.surface,
+                  border: useAmbient
+                      ? null
+                      : Border(
+                          bottom: BorderSide(
+                            color: toolbarDividerColor,
+                            width: 1,
+                          ),
+                        ),
+                ),
+                child: MouseRegion(
+                  onEnter: (_) {
+                    if (defaultTargetPlatform == TargetPlatform.macOS &&
+                        widget.hideAppBar &&
+                        _reorderableTabs) {
+                      _setWindowMovable(false);
+                    }
+                  },
+                  onExit: (_) {
+                    if (defaultTargetPlatform == TargetPlatform.macOS &&
+                        widget.hideAppBar &&
+                        _reorderableTabs) {
+                      _setWindowMovable(true);
+                    }
+                  },
+                  child: Listener(
+                    behavior: HitTestBehavior.translucent,
+                    onPointerDown: (_) {
+                      if (widget.hideAppBar && _reorderableTabs) {
+                        _setWindowMovable(false);
+                      }
+                    },
+                    onPointerUp: (_) {
+                      if (widget.hideAppBar && _reorderableTabs) {
+                        _setWindowMovable(true);
+                      }
+                    },
+                    onPointerCancel: (_) {
+                      if (widget.hideAppBar && _reorderableTabs) {
+                        _setWindowMovable(true);
+                      }
+                    },
+                    child: _reorderableTabs
+                        ? ReorderableListView.builder(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: tabs.length,
+                            onReorder: _reorderTab,
+                            onReorderStart: (_) {
+                              _setWindowMovable(false);
+                            },
+                            onReorderEnd: (_) {
+                              _setWindowMovable(true);
+                            },
+                            buildDefaultDragHandles: false,
+                            itemBuilder: (context, index) {
+                              final tab = tabs[index];
+                              final isSelected = tabController.index == index;
+                              return ReorderableDragStartListener(
+                                key: ObjectKey(tab),
+                                index: index,
+                                child: MouseRegion(
+                                  cursor: SystemMouseCursors.click,
+                                  child: GestureDetector(
+                                    onTap: () => setState(
+                                        () => tabController.index = index),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 12, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        border: Border(
+                                          bottom: BorderSide(
+                                            color: isSelected && !useAmbient
+                                                ? Theme.of(context)
+                                                    .colorScheme
+                                                    .primary
+                                                : Colors.transparent,
+                                            width: 2,
+                                          ),
+                                        ),
+                                      ),
+                                      child: _buildTabItem(
+                                          tab, index, isSelected,
+                                          showDragHandle: true),
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          )
+                        : Theme(
+                            data: Theme.of(context).copyWith(
+                              hoverColor: Colors.transparent,
+                              splashColor: Colors.transparent,
+                              highlightColor: Colors.transparent,
+                            ),
+                            child: TabBar(
+                              controller: tabController,
+                              isScrollable: true,
+                              tabAlignment: TabAlignment.start,
+                              padding: EdgeInsets.zero,
+                              dividerHeight: useAmbient ? 0.0 : 1.0,
+                              overlayColor:
+                                  WidgetStateProperty.all(Colors.transparent),
+                              indicatorColor:
+                                  widget.themeMode == AppThemeMode.adjust
+                                      ? Colors.transparent
+                                      : Theme.of(context).colorScheme.primary,
+                              dividerColor: useAmbient
+                                  ? Colors.transparent
+                                  : toolbarDividerColor,
+                              labelColor:
+                                  Theme.of(context).colorScheme.onSurface,
+                              unselectedLabelColor: Theme.of(context)
+                                  .colorScheme
+                                  .onSurface
+                                  .withValues(alpha: 0.6),
+                              tabs: tabs.asMap().entries.map((entry) {
+                                final index = entry.key;
+                                final tab = entry.value;
+                                final isSelected = tabController.index == index;
+                                return Tab(
+                                  height: 30,
+                                  child: _buildTabItem(tab, index, isSelected),
+                                );
+                              }).toList(),
+                            ),
+                          ),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: IgnorePointer(
+                  ignoring:
+                      activeTab.urlFocusNode.hasFocus || _urlAutocompleteOpen,
+                  child: _reorderableTabs
+                      ? IndexedStack(
+                          index: tabController.index,
+                          children:
+                              tabs.map((tab) => _buildTabBody(tab)).toList(),
+                        )
+                      : TabBarView(
+                          controller: tabController,
+                          children:
+                              tabs.map((tab) => _buildTabBody(tab)).toList(),
+                        ),
+                ),
+              ),
+            ],
+          ),
+          if (widget.hideAppBar)
+            Positioned(
+              top: 16,
+              right: 16,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceContainer,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.1),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    MouseRegion(
+                      cursor: SystemMouseCursors.click,
+                      child: GestureDetector(
+                        onTap: _goBack,
+                        child: Padding(
+                          padding: const EdgeInsets.all(8),
+                          child: Icon(Icons.arrow_back_ios,
+                              size: 18,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant),
+                        ),
+                      ),
+                    ),
+                    MouseRegion(
+                      cursor: SystemMouseCursors.click,
+                      child: GestureDetector(
+                        onTap: _goForward,
+                        child: Padding(
+                          padding: const EdgeInsets.all(8),
+                          child: Icon(Icons.arrow_forward_ios,
+                              size: 18,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant),
+                        ),
+                      ),
+                    ),
+                    MouseRegion(
+                      cursor: SystemMouseCursors.click,
+                      child: GestureDetector(
+                        onTap: _showQuickUrlPrompt,
+                        child: Padding(
+                          padding: const EdgeInsets.all(8),
+                          child: Icon(Icons.search,
+                              size: 18,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant),
+                        ),
+                      ),
+                    ),
+                    MouseRegion(
+                      cursor: SystemMouseCursors.click,
+                      child: GestureDetector(
+                        onTap: _refresh,
+                        child: Padding(
+                          padding: const EdgeInsets.all(8),
+                          child: Icon(Icons.refresh,
+                              size: 18,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant),
+                        ),
+                      ),
+                    ),
+                    MouseRegion(
+                      cursor: SystemMouseCursors.click,
+                      child: GestureDetector(
+                        onTap: _addNewTab,
+                        child: Padding(
+                          padding: const EdgeInsets.all(8),
+                          child: Icon(Icons.add,
+                              size: 18,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant),
+                        ),
+                      ),
+                    ),
+                    MouseRegion(
+                      cursor: SystemMouseCursors.click,
+                      child: GestureDetector(
+                        onTap: _showSettings,
+                        child: Padding(
+                          padding: const EdgeInsets.all(8),
+                          child: Icon(Icons.settings,
+                              size: 18,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant),
+                        ),
+                      ),
+                    ),
+                    _buildMenuButton(iconSize: 18),
+                  ],
+                ),
+              ),
+            ),
+          if (_dragging)
+            Container(
+              color:
+                  Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.file_open,
+                      size: 64,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Drop file to open',
+                      style: TextStyle(
+                        fontSize: 18,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          if (!_isOnline)
+            Positioned(
+              top: widget.hideAppBar ? 16 : 0,
+              left: 0,
+              right: 0,
+              child: Material(
+                color: Theme.of(context).colorScheme.errorContainer,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.wifi_off,
+                        size: 16,
+                        color: Theme.of(context).colorScheme.onErrorContainer,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'No internet connection',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onErrorContainer,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
 
     return DropTarget(
       onDragEntered: (details) => setState(() => _dragging = true),
@@ -5216,357 +5944,14 @@ class _BrowserPageState extends State<BrowserPage>
           _loadUrl(path);
         }
       },
-      child: Scaffold(
-        appBar: topToolbarInset > 0 && appBarWidget != null
-            ? PreferredSize(
-                preferredSize:
-                    Size.fromHeight(kToolbarHeight + topToolbarInset),
-                child: Column(
-                  children: [
-                    Container(
-                      height: topToolbarInset,
-                      color: Theme.of(context).colorScheme.surface,
-                    ),
-                    appBarWidget,
-                  ],
-                ),
-              )
-            : appBarWidget,
-        body: Stack(
-          children: [
-            Column(
+      child: useAmbient
+          ? Stack(
               children: [
-                Container(
-                  height: 34,
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surface,
-                    border: Border(
-                      bottom: BorderSide(
-                        color: widget.themeMode == AppThemeMode.adjust
-                            ? Colors.transparent
-                            : Theme.of(context)
-                                .colorScheme
-                                .outline
-                                .withValues(alpha: 0.2),
-                        width: 1,
-                      ),
-                    ),
-                  ),
-                  child: MouseRegion(
-                    onEnter: (_) {
-                      if (defaultTargetPlatform == TargetPlatform.macOS &&
-                          widget.hideAppBar &&
-                          _reorderableTabs) {
-                        _setWindowMovable(false);
-                      }
-                    },
-                    onExit: (_) {
-                      if (defaultTargetPlatform == TargetPlatform.macOS &&
-                          widget.hideAppBar &&
-                          _reorderableTabs) {
-                        _setWindowMovable(true);
-                      }
-                    },
-                    child: Listener(
-                      behavior: HitTestBehavior.translucent,
-                      onPointerDown: (_) {
-                        if (widget.hideAppBar && _reorderableTabs) {
-                          _setWindowMovable(false);
-                        }
-                      },
-                      onPointerUp: (_) {
-                        if (widget.hideAppBar && _reorderableTabs) {
-                          _setWindowMovable(true);
-                        }
-                      },
-                      onPointerCancel: (_) {
-                        if (widget.hideAppBar && _reorderableTabs) {
-                          _setWindowMovable(true);
-                        }
-                      },
-                      child: _reorderableTabs
-                          ? ReorderableListView.builder(
-                              scrollDirection: Axis.horizontal,
-                              itemCount: tabs.length,
-                              onReorder: _reorderTab,
-                              onReorderStart: (_) {
-                                _setWindowMovable(false);
-                              },
-                              onReorderEnd: (_) {
-                                _setWindowMovable(true);
-                              },
-                              buildDefaultDragHandles: false,
-                              itemBuilder: (context, index) {
-                                final tab = tabs[index];
-                                final isSelected = tabController.index == index;
-                                return ReorderableDragStartListener(
-                                  key: ObjectKey(tab),
-                                  index: index,
-                                  child: MouseRegion(
-                                    cursor: SystemMouseCursors.click,
-                                    child: GestureDetector(
-                                      onTap: () => setState(
-                                          () => tabController.index = index),
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 12, vertical: 4),
-                                        decoration: BoxDecoration(
-                                          border: Border(
-                                            bottom: BorderSide(
-                                              color: isSelected
-                                                  ? Theme.of(context)
-                                                      .colorScheme
-                                                      .primary
-                                                  : Colors.transparent,
-                                              width: 2,
-                                            ),
-                                          ),
-                                        ),
-                                        child: _buildTabItem(
-                                            tab, index, isSelected,
-                                            showDragHandle: true),
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              },
-                            )
-                          : Theme(
-                              data: Theme.of(context).copyWith(
-                                hoverColor: Colors.transparent,
-                                splashColor: Colors.transparent,
-                                highlightColor: Colors.transparent,
-                              ),
-                              child: TabBar(
-                                controller: tabController,
-                                isScrollable: true,
-                                tabAlignment: TabAlignment.start,
-                                padding: EdgeInsets.zero,
-                                overlayColor:
-                                    WidgetStateProperty.all(Colors.transparent),
-                                indicatorColor:
-                                    widget.themeMode == AppThemeMode.adjust
-                                        ? Colors.transparent
-                                        : Theme.of(context).colorScheme.primary,
-                                dividerColor:
-                                    widget.themeMode == AppThemeMode.adjust
-                                        ? Colors.transparent
-                                        : Theme.of(context)
-                                            .colorScheme
-                                            .outline
-                                            .withValues(alpha: 0.2),
-                                labelColor:
-                                    Theme.of(context).colorScheme.onSurface,
-                                unselectedLabelColor: Theme.of(context)
-                                    .colorScheme
-                                    .onSurface
-                                    .withValues(alpha: 0.6),
-                                tabs: tabs.asMap().entries.map((entry) {
-                                  final index = entry.key;
-                                  final tab = entry.value;
-                                  final isSelected =
-                                      tabController.index == index;
-                                  return Tab(
-                                    height: 30,
-                                    child:
-                                        _buildTabItem(tab, index, isSelected),
-                                  );
-                                }).toList(),
-                              ),
-                            ),
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: IgnorePointer(
-                    ignoring:
-                        activeTab.urlFocusNode.hasFocus || _urlAutocompleteOpen,
-                    child: _reorderableTabs
-                        ? IndexedStack(
-                            index: tabController.index,
-                            children:
-                                tabs.map((tab) => _buildTabBody(tab)).toList(),
-                          )
-                        : TabBarView(
-                            controller: tabController,
-                            children:
-                                tabs.map((tab) => _buildTabBody(tab)).toList(),
-                          ),
-                  ),
-                ),
+                Positioned.fill(child: _buildAmbientBackground(context)),
+                scaffold,
               ],
-            ),
-            if (widget.hideAppBar)
-              Positioned(
-                top: 16,
-                right: 16,
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surfaceContainer,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.1),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      MouseRegion(
-                        cursor: SystemMouseCursors.click,
-                        child: GestureDetector(
-                          onTap: _goBack,
-                          child: Padding(
-                            padding: const EdgeInsets.all(8),
-                            child: Icon(Icons.arrow_back_ios,
-                                size: 18,
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .onSurfaceVariant),
-                          ),
-                        ),
-                      ),
-                      MouseRegion(
-                        cursor: SystemMouseCursors.click,
-                        child: GestureDetector(
-                          onTap: _goForward,
-                          child: Padding(
-                            padding: const EdgeInsets.all(8),
-                            child: Icon(Icons.arrow_forward_ios,
-                                size: 18,
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .onSurfaceVariant),
-                          ),
-                        ),
-                      ),
-                      MouseRegion(
-                        cursor: SystemMouseCursors.click,
-                        child: GestureDetector(
-                          onTap: _showQuickUrlPrompt,
-                          child: Padding(
-                            padding: const EdgeInsets.all(8),
-                            child: Icon(Icons.search,
-                                size: 18,
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .onSurfaceVariant),
-                          ),
-                        ),
-                      ),
-                      MouseRegion(
-                        cursor: SystemMouseCursors.click,
-                        child: GestureDetector(
-                          onTap: _refresh,
-                          child: Padding(
-                            padding: const EdgeInsets.all(8),
-                            child: Icon(Icons.refresh,
-                                size: 18,
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .onSurfaceVariant),
-                          ),
-                        ),
-                      ),
-                      MouseRegion(
-                        cursor: SystemMouseCursors.click,
-                        child: GestureDetector(
-                          onTap: _addNewTab,
-                          child: Padding(
-                            padding: const EdgeInsets.all(8),
-                            child: Icon(Icons.add,
-                                size: 18,
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .onSurfaceVariant),
-                          ),
-                        ),
-                      ),
-                      MouseRegion(
-                        cursor: SystemMouseCursors.click,
-                        child: GestureDetector(
-                          onTap: _showSettings,
-                          child: Padding(
-                            padding: const EdgeInsets.all(8),
-                            child: Icon(Icons.settings,
-                                size: 18,
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .onSurfaceVariant),
-                          ),
-                        ),
-                      ),
-                      _buildMenuButton(iconSize: 18),
-                    ],
-                  ),
-                ),
-              ),
-            if (_dragging)
-              Container(
-                color: Theme.of(context)
-                    .colorScheme
-                    .primary
-                    .withValues(alpha: 0.1),
-                child: Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.file_open,
-                        size: 64,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Drop file to open',
-                        style: TextStyle(
-                          fontSize: 18,
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            if (!_isOnline)
-              Positioned(
-                top: widget.hideAppBar ? 16 : 0,
-                left: 0,
-                right: 0,
-                child: Material(
-                  color: Theme.of(context).colorScheme.errorContainer,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.wifi_off,
-                          size: 16,
-                          color: Theme.of(context).colorScheme.onErrorContainer,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'No internet connection',
-                          style: TextStyle(
-                            color:
-                                Theme.of(context).colorScheme.onErrorContainer,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
+            )
+          : scaffold,
     );
   }
 }
