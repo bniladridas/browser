@@ -53,5 +53,8 @@
   "1.10.3": [
     "Tightened camera and microphone permissions.",
     "Guarded iOS until the Info.plist names camera and mic."
+  ],
+  "1.11.0": [
+    "Implement global ambient mode."
   ]
 }
