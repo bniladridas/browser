@@ -20,6 +20,7 @@ import 'package:window_manager/window_manager.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'logging/logger.dart';
 import 'features/theme_utils.dart';
+import 'features/profile_manager.dart';
 import 'ux/browser_page.dart';
 import 'package:pkg/ai_service.dart';
 import 'constants.dart';
@@ -386,6 +387,8 @@ class _MyAppState extends State<MyApp> {
   }
 }
 
+final ProfileManager profileManager = ProfileManager();
+
 void main() async {
   runZonedGuarded(() async {
     WidgetsFlutterBinding.ensureInitialized();
@@ -421,6 +424,11 @@ void main() async {
       }
     } else {
       logger.i('Skipping window manager initialization in integration mode.');
+    }
+    try {
+      await profileManager.initialize();
+    } catch (e) {
+      logger.e('Profile manager initialization failed: $e');
     }
     if (!isIntegrationTest) {
       try {
