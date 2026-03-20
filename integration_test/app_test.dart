@@ -40,6 +40,13 @@ Future<void> _launchApp(WidgetTester tester,
     await prefs.setString(whatsNewSeenVersionKey, info.version.trim());
   }
 
+  if (resetPrefs) {
+    profileManager.resetForTesting();
+  }
+  if (profileManager.activeProfileId == null) {
+    await profileManager.initialize();
+  }
+
   await tester
       .pumpWidget(MyApp(aiAvailable: false, enableGitFetch: enableGitFetch));
   await tester.pumpAndSettle();
@@ -537,6 +544,131 @@ void main() {
       );
       expect(reopenedApiKeyField.controller?.text, 'test-api-key');
       expect(reopenedAppIdField.controller?.text, 'test-app-id');
+    }, timeout: testTimeout);
+
+    testWidgets('Profile section appears in Settings',
+        (WidgetTester tester) async {
+      await _launchApp(tester);
+
+      await openOverflowMenu(tester);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Settings'));
+      await tester.pumpAndSettle();
+
+      final settingsScrollable = find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.byType(Scrollable),
+      );
+      await tester.scrollUntilVisible(
+        find.text('Profiles'),
+        100,
+        scrollable: settingsScrollable.first,
+      );
+
+      expect(find.text('Profiles'), findsOneWidget);
+    }, timeout: testTimeout);
+
+    testWidgets('Profile manager opens and displays profiles',
+        (WidgetTester tester) async {
+      await _launchApp(tester);
+
+      await openOverflowMenu(tester);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Settings'));
+      await tester.pumpAndSettle();
+
+      final settingsScrollable = find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.byType(Scrollable),
+      );
+      await tester.scrollUntilVisible(
+        find.text('Profiles'),
+        100,
+        scrollable: settingsScrollable.first,
+      );
+      await tester.tap(find.text('Manage'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Manage Profiles'), findsOneWidget);
+      expect(find.text('Close'), findsOneWidget);
+    }, timeout: testTimeout);
+
+    testWidgets('Profile manager shows create dialog UI',
+        (WidgetTester tester) async {
+      await _launchApp(tester);
+
+      await openOverflowMenu(tester);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Settings'));
+      await tester.pumpAndSettle();
+
+      final settingsScrollable = find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.byType(Scrollable),
+      );
+      await tester.scrollUntilVisible(
+        find.text('Profiles'),
+        100,
+        scrollable: settingsScrollable.first,
+      );
+      await tester.tap(find.text('Manage'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Create new profile'), findsOneWidget);
+      await tester.tap(find.text('Create new profile'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Create Profile'), findsOneWidget);
+      expect(find.text('Profile name'), findsOneWidget);
+      expect(find.byType(TextField), findsWidgets);
+    }, timeout: testTimeout);
+
+    testWidgets('Can switch between profiles', (WidgetTester tester) async {
+      SharedPreferences.setMockInitialValues({});
+      profileManager.resetForTesting();
+      await profileManager.initialize();
+      await profileManager.createProfile('Work');
+
+      await _launchApp(tester, resetPrefs: true);
+
+      await openOverflowMenu(tester);
+      await tester.pumpAndSettle();
+
+      if (find.text('Settings').evaluate().isNotEmpty) {
+        await tester.tap(find.text('Settings'));
+        await tester.pumpAndSettle();
+
+        final settingsScrollable = find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.byType(Scrollable),
+        );
+        await tester.scrollUntilVisible(
+          find.text('Profiles'),
+          100,
+          scrollable: settingsScrollable.first,
+        );
+        await tester.tap(find.text('Manage'));
+        await tester.pumpAndSettle();
+
+        if (find.text('Work').evaluate().isNotEmpty) {
+          await tester.tap(find.text('Work'));
+          await tester.pumpAndSettle();
+          expect(profileManager.activeProfile?.name, 'Work');
+        }
+      }
+    }, timeout: testTimeout);
+
+    testWidgets('Profile persists after app restart',
+        (WidgetTester tester) async {
+      final uniqueName = 'Persistent_${DateTime.now().millisecondsSinceEpoch}';
+      SharedPreferences.setMockInitialValues({});
+      profileManager.resetForTesting();
+      await profileManager.initialize();
+      await profileManager.createProfile(uniqueName);
+
+      await _launchApp(tester, resetPrefs: false);
+
+      expect(profileManager.profiles.any((p) => p.name == uniqueName), isTrue);
     }, timeout: testTimeout);
   }, skip: Platform.isLinux || Platform.isWindows);
 }

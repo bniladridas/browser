@@ -38,6 +38,8 @@ import '../features/login_detection.dart';
 import '../features/webauthn_script.dart';
 import '../features/webauthn_service.dart';
 import '../browser_state.dart';
+import '../main.dart' show profileManager;
+import '../models/user_profile.dart';
 
 import '../logging/logger.dart';
 import '../logging/network_monitor.dart';
@@ -512,6 +514,59 @@ class SettingsDialog extends HookWidget {
                       ),
                     ),
                   ),
+                  const SizedBox(height: 4),
+                  Padding(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    child: Row(
+                      children: [
+                        Text(
+                          'Profiles',
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: theme.colorScheme.primary,
+                          ),
+                        ),
+                        const Spacer(),
+                        MouseRegion(
+                          cursor: SystemMouseCursors.click,
+                          child: TextButton(
+                            onPressed: () => _showProfileManagerDialog(
+                                context, ambientToolbarEnabled.value),
+                            style: TextButton.styleFrom(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 8),
+                              minimumSize: const Size(0, 24),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.settings, size: 14),
+                                SizedBox(width: 4),
+                                Text('Manage'),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: ListenableBuilder(
+                      listenable: profileManager,
+                      builder: (context, _) => Text(
+                        'Active: ${profileManager.activeProfile?.name ?? "None"}',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          fontSize: 10,
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Divider(),
                   MouseRegion(
                     cursor: SystemMouseCursors.click,
                     child: SwitchListTile(
@@ -1015,6 +1070,305 @@ class SettingsDialog extends HookWidget {
           child: const Text('Save'),
         ),
       ],
+    );
+  }
+
+  void _showProfileManagerDialog(BuildContext dialogContext, bool ambient) {
+    showDialog<void>(
+      context: dialogContext,
+      builder: (context) => _ProfileManagerDialog(
+        onProfileChanged: () {},
+        ambientEnabled: ambient,
+      ),
+    );
+  }
+}
+
+class _ProfileManagerDialog extends StatefulWidget {
+  final VoidCallback onProfileChanged;
+  final bool ambientEnabled;
+
+  const _ProfileManagerDialog({
+    required this.onProfileChanged,
+    required this.ambientEnabled,
+  });
+
+  @override
+  State<_ProfileManagerDialog> createState() => _ProfileManagerDialogState();
+}
+
+class _ProfileManagerDialogState extends State<_ProfileManagerDialog> {
+  final noHoverOverlay = WidgetStateProperty.resolveWith<Color?>((states) {
+    return states.contains(WidgetState.hovered) ? Colors.transparent : null;
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return AlertDialog(
+      backgroundColor: widget.ambientEnabled
+          ? theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.9)
+          : null,
+      title: const Text('Manage Profiles'),
+      content: SizedBox(
+        width: 300,
+        child: Theme(
+          data: theme.copyWith(
+            splashFactory: NoSplash.splashFactory,
+            hoverColor: Colors.transparent,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListenableBuilder(
+                listenable: profileManager,
+                builder: (context, _) => ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 200),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      children: profileManager.profiles.map((profile) {
+                        final isActive =
+                            profile.id == profileManager.activeProfileId;
+                        return Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: isActive
+                                ? null
+                                : () async {
+                                    await profileManager
+                                        .switchProfile(profile.id);
+                                    widget.onProfileChanged();
+                                    if (mounted) setState(() {});
+                                  },
+                            hoverColor: Colors.transparent,
+                            splashColor: Colors.transparent,
+                            highlightColor: Colors.transparent,
+                            child: ListTile(
+                              dense: true,
+                              hoverColor: Colors.transparent,
+                              selectedColor: profile.color,
+                              selected: isActive,
+                              leading: CircleAvatar(
+                                radius: 12,
+                                backgroundColor: profile.color,
+                                child: Text(
+                                  profile.name.isNotEmpty
+                                      ? profile.name[0].toUpperCase()
+                                      : '?',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                              title: Text(profile.name),
+                              trailing: isActive
+                                  ? Icon(Icons.check,
+                                      size: 18, color: profile.color)
+                                  : profileManager.canDelete(profile.id)
+                                      ? IconButton(
+                                          icon: const Icon(Icons.delete_outline,
+                                              size: 18),
+                                          onPressed: () =>
+                                              _confirmDelete(profile),
+                                        )
+                                      : null,
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ),
+              ),
+              const Divider(),
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: _showCreateProfileDialog,
+                  hoverColor: Colors.transparent,
+                  splashColor: Colors.transparent,
+                  highlightColor: Colors.transparent,
+                  child: const ListTile(
+                    dense: true,
+                    leading: Icon(Icons.add),
+                    title: Text('Create new profile'),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          style: ButtonStyle(overlayColor: noHoverOverlay),
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Close'),
+        ),
+      ],
+    );
+  }
+
+  void _showCreateProfileDialog() {
+    final nameController = TextEditingController();
+    int? selectedColorIndex;
+    final theme = Theme.of(context);
+
+    final dialogTheme = theme.copyWith(
+      splashFactory: NoSplash.splashFactory,
+      highlightColor: Colors.transparent,
+      hoverColor: Colors.transparent,
+      inputDecorationTheme: theme.inputDecorationTheme.copyWith(
+        hoverColor: Colors.transparent,
+      ),
+    );
+    showDialog<void>(
+      context: context,
+      builder: (context) => Theme(
+        data: dialogTheme,
+        child: StatefulBuilder(
+          builder: (context, setStateDialog) => AlertDialog(
+            title: const Text('Create Profile'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TextField(
+                  controller: nameController,
+                  onTap: () {
+                    nameController.selection = TextSelection.collapsed(
+                      offset: nameController.text.length,
+                    );
+                  },
+                  decoration: InputDecoration(
+                    labelText: 'Profile name',
+                    hintText: 'Enter profile name',
+                    isDense: true,
+                    filled: false,
+                    enabledBorder: UnderlineInputBorder(
+                      borderSide: BorderSide(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    focusedBorder: UnderlineInputBorder(
+                      borderSide: BorderSide(
+                        color: theme.colorScheme.primary,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Color',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  children: List.generate(UserProfile.availableColors.length,
+                      (index) {
+                    final color = UserProfile.availableColors[index];
+                    return Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () {
+                          setStateDialog(() {
+                            selectedColorIndex = index;
+                          });
+                        },
+                        hoverColor: Colors.transparent,
+                        splashColor: Colors.transparent,
+                        highlightColor: Colors.transparent,
+                        child: CircleAvatar(
+                          radius: 12,
+                          backgroundColor: Color(color),
+                          child: selectedColorIndex == index
+                              ? const Icon(Icons.check,
+                                  size: 14, color: Colors.white)
+                              : null,
+                        ),
+                      ),
+                    );
+                  }),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                style: ButtonStyle(overlayColor: noHoverOverlay),
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                style: ButtonStyle(overlayColor: noHoverOverlay),
+                onPressed: () async {
+                  if (nameController.text.trim().isNotEmpty) {
+                    final colorValue = selectedColorIndex != null
+                        ? UserProfile.availableColors[selectedColorIndex!]
+                        : null;
+                    await profileManager.createProfile(
+                      nameController.text.trim(),
+                      colorValue: colorValue,
+                    );
+                    if (mounted) {
+                      Navigator.pop(context);
+                      setState(() {});
+                    }
+                  }
+                },
+                child: const Text('Create'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _confirmDelete(UserProfile profile) {
+    final dialogTheme = Theme.of(context).copyWith(
+      splashFactory: NoSplash.splashFactory,
+      hoverColor: Colors.transparent,
+    );
+    showDialog<void>(
+      context: context,
+      builder: (context) => Theme(
+        data: dialogTheme,
+        child: AlertDialog(
+          title: Text('Erase ${profile.name}?'),
+          content: Text(
+            'All browsing data for this profile will be lost.',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          actions: [
+            TextButton(
+              style: ButtonStyle(overlayColor: noHoverOverlay),
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              style: ButtonStyle(
+                overlayColor: noHoverOverlay,
+              ),
+              onPressed: () async {
+                await profileManager.deleteProfile(profile.id);
+                widget.onProfileChanged();
+                if (mounted) {
+                  Navigator.pop(context);
+                  setState(() {});
+                }
+              },
+              child: Text(
+                'Erase',
+                style: TextStyle(color: Colors.red.shade600),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -1595,6 +1949,7 @@ class _BrowserPageState extends State<BrowserPage>
     tabController.addListener(_onTabChanged);
     _loadBookmarks();
     _loadHistory();
+    profileManager.addListener(_onProfileChanged);
     if (widget.adBlocking) {
       loadAdBlockers();
     }
@@ -1987,6 +2342,14 @@ class _BrowserPageState extends State<BrowserPage>
       } else {
         widget.onPageThemeChanged?.call(ThemeMode.system, null);
       }
+    }
+    if (oldWidget.privateBrowsing && !widget.privateBrowsing) {
+      _loadBookmarks();
+      _loadHistory();
+    }
+    if (!oldWidget.privateBrowsing && widget.privateBrowsing) {
+      bookmarkManager.clear();
+      _history.clear();
     }
   }
 
@@ -3171,6 +3534,7 @@ class _BrowserPageState extends State<BrowserPage>
     _removeUrlAutocompleteOverlay(updatePointerEvents: false);
     _overflowMenuCloseTimer?.cancel();
     _windowButtonsSyncRetryTimer?.cancel();
+    profileManager.removeListener(_onProfileChanged);
     WidgetsBinding.instance.removeObserver(this);
     _keyboardFocusNode.dispose();
     for (final tab in tabs) {
@@ -3203,28 +3567,38 @@ class _BrowserPageState extends State<BrowserPage>
   }
 
   Future<void> _loadBookmarks() async {
+    if (widget.privateBrowsing) return;
+    final bookmarksKey = profileManager.bookmarksKey;
     final prefs = await SharedPreferences.getInstance();
-    final bookmarksJson = prefs.getString(bookmarksStorageKey);
+    if (profileManager.bookmarksKey != bookmarksKey) return;
+    final bookmarksJson = prefs.getString(bookmarksKey);
     if (bookmarksJson != null) {
       try {
         bookmarkManager.load(bookmarksJson);
       } catch (e, s) {
         logger.w('Failed to load bookmarks', error: e, stackTrace: s);
-        await prefs.remove(bookmarksStorageKey);
+        if (profileManager.bookmarksKey == bookmarksKey) {
+          await prefs.remove(bookmarksKey);
+        }
       }
     }
   }
 
   Future<void> _saveBookmarks() async {
     if (widget.privateBrowsing) return;
+    final bookmarksKey = profileManager.bookmarksKey;
+    final data = bookmarkManager.save();
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(bookmarksStorageKey, bookmarkManager.save());
+    if (profileManager.bookmarksKey != bookmarksKey) return;
+    await prefs.setString(bookmarksKey, data);
   }
 
   Future<void> _loadHistory() async {
     if (widget.privateBrowsing) return;
+    final historyKey = profileManager.historyKey;
     final prefs = await SharedPreferences.getInstance();
-    final historyJson = prefs.getString(browsingHistoryKey);
+    if (profileManager.historyKey != historyKey) return;
+    final historyJson = prefs.getString(historyKey);
     if (historyJson == null || historyJson.trim().isEmpty) {
       return;
     }
@@ -3247,8 +3621,21 @@ class _BrowserPageState extends State<BrowserPage>
 
   Future<void> _saveHistory() async {
     if (widget.privateBrowsing) return;
+    final historyKey = profileManager.historyKey;
+    final data = jsonEncode(_history);
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(browsingHistoryKey, jsonEncode(_history));
+    if (profileManager.historyKey != historyKey) return;
+    await prefs.setString(historyKey, data);
+  }
+
+  void _onProfileChanged() {
+    if (!mounted) return;
+    if (widget.privateBrowsing) return;
+    bookmarkManager.clear();
+    _history.clear();
+    _loadBookmarks();
+    _loadHistory();
+    setState(() {});
   }
 
   void _recordHistory(TabData tab, String url) {
@@ -3687,13 +4074,22 @@ class _BrowserPageState extends State<BrowserPage>
         context: context,
         barrierDismissible: true,
         barrierLabel: 'Settings',
-        barrierColor: Colors.black54,
+        barrierColor: _ambientActive ? Colors.transparent : Colors.black54,
         transitionDuration: const Duration(milliseconds: 200),
         pageBuilder: (context, animation, secondaryAnimation) {
+          final theme = Theme.of(context);
           return Align(
             alignment: Alignment.centerRight,
             child: Material(
               type: MaterialType.transparency,
+              color: _ambientActive
+                  ? theme.colorScheme.surfaceContainerHighest
+                      .withValues(alpha: 0.95)
+                  : null,
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(12),
+                bottomLeft: Radius.circular(12),
+              ),
               child: SettingsDialog(
                 onSettingsChanged: () {
                   _loadReorderableTabs();
@@ -4554,11 +4950,6 @@ class _BrowserPageState extends State<BrowserPage>
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Search or URL',
-                    style: theme.textTheme.titleSmall?.copyWith(fontSize: 13),
-                  ),
-                  const SizedBox(height: 8),
                   TextFormField(
                     initialValue: inputValue,
                     autofocus: true,

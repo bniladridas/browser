@@ -107,16 +107,25 @@ void main() {
         ),
       );
 
-      await tester.tap(_switchTileByTitle('Legacy User Agent'));
-      await tester.pumpAndSettle();
-      await tester.tap(_switchTileByTitle('AI Search Suggestions'));
-      await tester.pumpAndSettle();
-
-      final darkChip = find.widgetWithText(ChoiceChip, 'dark');
       final settingsScrollable = find.descendant(
         of: find.byType(AlertDialog),
         matching: find.byType(Scrollable),
       );
+
+      await tester.tap(_switchTileByTitle('Legacy User Agent'));
+      await tester.pumpAndSettle();
+
+      if (settingsScrollable.evaluate().isNotEmpty) {
+        await tester.scrollUntilVisible(
+          _switchTileByTitle('AI Search Suggestions'),
+          120,
+          scrollable: settingsScrollable.first,
+        );
+      }
+      await tester.tap(_switchTileByTitle('AI Search Suggestions'));
+      await tester.pumpAndSettle();
+
+      final darkChip = find.widgetWithText(ChoiceChip, 'dark');
       if (settingsScrollable.evaluate().isNotEmpty) {
         await tester.scrollUntilVisible(
           darkChip,
