@@ -2373,9 +2373,8 @@ class _BrowserPageState extends State<BrowserPage>
     String? type;
     int? requestId;
     try {
-      // Check if it's a status message (not JSON)
+      // Skip status messages - they're internal initialization noise
       if (!message.startsWith('{')) {
-        logger.i('WebAuthn status: $message');
         return;
       }
 
@@ -2384,7 +2383,7 @@ class _BrowserPageState extends State<BrowserPage>
       requestId = data['requestId'] as int;
       final options = data['options'] as Map<String, dynamic>;
 
-      logger.i('WebAuthn request: $type (ID: $requestId)');
+      logger.d('WebAuthn request: $type (ID: $requestId)');
 
       final webAuthnService = WebAuthnService();
 
@@ -5049,7 +5048,6 @@ class _BrowserPageState extends State<BrowserPage>
       });
       tab.webViewController!.addJavaScriptChannel('WebAuthnChannel',
           onMessageReceived: (JavaScriptMessage message) async {
-        logger.i('WebAuthn message received');
         _handleWebAuthnMessage(tab, message.message);
       });
       tab.webViewController!.setNavigationDelegate(NavigationDelegate(
