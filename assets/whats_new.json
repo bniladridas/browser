@@ -56,5 +56,8 @@
   ],
   "1.11.0": [
     "Implement global ambient mode."
+  ],
+  "1.12.0": [
+    "Implement user profiles feature for browser."
   ]
 }
