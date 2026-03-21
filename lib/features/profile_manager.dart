@@ -16,6 +16,8 @@ class ProfileManager extends ChangeNotifier {
   static const String _profilesKey = 'user_profiles';
   static const String _activeProfileIdKey = 'active_profile_id';
   static const String _defaultProfileId = 'default';
+  static const String _legacySettingsMigratedKey =
+      'profile_settings_legacy_migrated_v1';
 
   SharedPreferences? _prefs;
   List<UserProfile> _profiles = [];
@@ -30,6 +32,7 @@ class ProfileManager extends ChangeNotifier {
     _prefs = await SharedPreferences.getInstance();
     await _loadProfiles();
     await _ensureDefaultProfile();
+    await _migrateLegacySettingsToDefaultProfile();
   }
 
   Future<void> _loadProfiles() async {
@@ -86,6 +89,70 @@ class ProfileManager extends ChangeNotifier {
     }
   }
 
+  Future<void> _migrateLegacySettingsToDefaultProfile() async {
+    final prefs = _prefs;
+    if (prefs == null) return;
+    if (prefs.getBool(_legacySettingsMigratedKey) == true) return;
+
+    Future<void> migrateLegacyValue<T>({
+      required String key,
+      required T? legacyValue,
+      required Future<bool> Function(String scopedKey, T value) writeScoped,
+    }) async {
+      if (legacyValue == null) return;
+      final scopedKey = '${_defaultProfileId}_$key';
+      if (!prefs.containsKey(scopedKey)) {
+        final success = await writeScoped(scopedKey, legacyValue);
+        if (!success) {
+          debugPrint(
+              'ProfileManager: Failed to migrate legacy pref "$key" to "$scopedKey". Leaving legacy key intact.');
+          return;
+        }
+      }
+      await prefs.remove(key);
+    }
+
+    const boolKeys = <String>[
+      hideAppBarKey,
+      useModernUserAgentKey,
+      enableGitFetchKey,
+      privateBrowsingKey,
+      adBlockingKey,
+      strictModeKey,
+      passwordManagerEnabledKey,
+      reorderableTabsKey,
+      aiSearchSuggestionsEnabledKey,
+      advancedCacheEnabledKey,
+      ambientToolbarEnabledKey,
+    ];
+
+    const stringKeys = <String>[
+      homepageKey,
+      themeModeKey,
+      pageFontFamilyKey,
+      pageFontOverridesKey,
+      navigationCacheIndexKey,
+    ];
+
+    for (final key in boolKeys) {
+      await migrateLegacyValue<bool>(
+        key: key,
+        legacyValue: prefs.getBool(key),
+        writeScoped: prefs.setBool,
+      );
+    }
+
+    for (final key in stringKeys) {
+      await migrateLegacyValue<String>(
+        key: key,
+        legacyValue: prefs.getString(key),
+        writeScoped: prefs.setString,
+      );
+    }
+
+    await prefs.setBool(_legacySettingsMigratedKey, true);
+  }
+
   Future<UserProfile> createProfile(String name, {int? colorValue}) async {
     final id = 'profile_${DateTime.now().millisecondsSinceEpoch}';
     final profile = UserProfile(
@@ -123,8 +190,25 @@ class ProfileManager extends ChangeNotifier {
       await _setActiveProfileId(_profiles.first.id);
     }
 
+    await _erasePrefsForProfile(id);
     await _saveProfiles();
     notifyListeners();
+  }
+
+  Future<void> _erasePrefsForProfile(String profileId) async {
+    final prefs = _prefs;
+    if (prefs == null) {
+      throw StateError(
+          'ProfileManager._erasePrefsForProfile: _prefs is null. Call initialize() first.');
+    }
+    final prefix = '${profileId}_';
+    final keysToRemove = prefs
+        .getKeys()
+        .where((key) => key.startsWith(prefix))
+        .toList(growable: false);
+    for (final key in keysToRemove) {
+      await prefs.remove(key);
+    }
   }
 
   Future<void> switchProfile(String id) async {
@@ -142,6 +226,17 @@ class ProfileManager extends ChangeNotifier {
           'ProfileManager.getProfileStorageKey: _activeProfileId is null. Call initialize() first.');
     }
     return '${_activeProfileId}_$key';
+  }
+
+  /// Returns a profile-scoped key when a profile is active; otherwise returns
+  /// the input key unchanged.
+  ///
+  /// Use this for settings storage in contexts (like widget tests) where the
+  /// profile manager may not be initialized.
+  String getScopedStorageKey(String key) {
+    final id = _activeProfileId;
+    if (id == null || id.isEmpty) return key;
+    return '${id}_$key';
   }
 
   String get bookmarksKey => getProfileStorageKey(bookmarksStorageKey);

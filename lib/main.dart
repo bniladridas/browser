@@ -46,6 +46,8 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> {
   static const String _whatsNewAssetPath = 'assets/whats_new.json';
 
+  String? _lastSettingsProfileId;
+
   AppThemeMode themeMode = AppThemeMode.system;
   AppThemeMode? previewThemeMode;
   ThemeMode adjustedThemeMode = ThemeMode.system;
@@ -68,9 +70,24 @@ class _MyAppState extends State<MyApp> {
   void initState() {
     super.initState();
     _loadSettings();
+    _lastSettingsProfileId = profileManager.activeProfileId;
+    profileManager.addListener(_handleProfileManagerChange);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _maybeShowWhatsNew();
     });
+  }
+
+  @override
+  void dispose() {
+    profileManager.removeListener(_handleProfileManagerChange);
+    super.dispose();
+  }
+
+  void _handleProfileManagerChange() {
+    final current = profileManager.activeProfileId;
+    if (current == _lastSettingsProfileId) return;
+    _lastSettingsProfileId = current;
+    _loadSettings();
   }
 
   Future<void> _maybeShowWhatsNew() async {
@@ -174,31 +191,52 @@ class _MyAppState extends State<MyApp> {
 
   Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
+    String scopedKey(String key) => profileManager.getScopedStorageKey(key);
+    bool readBool(String key, {required bool defaultValue}) =>
+        prefs.getBool(scopedKey(key)) ?? defaultValue;
+
+    String? readString(String key) => prefs.getString(scopedKey(key));
+
     if (mounted) {
+      final storedHomepage = readString(homepageKey);
+      final resolvedHomepage = (storedHomepage?.isNotEmpty ?? false)
+          ? storedHomepage!
+          : defaultHomepageUrl;
+      final resolvedHideAppBar = readBool(hideAppBarKey, defaultValue: false);
+      final resolvedUseModernUserAgent =
+          readBool(useModernUserAgentKey, defaultValue: false);
+      final resolvedEnableGitFetch =
+          readBool(enableGitFetchKey, defaultValue: false);
+      final resolvedPrivateBrowsing =
+          readBool(privateBrowsingKey, defaultValue: false);
+      final resolvedAdBlocking = readBool(adBlockingKey, defaultValue: false);
+      final resolvedStrictMode = readBool(strictModeKey, defaultValue: false);
+      final resolvedPageFontFamily = readString(pageFontFamilyKey) ?? '';
+      final resolvedAiSearchSuggestionsEnabled =
+          readBool(aiSearchSuggestionsEnabledKey, defaultValue: false);
+      final resolvedAdvancedCacheEnabled =
+          readBool(advancedCacheEnabledKey, defaultValue: false);
+      final resolvedAmbientToolbarEnabled =
+          readBool(ambientToolbarEnabledKey, defaultValue: false);
+      final themeString = readString(themeModeKey);
       setState(() {
-        final storedHomepage = prefs.getString(homepageKey);
-        homepage = (storedHomepage == null || storedHomepage.isEmpty)
-            ? defaultHomepageUrl
-            : storedHomepage;
-        hideAppBar = prefs.getBool(hideAppBarKey) ?? false;
-        useModernUserAgent = prefs.getBool(useModernUserAgentKey) ?? false;
-        enableGitFetch = prefs.getBool(enableGitFetchKey) ?? false;
-        privateBrowsing = prefs.getBool(privateBrowsingKey) ?? false;
-        adBlocking = prefs.getBool(adBlockingKey) ?? false;
-        strictMode = prefs.getBool(strictModeKey) ?? false;
-        pageFontFamily = prefs.getString(pageFontFamilyKey) ?? '';
-        aiSearchSuggestionsEnabled =
-            prefs.getBool(aiSearchSuggestionsEnabledKey) ?? false;
-        advancedCacheEnabled = prefs.getBool(advancedCacheEnabledKey) ?? false;
-        ambientToolbarEnabled =
-            prefs.getBool(ambientToolbarEnabledKey) ?? false;
-        final themeString = prefs.getString(themeModeKey);
-        if (themeString != null) {
-          themeMode = AppThemeMode.values.firstWhere(
-            (m) => m.name == themeString,
-            orElse: () => AppThemeMode.system,
-          );
-        }
+        homepage = resolvedHomepage;
+        hideAppBar = resolvedHideAppBar;
+        useModernUserAgent = resolvedUseModernUserAgent;
+        enableGitFetch = resolvedEnableGitFetch;
+        privateBrowsing = resolvedPrivateBrowsing;
+        adBlocking = resolvedAdBlocking;
+        strictMode = resolvedStrictMode;
+        pageFontFamily = resolvedPageFontFamily;
+        aiSearchSuggestionsEnabled = resolvedAiSearchSuggestionsEnabled;
+        advancedCacheEnabled = resolvedAdvancedCacheEnabled;
+        ambientToolbarEnabled = resolvedAmbientToolbarEnabled;
+        themeMode = themeString == null
+            ? AppThemeMode.system
+            : AppThemeMode.values.firstWhere(
+                (m) => m.name == themeString,
+                orElse: () => AppThemeMode.system,
+              );
         previewThemeMode = null;
         if (themeMode != AppThemeMode.adjust) {
           adjustedThemeMode = ThemeMode.system;
