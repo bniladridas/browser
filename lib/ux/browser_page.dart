@@ -372,39 +372,52 @@ class SettingsDialog extends HookWidget {
     final showFirebaseConfig = useState(false);
     final loadedFirebaseConfig =
         useRef<Map<String, String>>(<String, String>{});
+    final lastSettingsProfileId = useRef<String?>(null);
 
     useEffect(() {
+      var cancelled = false;
       Future<void> loadPreferences() async {
         final prefs = await SharedPreferences.getInstance();
-        final storedHomepage = prefs.getString(homepageKey);
-        final resolvedHomepage =
-            (storedHomepage == null || storedHomepage.isEmpty)
-                ? defaultHomepageUrl
-                : storedHomepage;
-        hideAppBar.value = prefs.getBool(hideAppBarKey) ?? false;
+        if (cancelled) return;
+        String scopedKey(String key) => profileManager.getScopedStorageKey(key);
+        bool readBool(String key, {required bool defaultValue}) =>
+            prefs.getBool(scopedKey(key)) ?? defaultValue;
+
+        String? readString(String key) => prefs.getString(scopedKey(key));
+
+        final storedHomepage = readString(homepageKey);
+        final resolvedHomepage = (storedHomepage?.isNotEmpty ?? false)
+            ? storedHomepage!
+            : defaultHomepageUrl;
+        hideAppBar.value = readBool(hideAppBarKey, defaultValue: false);
         useModernUserAgent.value =
-            prefs.getBool(useModernUserAgentKey) ?? false;
-        enableGitFetch.value = prefs.getBool(enableGitFetchKey) ?? false;
-        privateBrowsing.value = prefs.getBool(privateBrowsingKey) ?? false;
+            readBool(useModernUserAgentKey, defaultValue: false);
+        enableGitFetch.value = readBool(enableGitFetchKey, defaultValue: false);
+        privateBrowsing.value =
+            readBool(privateBrowsingKey, defaultValue: false);
         originalPrivateBrowsing.value = privateBrowsing.value;
-        adBlocking.value = prefs.getBool(adBlockingKey) ?? false;
-        strictMode.value = prefs.getBool(strictModeKey) ?? false;
+        adBlocking.value = readBool(adBlockingKey, defaultValue: false);
+        strictMode.value = readBool(strictModeKey, defaultValue: false);
         passwordManagerEnabled.value =
-            prefs.getBool(passwordManagerEnabledKey) ?? false;
-        reorderableTabs.value = prefs.getBool(reorderableTabsKey) ?? false;
+            readBool(passwordManagerEnabledKey, defaultValue: false);
+        reorderableTabs.value =
+            readBool(reorderableTabsKey, defaultValue: false);
         aiSearchSuggestionsEnabled.value =
-            prefs.getBool(aiSearchSuggestionsEnabledKey) ?? false;
+            readBool(aiSearchSuggestionsEnabledKey, defaultValue: false);
         advancedCacheEnabled.value =
-            prefs.getBool(advancedCacheEnabledKey) ?? false;
+            readBool(advancedCacheEnabledKey, defaultValue: false);
         ambientToolbarEnabled.value =
-            prefs.getBool(ambientToolbarEnabledKey) ?? false;
-        if (prefs.getString(themeModeKey) != null) {
-          selectedTheme.value = AppThemeMode.values.firstWhere(
-              (m) => m.name == prefs.getString(themeModeKey),
-              orElse: () => currentTheme ?? AppThemeMode.system);
-        }
+            readBool(ambientToolbarEnabledKey, defaultValue: false);
+        final themeString = readString(themeModeKey);
+        selectedTheme.value = themeString == null
+            ? (currentTheme ?? AppThemeMode.system)
+            : AppThemeMode.values.firstWhere(
+                (m) => m.name == themeString,
+                orElse: () => currentTheme ?? AppThemeMode.system,
+              );
 
         final firebaseConfig = await FirebaseConfigStore.loadSettingsConfig();
+        if (cancelled) return;
         firebaseApiKey.text = firebaseConfig[firebaseApiKeyPref] ?? '';
         firebaseAppId.text = firebaseConfig[firebaseAppIdPref] ?? '';
         firebaseSenderId.text = firebaseConfig[firebaseSenderIdPref] ?? '';
@@ -425,8 +438,20 @@ class SettingsDialog extends HookWidget {
             resolvedHomepage == defaultHomepageUrl ? '' : resolvedHomepage;
       }
 
-      loadPreferences();
-      return null;
+      void handleProfileChange() {
+        final current = profileManager.activeProfileId;
+        if (current == lastSettingsProfileId.value) return;
+        lastSettingsProfileId.value = current;
+        unawaited(loadPreferences());
+      }
+
+      lastSettingsProfileId.value = profileManager.activeProfileId;
+      profileManager.addListener(handleProfileChange);
+      unawaited(loadPreferences());
+      return () {
+        cancelled = true;
+        profileManager.removeListener(handleProfileChange);
+      };
     }, const []);
 
     if (homepage.value == null) {
@@ -996,6 +1021,8 @@ class SettingsDialog extends HookWidget {
               homepageToSave = processed;
             }
             final prefs = await SharedPreferences.getInstance();
+            String scopedKey(String key) =>
+                profileManager.getScopedStorageKey(key);
 
             // Check if Firebase config changed from loaded values.
             final oldApiKey =
@@ -1021,24 +1048,28 @@ class SettingsDialog extends HookWidget {
                 oldProjectId != newProjectId ||
                 oldStorageBucket != newStorageBucket;
 
-            await prefs.setString(homepageKey, homepageToSave);
-            await prefs.setBool(hideAppBarKey, hideAppBar.value);
+            await prefs.setString(scopedKey(homepageKey), homepageToSave);
+            await prefs.setBool(scopedKey(hideAppBarKey), hideAppBar.value);
             await prefs.setBool(
-                useModernUserAgentKey, useModernUserAgent.value);
-            await prefs.setBool(enableGitFetchKey, enableGitFetch.value);
-            await prefs.setBool(privateBrowsingKey, privateBrowsing.value);
-            await prefs.setBool(adBlockingKey, adBlocking.value);
-            await prefs.setBool(strictModeKey, strictMode.value);
+                scopedKey(useModernUserAgentKey), useModernUserAgent.value);
             await prefs.setBool(
-                passwordManagerEnabledKey, passwordManagerEnabled.value);
-            await prefs.setBool(reorderableTabsKey, reorderableTabs.value);
-            await prefs.setBool(aiSearchSuggestionsEnabledKey,
+                scopedKey(enableGitFetchKey), enableGitFetch.value);
+            await prefs.setBool(
+                scopedKey(privateBrowsingKey), privateBrowsing.value);
+            await prefs.setBool(scopedKey(adBlockingKey), adBlocking.value);
+            await prefs.setBool(scopedKey(strictModeKey), strictMode.value);
+            await prefs.setBool(scopedKey(passwordManagerEnabledKey),
+                passwordManagerEnabled.value);
+            await prefs.setBool(
+                scopedKey(reorderableTabsKey), reorderableTabs.value);
+            await prefs.setBool(scopedKey(aiSearchSuggestionsEnabledKey),
                 aiSearchSuggestionsEnabled.value);
             await prefs.setBool(
-                advancedCacheEnabledKey, advancedCacheEnabled.value);
-            await prefs.setBool(
-                ambientToolbarEnabledKey, ambientToolbarEnabled.value);
-            await prefs.setString(themeModeKey, selectedTheme.value.name);
+                scopedKey(advancedCacheEnabledKey), advancedCacheEnabled.value);
+            await prefs.setBool(scopedKey(ambientToolbarEnabledKey),
+                ambientToolbarEnabled.value);
+            await prefs.setString(
+                scopedKey(themeModeKey), selectedTheme.value.name);
 
             try {
               await FirebaseConfigStore.saveSettingsConfig(
@@ -1107,10 +1138,15 @@ class _ProfileManagerDialogState extends State<_ProfileManagerDialog> {
     final theme = Theme.of(context);
 
     return AlertDialog(
+      alignment: Alignment.centerRight,
+      insetPadding: const EdgeInsets.fromLTRB(24, 24, 16, 24),
       backgroundColor: widget.ambientEnabled
           ? theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.9)
           : null,
-      title: const Text('Manage Profiles'),
+      title: Text(
+        'Manage Profiles',
+        style: theme.textTheme.titleSmall?.copyWith(fontSize: 15),
+      ),
       content: SizedBox(
         width: 300,
         child: Theme(
@@ -1231,7 +1267,12 @@ class _ProfileManagerDialogState extends State<_ProfileManagerDialog> {
         data: dialogTheme,
         child: StatefulBuilder(
           builder: (context, setStateDialog) => AlertDialog(
-            title: const Text('Create Profile'),
+            alignment: Alignment.centerRight,
+            insetPadding: const EdgeInsets.fromLTRB(24, 24, 16, 24),
+            title: Text(
+              'Create Profile',
+              style: theme.textTheme.titleSmall?.copyWith(fontSize: 15),
+            ),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1338,7 +1379,13 @@ class _ProfileManagerDialogState extends State<_ProfileManagerDialog> {
       builder: (context) => Theme(
         data: dialogTheme,
         child: AlertDialog(
-          title: Text('Erase ${profile.name}?'),
+          alignment: Alignment.centerRight,
+          insetPadding: const EdgeInsets.fromLTRB(24, 24, 16, 24),
+          title: Text(
+            'Erase ${profile.name}?',
+            style:
+                Theme.of(context).textTheme.titleSmall?.copyWith(fontSize: 15),
+          ),
           content: Text(
             'All browsing data for this profile will be lost.',
             style: Theme.of(context).textTheme.bodySmall,
@@ -2582,7 +2629,8 @@ class _BrowserPageState extends State<BrowserPage>
 
   Future<void> _loadFontOverrides() async {
     final prefs = await SharedPreferences.getInstance();
-    final rawOverrides = prefs.getString(pageFontOverridesKey);
+    final rawOverrides = prefs
+        .getString(profileManager.getScopedStorageKey(pageFontOverridesKey));
     if (rawOverrides == null || rawOverrides.trim().isEmpty) {
       return;
     }
@@ -2604,7 +2652,10 @@ class _BrowserPageState extends State<BrowserPage>
 
   Future<void> _persistFontOverrides() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(pageFontOverridesKey, jsonEncode(_siteFontFamilies));
+    await prefs.setString(
+      profileManager.getScopedStorageKey(pageFontOverridesKey),
+      jsonEncode(_siteFontFamilies),
+    );
   }
 
   Map<String, dynamic>? _parseThemeProbe(dynamic result) {
@@ -2704,8 +2755,10 @@ class _BrowserPageState extends State<BrowserPage>
     if (widget.privateBrowsing) return;
 
     final prefs = await SharedPreferences.getInstance();
-    final passwordManagerEnabled =
-        prefs.getBool(passwordManagerEnabledKey) ?? false;
+    final passwordManagerEnabled = prefs.getBool(
+          profileManager.getScopedStorageKey(passwordManagerEnabledKey),
+        ) ??
+        false;
     if (!passwordManagerEnabled) return;
 
     try {
@@ -3500,9 +3553,13 @@ class _BrowserPageState extends State<BrowserPage>
 
   Future<void> _loadReorderableTabs() async {
     final prefs = await SharedPreferences.getInstance();
+    final resolved = prefs.getBool(
+          profileManager.getScopedStorageKey(reorderableTabsKey),
+        ) ??
+        false;
     if (!mounted) return;
     setState(() {
-      _reorderableTabs = prefs.getBool(reorderableTabsKey) ?? false;
+      _reorderableTabs = resolved;
     });
   }
 
@@ -3630,11 +3687,15 @@ class _BrowserPageState extends State<BrowserPage>
 
   void _onProfileChanged() {
     if (!mounted) return;
-    if (widget.privateBrowsing) return;
     bookmarkManager.clear();
     _history.clear();
+    _navigationCacheIndex.clear();
+    _siteFontFamilies.clear();
     _loadBookmarks();
     _loadHistory();
+    unawaited(_loadReorderableTabs());
+    unawaited(_loadFontOverrides());
+    unawaited(_loadNavigationCacheIndex());
     setState(() {});
   }
 
@@ -3664,7 +3725,9 @@ class _BrowserPageState extends State<BrowserPage>
   Future<void> _loadNavigationCacheIndex() async {
     if (widget.privateBrowsing) return;
     final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(navigationCacheIndexKey);
+    final raw = prefs.getString(
+      profileManager.getScopedStorageKey(navigationCacheIndexKey),
+    );
     if (raw == null || raw.trim().isEmpty) return;
     try {
       final decoded = jsonDecode(raw);
@@ -3688,7 +3751,7 @@ class _BrowserPageState extends State<BrowserPage>
     if (widget.privateBrowsing) return;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
-      navigationCacheIndexKey,
+      profileManager.getScopedStorageKey(navigationCacheIndexKey),
       jsonEncode(_navigationCacheIndex),
     );
   }
@@ -4062,6 +4125,8 @@ class _BrowserPageState extends State<BrowserPage>
       }
       _navigationCacheIndex.clear();
       final prefs = await SharedPreferences.getInstance();
+      await prefs
+          .remove(profileManager.getScopedStorageKey(navigationCacheIndexKey));
       await prefs.remove(navigationCacheIndexKey);
     } catch (e, s) {
       logger.w('Failed to clear caches', error: e, stackTrace: s);
@@ -4333,7 +4398,10 @@ class _BrowserPageState extends State<BrowserPage>
       }
     } else {
       if (result.fontFamily == _pageFontFamily) return;
-      await prefs.setString(pageFontFamilyKey, result.fontFamily);
+      await prefs.setString(
+        profileManager.getScopedStorageKey(pageFontFamilyKey),
+        result.fontFamily,
+      );
       setState(() {
         _pageFontFamily = result.fontFamily;
       });
@@ -5407,8 +5475,10 @@ class _BrowserPageState extends State<BrowserPage>
       tab.webViewController!.addJavaScriptChannel('LoginDetector',
           onMessageReceived: (JavaScriptMessage message) async {
         final prefs = await SharedPreferences.getInstance();
-        final passwordManagerEnabled =
-            prefs.getBool(passwordManagerEnabledKey) ?? false;
+        final passwordManagerEnabled = prefs.getBool(
+              profileManager.getScopedStorageKey(passwordManagerEnabledKey),
+            ) ??
+            false;
         if (!passwordManagerEnabled) return;
 
         try {

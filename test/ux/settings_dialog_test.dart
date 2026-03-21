@@ -6,6 +6,7 @@
 
 import 'package:browser/constants.dart';
 import 'package:browser/features/theme_utils.dart';
+import 'package:browser/main.dart' show profileManager;
 import 'package:browser/ux/browser_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -66,14 +67,25 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('SettingsDialog', () {
+    Future<void> initProfileManager() async {
+      profileManager.resetForTesting();
+      await profileManager.initialize();
+    }
+
     testWidgets('loads persisted switch and theme values',
         (WidgetTester tester) async {
-      SharedPreferences.setMockInitialValues({
-        useModernUserAgentKey: true,
-        enableGitFetchKey: true,
-        aiSearchSuggestionsEnabledKey: true,
-        themeModeKey: AppThemeMode.dark.name,
-      });
+      SharedPreferences.setMockInitialValues({});
+      await initProfileManager();
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(
+          profileManager.getScopedStorageKey(useModernUserAgentKey), true);
+      await prefs.setBool(
+          profileManager.getScopedStorageKey(enableGitFetchKey), true);
+      await prefs.setBool(
+          profileManager.getScopedStorageKey(aiSearchSuggestionsEnabledKey),
+          true);
+      await prefs.setString(profileManager.getScopedStorageKey(themeModeKey),
+          AppThemeMode.dark.name);
 
       await _openSettingsDialog(
         tester,
@@ -89,13 +101,80 @@ void main() {
       expect(tester.widget<ChoiceChip>(darkChip).selected, isTrue);
     });
 
-    testWidgets('save persists toggles and theme preview callback',
+    testWidgets('new profiles start with default (off) settings',
         (WidgetTester tester) async {
       SharedPreferences.setMockInitialValues({
-        useModernUserAgentKey: false,
-        aiSearchSuggestionsEnabledKey: false,
-        themeModeKey: AppThemeMode.system.name,
+        // Legacy unscoped prefs (pre-profile settings) that should migrate
+        // only into the default profile.
+        useModernUserAgentKey: true,
       });
+      await initProfileManager();
+
+      await _openSettingsDialog(
+        tester,
+        _dialogHost(aiAvailable: false),
+      );
+      expect(_readSwitchTile(tester, 'Legacy User Agent').value, isTrue);
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+
+      final workProfile = await profileManager.createProfile('Work');
+      await profileManager.switchProfile(workProfile.id);
+
+      await _openSettingsDialog(
+        tester,
+        _dialogHost(aiAvailable: false),
+      );
+      expect(_readSwitchTile(tester, 'Legacy User Agent').value, isFalse);
+    });
+
+    testWidgets('switching profiles refreshes toggles in the same dialog',
+        (WidgetTester tester) async {
+      FlutterSecureStorage.setMockInitialValues({});
+      SharedPreferences.setMockInitialValues({});
+      await initProfileManager();
+
+      final workProfile = await profileManager.createProfile('Work');
+      final prefs = await SharedPreferences.getInstance();
+
+      await prefs.setBool(
+          profileManager.getScopedStorageKey(useModernUserAgentKey), false);
+      await prefs.setString(profileManager.getScopedStorageKey(themeModeKey),
+          AppThemeMode.light.name);
+      await profileManager.switchProfile(workProfile.id);
+      await prefs.setBool(
+          profileManager.getScopedStorageKey(useModernUserAgentKey), true);
+      await prefs.setString(profileManager.getScopedStorageKey(themeModeKey),
+          AppThemeMode.dark.name);
+      await profileManager.switchProfile('default');
+
+      await _openSettingsDialog(
+        tester,
+        _dialogHost(aiAvailable: false),
+      );
+      expect(_readSwitchTile(tester, 'Legacy User Agent').value, isFalse);
+      final lightChip = find.widgetWithText(ChoiceChip, 'light');
+      expect(tester.widget<ChoiceChip>(lightChip).selected, isTrue);
+
+      await profileManager.switchProfile(workProfile.id);
+      await tester.pumpAndSettle();
+      expect(_readSwitchTile(tester, 'Legacy User Agent').value, isTrue);
+      final darkChip = find.widgetWithText(ChoiceChip, 'dark');
+      expect(tester.widget<ChoiceChip>(darkChip).selected, isTrue);
+    });
+
+    testWidgets('save persists toggles and theme preview callback',
+        (WidgetTester tester) async {
+      SharedPreferences.setMockInitialValues({});
+      await initProfileManager();
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(
+          profileManager.getScopedStorageKey(useModernUserAgentKey), false);
+      await prefs.setBool(
+          profileManager.getScopedStorageKey(aiSearchSuggestionsEnabledKey),
+          false);
+      await prefs.setString(profileManager.getScopedStorageKey(themeModeKey),
+          AppThemeMode.system.name);
 
       final previewModes = <AppThemeMode>[];
 
@@ -139,18 +218,29 @@ void main() {
       await tester.tap(find.text('Save'));
       await tester.pumpAndSettle();
 
-      final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getBool(useModernUserAgentKey), isTrue);
-      expect(prefs.getBool(aiSearchSuggestionsEnabledKey), isTrue);
-      expect(prefs.getString(themeModeKey), AppThemeMode.dark.name);
+      final prefsAfter = await SharedPreferences.getInstance();
+      expect(
+          prefsAfter.getBool(
+              profileManager.getScopedStorageKey(useModernUserAgentKey)),
+          isTrue);
+      expect(
+          prefsAfter.getBool(profileManager
+              .getScopedStorageKey(aiSearchSuggestionsEnabledKey)),
+          isTrue);
+      expect(
+          prefsAfter
+              .getString(profileManager.getScopedStorageKey(themeModeKey)),
+          AppThemeMode.dark.name);
       expect(previewModes, contains(AppThemeMode.dark));
     });
 
     testWidgets('cancel does not persist modified values',
         (WidgetTester tester) async {
-      SharedPreferences.setMockInitialValues({
-        useModernUserAgentKey: false,
-      });
+      SharedPreferences.setMockInitialValues({});
+      await initProfileManager();
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(
+          profileManager.getScopedStorageKey(useModernUserAgentKey), false);
 
       var settingsChangedCount = 0;
       await _openSettingsDialog(
@@ -166,14 +256,18 @@ void main() {
       await tester.tap(find.text('Cancel'));
       await tester.pumpAndSettle();
 
-      final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getBool(useModernUserAgentKey), isFalse);
+      final prefsAfter = await SharedPreferences.getInstance();
+      expect(
+          prefsAfter.getBool(
+              profileManager.getScopedStorageKey(useModernUserAgentKey)),
+          isFalse);
       expect(settingsChangedCount, 0);
     });
 
     testWidgets('displays Firebase configuration fields',
         (WidgetTester tester) async {
       SharedPreferences.setMockInitialValues({});
+      await initProfileManager();
 
       await _openSettingsDialog(
         tester,
@@ -212,6 +306,7 @@ void main() {
         firebaseAppIdPref: 'test-app-id',
         firebaseProjectIdPref: 'test-project',
       });
+      await initProfileManager();
 
       await _openSettingsDialog(
         tester,
@@ -268,6 +363,7 @@ void main() {
         (WidgetTester tester) async {
       FlutterSecureStorage.setMockInitialValues({});
       SharedPreferences.setMockInitialValues({});
+      await initProfileManager();
 
       await _openSettingsDialog(
         tester,
