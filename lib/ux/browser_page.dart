@@ -1739,6 +1739,16 @@ class _BrowserPageState extends State<BrowserPage>
     'file',
   };
 
+  static const int _urlAutocompleteRecentInteractionWindowMs = 250;
+  static const int _urlAutocompleteShowCloseButtonThreshold = 5;
+  static const double _urlAutocompleteOverlayOffset = 6;
+  static const double _urlAutocompleteOverlayMargin = 12;
+  static const double _urlAutocompleteOverlayMinWidth = 0;
+  static const double _urlAutocompleteOverlayMaxWidthCap = 720;
+  static const double _urlAutocompleteOverlayMinHeight = 0;
+  static const double _urlAutocompleteOverlayMaxHeightCap = 240;
+  static const double _urlAutocompleteOverlayFlipThreshold = 160;
+
   late TabController tabController;
   final List<TabData> tabs = [];
   final bookmarkManager = BookmarkManager();
@@ -1755,6 +1765,10 @@ class _BrowserPageState extends State<BrowserPage>
   List<String> _urlAutocompleteOptions = const <String>[];
   double? _urlAutocompleteTargetWidth;
   bool _urlAutocompleteOverlayUpdateQueued = false;
+  int _lastUrlAutocompleteOverlayPointerDownMs = 0;
+  double _urlAutocompleteOverlayMaxWidth = _urlAutocompleteOverlayMaxWidthCap;
+  double _urlAutocompleteOverlayMaxHeight = _urlAutocompleteOverlayMaxHeightCap;
+  bool _urlAutocompleteShowAbove = false;
   final Set<String> _downloadableExtensions = {
     'dmg',
     'zip',
@@ -2157,6 +2171,15 @@ class _BrowserPageState extends State<BrowserPage>
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted || tab.isClosed) return;
         if (tab.urlFocusNode.hasFocus) return;
+        final nowMs = DateTime.now().millisecondsSinceEpoch;
+        final interactedWithOverlayRecently =
+            _urlAutocompleteOverlayEntry != null &&
+                nowMs - _lastUrlAutocompleteOverlayPointerDownMs <
+                    _urlAutocompleteRecentInteractionWindowMs;
+        if (interactedWithOverlayRecently) {
+          tab.urlFocusNode.requestFocus();
+          return;
+        }
         _removeUrlAutocompleteOverlay();
       });
       _syncPagePointerEvents(tab);
@@ -2177,6 +2200,36 @@ class _BrowserPageState extends State<BrowserPage>
     activeTab.urlFocusNode.unfocus();
     _removeUrlAutocompleteOverlay();
     _loadUrl(value);
+  }
+
+  Future<void> _persistHistoryAfterSuggestionDelete() async {
+    final historyKey = profileManager.historyKey;
+    final prefs = await SharedPreferences.getInstance();
+    if (profileManager.historyKey != historyKey) return;
+    await prefs.setString(historyKey, jsonEncode(_history));
+  }
+
+  String _normalizeHistoryKey(String value) => value.trim().toLowerCase();
+
+  void _removeUrlAutocompleteSuggestion(String value) {
+    final normalized = _normalizeHistoryKey(value);
+    _history.removeWhere((entry) => _normalizeHistoryKey(entry) == normalized);
+    for (final tab in tabs) {
+      tab.history
+          .removeWhere((entry) => _normalizeHistoryKey(entry) == normalized);
+    }
+
+    _urlAutocompleteOptions =
+        _historyUrlSuggestions(activeTab.urlController.text)
+            .toList(growable: false);
+
+    unawaited(_persistHistoryAfterSuggestionDelete());
+
+    if (_urlAutocompleteOptions.isEmpty) {
+      _removeUrlAutocompleteOverlay();
+      return;
+    }
+    _urlAutocompleteOverlayEntry?.markNeedsBuild();
   }
 
   void _removeUrlAutocompleteOverlay({bool updatePointerEvents = true}) {
@@ -2212,6 +2265,31 @@ class _BrowserPageState extends State<BrowserPage>
           _urlAutocompleteTargetKey.currentContext?.findRenderObject();
       if (targetBox is RenderBox && targetBox.hasSize) {
         _urlAutocompleteTargetWidth = targetBox.size.width;
+        final overlayBox =
+            Overlay.of(context, rootOverlay: true).context.findRenderObject();
+        if (overlayBox is RenderBox && overlayBox.hasSize) {
+          final overlayTopLeft = overlayBox.localToGlobal(Offset.zero);
+          final targetTopLeft = targetBox.localToGlobal(Offset.zero);
+          final dx = targetTopLeft.dx - overlayTopLeft.dx;
+          final dy = targetTopLeft.dy - overlayTopLeft.dy;
+          const minMargin = _urlAutocompleteOverlayMargin;
+          final spaceBelow = overlayBox.size.height -
+              (dy + targetBox.size.height + _urlAutocompleteOverlayOffset) -
+              minMargin;
+          final spaceAbove = dy - minMargin;
+          final showAbove = spaceBelow < _urlAutocompleteOverlayFlipThreshold &&
+              spaceAbove > spaceBelow;
+          _urlAutocompleteShowAbove = showAbove;
+          _urlAutocompleteOverlayMaxWidth =
+              (overlayBox.size.width - dx - minMargin).clamp(
+                  _urlAutocompleteOverlayMinWidth,
+                  _urlAutocompleteOverlayMaxWidthCap);
+          final maxHeight = (showAbove ? spaceAbove : spaceBelow)
+              .clamp(_urlAutocompleteOverlayMinHeight,
+                  _urlAutocompleteOverlayMaxHeightCap)
+              .toDouble();
+          _urlAutocompleteOverlayMaxHeight = maxHeight;
+        }
       }
       final options = _historyUrlSuggestions(tab.urlController.text)
           .toList(growable: false);
@@ -2230,8 +2308,9 @@ class _BrowserPageState extends State<BrowserPage>
             if (optionList.isEmpty) {
               return const SizedBox.shrink();
             }
+            final maxWidth = _urlAutocompleteOverlayMaxWidth;
             final minWidth = (_urlAutocompleteTargetWidth ?? 300.0)
-                .clamp(300.0, 720.0)
+                .clamp(_urlAutocompleteOverlayMinWidth, maxWidth)
                 .toDouble();
             return Stack(
               children: [
@@ -2244,49 +2323,123 @@ class _BrowserPageState extends State<BrowserPage>
                 CompositedTransformFollower(
                   link: _urlAutocompleteLink,
                   showWhenUnlinked: false,
-                  targetAnchor: Alignment.bottomLeft,
-                  followerAnchor: Alignment.topLeft,
-                  offset: const Offset(0, 6),
-                  child: Material(
-                    elevation: 6,
-                    color: theme.colorScheme.surfaceContainerHigh,
-                    borderRadius: BorderRadius.circular(12),
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(
-                        maxHeight: 240,
-                        minWidth: minWidth,
-                        maxWidth: 720,
-                      ),
-                      child: ListView.builder(
-                        padding: const EdgeInsets.symmetric(vertical: 6),
-                        shrinkWrap: true,
-                        itemCount: optionList.length,
-                        itemBuilder: (context, index) {
-                          final option = optionList[index];
-                          return InkWell(
-                            onTapDown: (_) =>
-                                _selectUrlAutocompleteOption(option),
-                            onTap: () {},
-                            hoverColor: Colors.transparent,
-                            splashColor: Colors.transparent,
-                            highlightColor: Colors.transparent,
-                            focusColor: Colors.transparent,
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 8,
-                              ),
-                              child: Text(
-                                option,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  fontSize: 12,
+                  targetAnchor: _urlAutocompleteShowAbove
+                      ? Alignment.topLeft
+                      : Alignment.bottomLeft,
+                  followerAnchor: _urlAutocompleteShowAbove
+                      ? Alignment.bottomLeft
+                      : Alignment.topLeft,
+                  offset: _urlAutocompleteShowAbove
+                      ? const Offset(0, -_urlAutocompleteOverlayOffset)
+                      : const Offset(0, _urlAutocompleteOverlayOffset),
+                  child: Listener(
+                    behavior: HitTestBehavior.opaque,
+                    onPointerDown: (_) {
+                      _lastUrlAutocompleteOverlayPointerDownMs =
+                          DateTime.now().millisecondsSinceEpoch;
+                    },
+                    child: Material(
+                      elevation: 6,
+                      color: theme.colorScheme.surfaceContainerHigh,
+                      borderRadius: BorderRadius.circular(12),
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxHeight: _urlAutocompleteOverlayMaxHeight,
+                          minWidth: minWidth,
+                          maxWidth: maxWidth,
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (optionList.length >=
+                                _urlAutocompleteShowCloseButtonThreshold)
+                              SizedBox(
+                                height: 32,
+                                child: Align(
+                                  alignment: Alignment.centerRight,
+                                  child: IconButton(
+                                    iconSize: 18,
+                                    splashRadius: 18,
+                                    onPressed: _removeUrlAutocompleteOverlay,
+                                    icon: const Icon(
+                                      Icons.close,
+                                      semanticLabel: 'Close suggestions',
+                                    ),
+                                  ),
                                 ),
                               ),
+                            Flexible(
+                              child: ListView.builder(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 6),
+                                shrinkWrap: true,
+                                itemCount: optionList.length,
+                                itemBuilder: (context, index) {
+                                  final option = optionList[index];
+                                  return Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 4,
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Expanded(
+                                          child: InkWell(
+                                            onTap: () =>
+                                                _selectUrlAutocompleteOption(
+                                                    option),
+                                            hoverColor: Colors.transparent,
+                                            splashColor: Colors.transparent,
+                                            highlightColor: Colors.transparent,
+                                            focusColor: Colors.transparent,
+                                            child: Padding(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                vertical: 4,
+                                              ),
+                                              child: Text(
+                                                option,
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: theme.textTheme.bodySmall
+                                                    ?.copyWith(
+                                                  fontSize: 12,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Semantics(
+                                          button: true,
+                                          label: 'Remove from history',
+                                          child: IconButton(
+                                            iconSize: 18,
+                                            splashRadius: 18,
+                                            padding: EdgeInsets.zero,
+                                            constraints:
+                                                const BoxConstraints.tightFor(
+                                              width: 32,
+                                              height: 32,
+                                            ),
+                                            onPressed: () =>
+                                                _removeUrlAutocompleteSuggestion(
+                                                    option),
+                                            icon: Icon(
+                                              Icons.remove_circle_outline,
+                                              color: theme
+                                                  .colorScheme.onSurfaceVariant,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
+                              ),
                             ),
-                          );
-                        },
+                          ],
+                        ),
                       ),
                     ),
                   ),
