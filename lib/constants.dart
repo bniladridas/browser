@@ -21,6 +21,8 @@ const String browsingHistoryKey = 'browsingHistory';
 const String aiSearchSuggestionsEnabledKey = 'aiSearchSuggestionsEnabled';
 const String advancedCacheEnabledKey = 'advancedCacheEnabled';
 const String ambientToolbarEnabledKey = 'ambientToolbarEnabled';
+const String urlAutocompleteSuggestionRemovalEnabledKey =
+    'urlAutocompleteSuggestionRemovalEnabled';
 const String navigationCacheIndexKey = 'navigationCacheIndex';
 const String whatsNewSeenVersionKey = 'whatsNewSeenVersion';
 

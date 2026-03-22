@@ -359,6 +359,7 @@ class SettingsDialog extends HookWidget {
         useState(this.aiSearchSuggestionsEnabled);
     final advancedCacheEnabled = useState(this.advancedCacheEnabled);
     final ambientToolbarEnabled = useState(this.ambientToolbarEnabled);
+    final urlAutocompleteSuggestionRemovalEnabled = useState(false);
     final selectedTheme =
         useState<AppThemeMode>(currentTheme ?? AppThemeMode.system);
     final homepageController = useTextEditingController();
@@ -408,6 +409,10 @@ class SettingsDialog extends HookWidget {
             readBool(advancedCacheEnabledKey, defaultValue: false);
         ambientToolbarEnabled.value =
             readBool(ambientToolbarEnabledKey, defaultValue: false);
+        urlAutocompleteSuggestionRemovalEnabled.value = readBool(
+          urlAutocompleteSuggestionRemovalEnabledKey,
+          defaultValue: false,
+        );
         final themeString = readString(themeModeKey);
         selectedTheme.value = themeString == null
             ? (currentTheme ?? AppThemeMode.system)
@@ -690,6 +695,16 @@ class SettingsDialog extends HookWidget {
                       value: aiSearchSuggestionsEnabled.value,
                       onChanged: (value) =>
                           aiSearchSuggestionsEnabled.value = value,
+                      hoverColor: Colors.transparent,
+                    ),
+                  ),
+                  MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: SwitchListTile(
+                      title: const Text('Suggestion Erase'),
+                      value: urlAutocompleteSuggestionRemovalEnabled.value,
+                      onChanged: (value) =>
+                          urlAutocompleteSuggestionRemovalEnabled.value = value,
                       hoverColor: Colors.transparent,
                     ),
                   ),
@@ -1068,6 +1083,10 @@ class SettingsDialog extends HookWidget {
                 scopedKey(advancedCacheEnabledKey), advancedCacheEnabled.value);
             await prefs.setBool(scopedKey(ambientToolbarEnabledKey),
                 ambientToolbarEnabled.value);
+            await prefs.setBool(
+              scopedKey(urlAutocompleteSuggestionRemovalEnabledKey),
+              urlAutocompleteSuggestionRemovalEnabled.value,
+            );
             await prefs.setString(
                 scopedKey(themeModeKey), selectedTheme.value.name);
 
@@ -1669,6 +1688,7 @@ class BrowserPage extends StatefulWidget {
       this.aiSearchSuggestionsEnabled = false,
       this.advancedCacheEnabled = false,
       this.ambientToolbarEnabled = false,
+      this.urlAutocompleteSuggestionRemovalEnabled = false,
       this.themeMode = AppThemeMode.system,
       this.aiAvailable = true,
       this.onSettingsChanged,
@@ -1688,6 +1708,7 @@ class BrowserPage extends StatefulWidget {
   final bool aiSearchSuggestionsEnabled;
   final bool advancedCacheEnabled;
   final bool ambientToolbarEnabled;
+  final bool urlAutocompleteSuggestionRemovalEnabled;
   final AppThemeMode themeMode;
   final bool aiAvailable;
   final void Function()? onSettingsChanged;
@@ -2173,7 +2194,8 @@ class _BrowserPageState extends State<BrowserPage>
         if (tab.urlFocusNode.hasFocus) return;
         final nowMs = DateTime.now().millisecondsSinceEpoch;
         final interactedWithOverlayRecently =
-            _urlAutocompleteOverlayEntry != null &&
+            widget.urlAutocompleteSuggestionRemovalEnabled &&
+                _urlAutocompleteOverlayEntry != null &&
                 nowMs - _lastUrlAutocompleteOverlayPointerDownMs <
                     _urlAutocompleteRecentInteractionWindowMs;
         if (interactedWithOverlayRecently) {
@@ -2305,6 +2327,8 @@ class _BrowserPageState extends State<BrowserPage>
           builder: (overlayContext) {
             final theme = Theme.of(overlayContext);
             final optionList = _urlAutocompleteOptions;
+            final suggestionRemovalEnabled =
+                widget.urlAutocompleteSuggestionRemovalEnabled;
             if (optionList.isEmpty) {
               return const SizedBox.shrink();
             }
@@ -2312,6 +2336,134 @@ class _BrowserPageState extends State<BrowserPage>
             final minWidth = (_urlAutocompleteTargetWidth ?? 300.0)
                 .clamp(_urlAutocompleteOverlayMinWidth, maxWidth)
                 .toDouble();
+            final overlayContent = Material(
+              elevation: 6,
+              color: theme.colorScheme.surfaceContainerHigh,
+              borderRadius: BorderRadius.circular(12),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: _urlAutocompleteOverlayMaxHeight,
+                  minWidth: minWidth,
+                  maxWidth: maxWidth,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (suggestionRemovalEnabled &&
+                        optionList.length >=
+                            _urlAutocompleteShowCloseButtonThreshold)
+                      SizedBox(
+                        height: 32,
+                        child: Align(
+                          alignment: Alignment.centerRight,
+                          child: IconButton(
+                            iconSize: 18,
+                            splashRadius: 18,
+                            onPressed: _removeUrlAutocompleteOverlay,
+                            icon: const Icon(
+                              Icons.close,
+                              semanticLabel: 'Close suggestions',
+                            ),
+                          ),
+                        ),
+                      ),
+                    Flexible(
+                      child: ListView.builder(
+                        padding: const EdgeInsets.symmetric(vertical: 6),
+                        shrinkWrap: true,
+                        itemCount: optionList.length,
+                        itemBuilder: (context, index) {
+                          final option = optionList[index];
+                          if (!suggestionRemovalEnabled) {
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 4,
+                              ),
+                              child: InkWell(
+                                onTap: () =>
+                                    _selectUrlAutocompleteOption(option),
+                                hoverColor: Colors.transparent,
+                                splashColor: Colors.transparent,
+                                highlightColor: Colors.transparent,
+                                focusColor: Colors.transparent,
+                                child: Padding(
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 4),
+                                  child: Text(
+                                    option,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            );
+                          }
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 4,
+                            ),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: InkWell(
+                                    onTap: () =>
+                                        _selectUrlAutocompleteOption(option),
+                                    hoverColor: Colors.transparent,
+                                    splashColor: Colors.transparent,
+                                    highlightColor: Colors.transparent,
+                                    focusColor: Colors.transparent,
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 4,
+                                      ),
+                                      child: Text(
+                                        option,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style:
+                                            theme.textTheme.bodySmall?.copyWith(
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Semantics(
+                                  button: true,
+                                  label: 'Remove from history',
+                                  child: IconButton(
+                                    iconSize: 18,
+                                    splashRadius: 18,
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints.tightFor(
+                                      width: 32,
+                                      height: 32,
+                                    ),
+                                    onPressed: () =>
+                                        _removeUrlAutocompleteSuggestion(
+                                            option),
+                                    icon: Icon(
+                                      Icons.remove_circle_outline,
+                                      color: theme.colorScheme.onSurfaceVariant,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
             return Stack(
               children: [
                 InteractionBlocker(
@@ -2332,117 +2484,16 @@ class _BrowserPageState extends State<BrowserPage>
                   offset: _urlAutocompleteShowAbove
                       ? const Offset(0, -_urlAutocompleteOverlayOffset)
                       : const Offset(0, _urlAutocompleteOverlayOffset),
-                  child: Listener(
-                    behavior: HitTestBehavior.opaque,
-                    onPointerDown: (_) {
-                      _lastUrlAutocompleteOverlayPointerDownMs =
-                          DateTime.now().millisecondsSinceEpoch;
-                    },
-                    child: Material(
-                      elevation: 6,
-                      color: theme.colorScheme.surfaceContainerHigh,
-                      borderRadius: BorderRadius.circular(12),
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(
-                          maxHeight: _urlAutocompleteOverlayMaxHeight,
-                          minWidth: minWidth,
-                          maxWidth: maxWidth,
-                        ),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            if (optionList.length >=
-                                _urlAutocompleteShowCloseButtonThreshold)
-                              SizedBox(
-                                height: 32,
-                                child: Align(
-                                  alignment: Alignment.centerRight,
-                                  child: IconButton(
-                                    iconSize: 18,
-                                    splashRadius: 18,
-                                    onPressed: _removeUrlAutocompleteOverlay,
-                                    icon: const Icon(
-                                      Icons.close,
-                                      semanticLabel: 'Close suggestions',
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            Flexible(
-                              child: ListView.builder(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 6),
-                                shrinkWrap: true,
-                                itemCount: optionList.length,
-                                itemBuilder: (context, index) {
-                                  final option = optionList[index];
-                                  return Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 4,
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        Expanded(
-                                          child: InkWell(
-                                            onTap: () =>
-                                                _selectUrlAutocompleteOption(
-                                                    option),
-                                            hoverColor: Colors.transparent,
-                                            splashColor: Colors.transparent,
-                                            highlightColor: Colors.transparent,
-                                            focusColor: Colors.transparent,
-                                            child: Padding(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                vertical: 4,
-                                              ),
-                                              child: Text(
-                                                option,
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
-                                                style: theme.textTheme.bodySmall
-                                                    ?.copyWith(
-                                                  fontSize: 12,
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Semantics(
-                                          button: true,
-                                          label: 'Remove from history',
-                                          child: IconButton(
-                                            iconSize: 18,
-                                            splashRadius: 18,
-                                            padding: EdgeInsets.zero,
-                                            constraints:
-                                                const BoxConstraints.tightFor(
-                                              width: 32,
-                                              height: 32,
-                                            ),
-                                            onPressed: () =>
-                                                _removeUrlAutocompleteSuggestion(
-                                                    option),
-                                            icon: Icon(
-                                              Icons.remove_circle_outline,
-                                              color: theme
-                                                  .colorScheme.onSurfaceVariant,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
+                  child: suggestionRemovalEnabled
+                      ? Listener(
+                          behavior: HitTestBehavior.opaque,
+                          onPointerDown: (_) {
+                            _lastUrlAutocompleteOverlayPointerDownMs =
+                                DateTime.now().millisecondsSinceEpoch;
+                          },
+                          child: overlayContent,
+                        )
+                      : overlayContent,
                 ),
               ],
             );

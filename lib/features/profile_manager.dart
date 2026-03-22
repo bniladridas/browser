@@ -124,6 +124,7 @@ class ProfileManager extends ChangeNotifier {
       aiSearchSuggestionsEnabledKey,
       advancedCacheEnabledKey,
       ambientToolbarEnabledKey,
+      urlAutocompleteSuggestionRemovalEnabledKey,
     ];
 
     const stringKeys = <String>[
