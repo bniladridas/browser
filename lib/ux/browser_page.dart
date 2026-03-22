@@ -1787,6 +1787,7 @@ class _BrowserPageState extends State<BrowserPage>
   double? _urlAutocompleteTargetWidth;
   bool _urlAutocompleteOverlayUpdateQueued = false;
   int _lastUrlAutocompleteOverlayPointerDownMs = 0;
+  Future<void> _historySaveQueue = Future<void>.value();
   double _urlAutocompleteOverlayMaxWidth = _urlAutocompleteOverlayMaxWidthCap;
   double _urlAutocompleteOverlayMaxHeight = _urlAutocompleteOverlayMaxHeightCap;
   bool _urlAutocompleteShowAbove = false;
@@ -2194,8 +2195,7 @@ class _BrowserPageState extends State<BrowserPage>
         if (tab.urlFocusNode.hasFocus) return;
         final nowMs = DateTime.now().millisecondsSinceEpoch;
         final interactedWithOverlayRecently =
-            widget.urlAutocompleteSuggestionRemovalEnabled &&
-                _urlAutocompleteOverlayEntry != null &&
+            _urlAutocompleteOverlayEntry != null &&
                 nowMs - _lastUrlAutocompleteOverlayPointerDownMs <
                     _urlAutocompleteRecentInteractionWindowMs;
         if (interactedWithOverlayRecently) {
@@ -2224,13 +2224,6 @@ class _BrowserPageState extends State<BrowserPage>
     _loadUrl(value);
   }
 
-  Future<void> _persistHistoryAfterSuggestionDelete() async {
-    final historyKey = profileManager.historyKey;
-    final prefs = await SharedPreferences.getInstance();
-    if (profileManager.historyKey != historyKey) return;
-    await prefs.setString(historyKey, jsonEncode(_history));
-  }
-
   String _normalizeHistoryKey(String value) => value.trim().toLowerCase();
 
   void _removeUrlAutocompleteSuggestion(String value) {
@@ -2245,7 +2238,7 @@ class _BrowserPageState extends State<BrowserPage>
         _historyUrlSuggestions(activeTab.urlController.text)
             .toList(growable: false);
 
-    unawaited(_persistHistoryAfterSuggestionDelete());
+    unawaited(_saveHistory());
 
     if (_urlAutocompleteOptions.isEmpty) {
       _removeUrlAutocompleteOverlay();
@@ -2455,16 +2448,14 @@ class _BrowserPageState extends State<BrowserPage>
                   offset: _urlAutocompleteShowAbove
                       ? const Offset(0, -_urlAutocompleteOverlayOffset)
                       : const Offset(0, _urlAutocompleteOverlayOffset),
-                  child: suggestionRemovalEnabled
-                      ? Listener(
-                          behavior: HitTestBehavior.opaque,
-                          onPointerDown: (_) {
-                            _lastUrlAutocompleteOverlayPointerDownMs =
-                                DateTime.now().millisecondsSinceEpoch;
-                          },
-                          child: overlayContent,
-                        )
-                      : overlayContent,
+                  child: Listener(
+                    behavior: HitTestBehavior.opaque,
+                    onPointerDown: (_) {
+                      _lastUrlAutocompleteOverlayPointerDownMs =
+                          DateTime.now().millisecondsSinceEpoch;
+                    },
+                    child: overlayContent,
+                  ),
                 ),
               ],
             );
@@ -3854,10 +3845,17 @@ class _BrowserPageState extends State<BrowserPage>
   Future<void> _saveHistory() async {
     if (widget.privateBrowsing) return;
     final historyKey = profileManager.historyKey;
-    final data = jsonEncode(_history);
-    final prefs = await SharedPreferences.getInstance();
-    if (profileManager.historyKey != historyKey) return;
-    await prefs.setString(historyKey, data);
+    final data = jsonEncode(List<String>.from(_history));
+    _historySaveQueue = _historySaveQueue.then((_) async {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        if (profileManager.historyKey != historyKey) return;
+        await prefs.setString(historyKey, data);
+      } catch (e, s) {
+        logger.w('Failed to save browsing history', error: e, stackTrace: s);
+      }
+    });
+    return _historySaveQueue;
   }
 
   void _onProfileChanged() {
