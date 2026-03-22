@@ -94,9 +94,27 @@ void main() {
     expect(tileFinder, findsOneWidget);
     final tile = tester.widget<SwitchListTile>(tileFinder);
     if (tile.value != enabled) {
-      await tester.tap(tileFinder);
+      final settingsScrollable = find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.byType(Scrollable),
+      );
+      if (settingsScrollable.evaluate().isNotEmpty) {
+        await tester.scrollUntilVisible(
+          tileFinder,
+          120,
+          scrollable: settingsScrollable.first,
+        );
+      }
+      await tester.tap(tileFinder, warnIfMissed: false);
       await tester.pumpAndSettle();
     }
+  }
+
+  bool readSwitchTileValue(WidgetTester tester, String title) {
+    final tileFinder = switchTileByTitle(title);
+    expect(tileFinder, findsOneWidget);
+    final tile = tester.widget<SwitchListTile>(tileFinder);
+    return tile.value;
   }
 
   Future<void> enableGitFetch(WidgetTester tester) async {
@@ -285,6 +303,7 @@ void main() {
       // Check for new toggles
       expect(find.text('Private Browsing'), findsOneWidget);
       expect(find.text('Ad Blocking'), findsOneWidget);
+      expect(find.text('Suggestion Erase'), findsOneWidget);
       expect(find.byType(ChoiceChip), findsWidgets);
 
       // Toggle private browsing
@@ -298,6 +317,13 @@ void main() {
       await setSwitchTile(
         tester,
         title: 'Ad Blocking',
+        enabled: true,
+      );
+
+      // Toggle suggestion erase.
+      await setSwitchTile(
+        tester,
+        title: 'Suggestion Erase',
         enabled: true,
       );
 
@@ -324,6 +350,13 @@ void main() {
 
       // Should show saved snackbar.
       expect(find.text('Settings saved'), findsOneWidget);
+
+      // Re-open settings and verify persisted value.
+      await openOverflowMenu(tester);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Settings'));
+      await tester.pumpAndSettle();
+      expect(readSwitchTileValue(tester, 'Suggestion Erase'), isTrue);
     }, timeout: testTimeout);
 
     testWidgets('URL submit loads non-empty value',

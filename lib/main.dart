@@ -63,6 +63,7 @@ class _MyAppState extends State<MyApp> {
   bool aiSearchSuggestionsEnabled = false;
   bool advancedCacheEnabled = false;
   bool ambientToolbarEnabled = false;
+  bool urlAutocompleteSuggestionRemovalEnabled = false;
   bool _didCheckWhatsNew = false;
   final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
 
@@ -218,6 +219,10 @@ class _MyAppState extends State<MyApp> {
           readBool(advancedCacheEnabledKey, defaultValue: false);
       final resolvedAmbientToolbarEnabled =
           readBool(ambientToolbarEnabledKey, defaultValue: false);
+      final resolvedUrlAutocompleteSuggestionRemovalEnabled = readBool(
+        urlAutocompleteSuggestionRemovalEnabledKey,
+        defaultValue: false,
+      );
       final themeString = readString(themeModeKey);
       setState(() {
         homepage = resolvedHomepage;
@@ -231,6 +236,8 @@ class _MyAppState extends State<MyApp> {
         aiSearchSuggestionsEnabled = resolvedAiSearchSuggestionsEnabled;
         advancedCacheEnabled = resolvedAdvancedCacheEnabled;
         ambientToolbarEnabled = resolvedAmbientToolbarEnabled;
+        urlAutocompleteSuggestionRemovalEnabled =
+            resolvedUrlAutocompleteSuggestionRemovalEnabled;
         themeMode = themeString == null
             ? AppThemeMode.system
             : AppThemeMode.values.firstWhere(
@@ -332,6 +339,8 @@ class _MyAppState extends State<MyApp> {
           aiSearchSuggestionsEnabled: aiSearchSuggestionsEnabled,
           advancedCacheEnabled: advancedCacheEnabled,
           ambientToolbarEnabled: ambientToolbarEnabled,
+          urlAutocompleteSuggestionRemovalEnabled:
+              urlAutocompleteSuggestionRemovalEnabled,
           themeMode: effectiveThemeMode,
           onPageThemeChanged: _setAdjustedThemeMode,
           onSettingsChanged: _loadSettings,

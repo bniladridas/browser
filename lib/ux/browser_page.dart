@@ -359,6 +359,7 @@ class SettingsDialog extends HookWidget {
         useState(this.aiSearchSuggestionsEnabled);
     final advancedCacheEnabled = useState(this.advancedCacheEnabled);
     final ambientToolbarEnabled = useState(this.ambientToolbarEnabled);
+    final urlAutocompleteSuggestionRemovalEnabled = useState(false);
     final selectedTheme =
         useState<AppThemeMode>(currentTheme ?? AppThemeMode.system);
     final homepageController = useTextEditingController();
@@ -408,6 +409,10 @@ class SettingsDialog extends HookWidget {
             readBool(advancedCacheEnabledKey, defaultValue: false);
         ambientToolbarEnabled.value =
             readBool(ambientToolbarEnabledKey, defaultValue: false);
+        urlAutocompleteSuggestionRemovalEnabled.value = readBool(
+          urlAutocompleteSuggestionRemovalEnabledKey,
+          defaultValue: false,
+        );
         final themeString = readString(themeModeKey);
         selectedTheme.value = themeString == null
             ? (currentTheme ?? AppThemeMode.system)
@@ -690,6 +695,16 @@ class SettingsDialog extends HookWidget {
                       value: aiSearchSuggestionsEnabled.value,
                       onChanged: (value) =>
                           aiSearchSuggestionsEnabled.value = value,
+                      hoverColor: Colors.transparent,
+                    ),
+                  ),
+                  MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: SwitchListTile(
+                      title: const Text('Suggestion Erase'),
+                      value: urlAutocompleteSuggestionRemovalEnabled.value,
+                      onChanged: (value) =>
+                          urlAutocompleteSuggestionRemovalEnabled.value = value,
                       hoverColor: Colors.transparent,
                     ),
                   ),
@@ -1068,6 +1083,10 @@ class SettingsDialog extends HookWidget {
                 scopedKey(advancedCacheEnabledKey), advancedCacheEnabled.value);
             await prefs.setBool(scopedKey(ambientToolbarEnabledKey),
                 ambientToolbarEnabled.value);
+            await prefs.setBool(
+              scopedKey(urlAutocompleteSuggestionRemovalEnabledKey),
+              urlAutocompleteSuggestionRemovalEnabled.value,
+            );
             await prefs.setString(
                 scopedKey(themeModeKey), selectedTheme.value.name);
 
@@ -1669,6 +1688,7 @@ class BrowserPage extends StatefulWidget {
       this.aiSearchSuggestionsEnabled = false,
       this.advancedCacheEnabled = false,
       this.ambientToolbarEnabled = false,
+      this.urlAutocompleteSuggestionRemovalEnabled = false,
       this.themeMode = AppThemeMode.system,
       this.aiAvailable = true,
       this.onSettingsChanged,
@@ -1688,6 +1708,7 @@ class BrowserPage extends StatefulWidget {
   final bool aiSearchSuggestionsEnabled;
   final bool advancedCacheEnabled;
   final bool ambientToolbarEnabled;
+  final bool urlAutocompleteSuggestionRemovalEnabled;
   final AppThemeMode themeMode;
   final bool aiAvailable;
   final void Function()? onSettingsChanged;
@@ -1766,6 +1787,7 @@ class _BrowserPageState extends State<BrowserPage>
   double? _urlAutocompleteTargetWidth;
   bool _urlAutocompleteOverlayUpdateQueued = false;
   int _lastUrlAutocompleteOverlayPointerDownMs = 0;
+  Future<void> _historySaveQueue = Future<void>.value();
   double _urlAutocompleteOverlayMaxWidth = _urlAutocompleteOverlayMaxWidthCap;
   double _urlAutocompleteOverlayMaxHeight = _urlAutocompleteOverlayMaxHeightCap;
   bool _urlAutocompleteShowAbove = false;
@@ -2202,13 +2224,6 @@ class _BrowserPageState extends State<BrowserPage>
     _loadUrl(value);
   }
 
-  Future<void> _persistHistoryAfterSuggestionDelete() async {
-    final historyKey = profileManager.historyKey;
-    final prefs = await SharedPreferences.getInstance();
-    if (profileManager.historyKey != historyKey) return;
-    await prefs.setString(historyKey, jsonEncode(_history));
-  }
-
   String _normalizeHistoryKey(String value) => value.trim().toLowerCase();
 
   void _removeUrlAutocompleteSuggestion(String value) {
@@ -2223,7 +2238,7 @@ class _BrowserPageState extends State<BrowserPage>
         _historyUrlSuggestions(activeTab.urlController.text)
             .toList(growable: false);
 
-    unawaited(_persistHistoryAfterSuggestionDelete());
+    unawaited(_saveHistory());
 
     if (_urlAutocompleteOptions.isEmpty) {
       _removeUrlAutocompleteOverlay();
@@ -2305,6 +2320,8 @@ class _BrowserPageState extends State<BrowserPage>
           builder: (overlayContext) {
             final theme = Theme.of(overlayContext);
             final optionList = _urlAutocompleteOptions;
+            final suggestionRemovalEnabled =
+                widget.urlAutocompleteSuggestionRemovalEnabled;
             if (optionList.isEmpty) {
               return const SizedBox.shrink();
             }
@@ -2312,6 +2329,105 @@ class _BrowserPageState extends State<BrowserPage>
             final minWidth = (_urlAutocompleteTargetWidth ?? 300.0)
                 .clamp(_urlAutocompleteOverlayMinWidth, maxWidth)
                 .toDouble();
+            final overlayContent = Material(
+              elevation: 6,
+              color: theme.colorScheme.surfaceContainerHigh,
+              borderRadius: BorderRadius.circular(12),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: _urlAutocompleteOverlayMaxHeight,
+                  minWidth: minWidth,
+                  maxWidth: maxWidth,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (suggestionRemovalEnabled &&
+                        optionList.length >=
+                            _urlAutocompleteShowCloseButtonThreshold)
+                      SizedBox(
+                        height: 32,
+                        child: Align(
+                          alignment: Alignment.centerRight,
+                          child: IconButton(
+                            iconSize: 18,
+                            splashRadius: 18,
+                            onPressed: _removeUrlAutocompleteOverlay,
+                            icon: const Icon(
+                              Icons.close,
+                              semanticLabel: 'Close suggestions',
+                            ),
+                          ),
+                        ),
+                      ),
+                    Flexible(
+                      child: ListView.builder(
+                        padding: const EdgeInsets.symmetric(vertical: 6),
+                        shrinkWrap: true,
+                        itemCount: optionList.length,
+                        itemBuilder: (context, index) {
+                          final option = optionList[index];
+                          final suggestionWidget = InkWell(
+                            onTap: () => _selectUrlAutocompleteOption(option),
+                            hoverColor: Colors.transparent,
+                            splashColor: Colors.transparent,
+                            highlightColor: Colors.transparent,
+                            focusColor: Colors.transparent,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 4),
+                              child: Text(
+                                option,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
+                          );
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 4,
+                            ),
+                            child: suggestionRemovalEnabled
+                                ? Row(
+                                    children: [
+                                      Expanded(child: suggestionWidget),
+                                      const SizedBox(width: 8),
+                                      Semantics(
+                                        button: true,
+                                        label: 'Remove from history',
+                                        child: IconButton(
+                                          iconSize: 18,
+                                          splashRadius: 18,
+                                          padding: EdgeInsets.zero,
+                                          constraints:
+                                              const BoxConstraints.tightFor(
+                                            width: 32,
+                                            height: 32,
+                                          ),
+                                          onPressed: () =>
+                                              _removeUrlAutocompleteSuggestion(
+                                                  option),
+                                          icon: Icon(
+                                            Icons.remove_circle_outline,
+                                            color: theme
+                                                .colorScheme.onSurfaceVariant,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  )
+                                : suggestionWidget,
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
             return Stack(
               children: [
                 InteractionBlocker(
@@ -2338,110 +2454,7 @@ class _BrowserPageState extends State<BrowserPage>
                       _lastUrlAutocompleteOverlayPointerDownMs =
                           DateTime.now().millisecondsSinceEpoch;
                     },
-                    child: Material(
-                      elevation: 6,
-                      color: theme.colorScheme.surfaceContainerHigh,
-                      borderRadius: BorderRadius.circular(12),
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(
-                          maxHeight: _urlAutocompleteOverlayMaxHeight,
-                          minWidth: minWidth,
-                          maxWidth: maxWidth,
-                        ),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            if (optionList.length >=
-                                _urlAutocompleteShowCloseButtonThreshold)
-                              SizedBox(
-                                height: 32,
-                                child: Align(
-                                  alignment: Alignment.centerRight,
-                                  child: IconButton(
-                                    iconSize: 18,
-                                    splashRadius: 18,
-                                    onPressed: _removeUrlAutocompleteOverlay,
-                                    icon: const Icon(
-                                      Icons.close,
-                                      semanticLabel: 'Close suggestions',
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            Flexible(
-                              child: ListView.builder(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 6),
-                                shrinkWrap: true,
-                                itemCount: optionList.length,
-                                itemBuilder: (context, index) {
-                                  final option = optionList[index];
-                                  return Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 4,
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        Expanded(
-                                          child: InkWell(
-                                            onTap: () =>
-                                                _selectUrlAutocompleteOption(
-                                                    option),
-                                            hoverColor: Colors.transparent,
-                                            splashColor: Colors.transparent,
-                                            highlightColor: Colors.transparent,
-                                            focusColor: Colors.transparent,
-                                            child: Padding(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                vertical: 4,
-                                              ),
-                                              child: Text(
-                                                option,
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
-                                                style: theme.textTheme.bodySmall
-                                                    ?.copyWith(
-                                                  fontSize: 12,
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Semantics(
-                                          button: true,
-                                          label: 'Remove from history',
-                                          child: IconButton(
-                                            iconSize: 18,
-                                            splashRadius: 18,
-                                            padding: EdgeInsets.zero,
-                                            constraints:
-                                                const BoxConstraints.tightFor(
-                                              width: 32,
-                                              height: 32,
-                                            ),
-                                            onPressed: () =>
-                                                _removeUrlAutocompleteSuggestion(
-                                                    option),
-                                            icon: Icon(
-                                              Icons.remove_circle_outline,
-                                              color: theme
-                                                  .colorScheme.onSurfaceVariant,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
+                    child: overlayContent,
                   ),
                 ),
               ],
@@ -3832,10 +3845,17 @@ class _BrowserPageState extends State<BrowserPage>
   Future<void> _saveHistory() async {
     if (widget.privateBrowsing) return;
     final historyKey = profileManager.historyKey;
-    final data = jsonEncode(_history);
-    final prefs = await SharedPreferences.getInstance();
-    if (profileManager.historyKey != historyKey) return;
-    await prefs.setString(historyKey, data);
+    final data = jsonEncode(List<String>.from(_history));
+    _historySaveQueue = _historySaveQueue.then((_) async {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        if (profileManager.historyKey != historyKey) return;
+        await prefs.setString(historyKey, data);
+      } catch (e, s) {
+        logger.w('Failed to save browsing history', error: e, stackTrace: s);
+      }
+    });
+    return _historySaveQueue;
   }
 
   void _onProfileChanged() {
