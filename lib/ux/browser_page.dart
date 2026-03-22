@@ -2374,88 +2374,59 @@ class _BrowserPageState extends State<BrowserPage>
                         itemCount: optionList.length,
                         itemBuilder: (context, index) {
                           final option = optionList[index];
-                          if (!suggestionRemovalEnabled) {
-                            return Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 4,
-                              ),
-                              child: InkWell(
-                                onTap: () =>
-                                    _selectUrlAutocompleteOption(option),
-                                hoverColor: Colors.transparent,
-                                splashColor: Colors.transparent,
-                                highlightColor: Colors.transparent,
-                                focusColor: Colors.transparent,
-                                child: Padding(
-                                  padding:
-                                      const EdgeInsets.symmetric(vertical: 4),
-                                  child: Text(
-                                    option,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: theme.textTheme.bodySmall?.copyWith(
-                                      fontSize: 12,
-                                    ),
-                                  ),
+                          final suggestionWidget = InkWell(
+                            onTap: () => _selectUrlAutocompleteOption(option),
+                            hoverColor: Colors.transparent,
+                            splashColor: Colors.transparent,
+                            highlightColor: Colors.transparent,
+                            focusColor: Colors.transparent,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 4),
+                              child: Text(
+                                option,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  fontSize: 12,
                                 ),
                               ),
-                            );
-                          }
+                            ),
+                          );
                           return Padding(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 12,
                               vertical: 4,
                             ),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: InkWell(
-                                    onTap: () =>
-                                        _selectUrlAutocompleteOption(option),
-                                    hoverColor: Colors.transparent,
-                                    splashColor: Colors.transparent,
-                                    highlightColor: Colors.transparent,
-                                    focusColor: Colors.transparent,
-                                    child: Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 4,
-                                      ),
-                                      child: Text(
-                                        option,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style:
-                                            theme.textTheme.bodySmall?.copyWith(
-                                          fontSize: 12,
+                            child: suggestionRemovalEnabled
+                                ? Row(
+                                    children: [
+                                      Expanded(child: suggestionWidget),
+                                      const SizedBox(width: 8),
+                                      Semantics(
+                                        button: true,
+                                        label: 'Remove from history',
+                                        child: IconButton(
+                                          iconSize: 18,
+                                          splashRadius: 18,
+                                          padding: EdgeInsets.zero,
+                                          constraints:
+                                              const BoxConstraints.tightFor(
+                                            width: 32,
+                                            height: 32,
+                                          ),
+                                          onPressed: () =>
+                                              _removeUrlAutocompleteSuggestion(
+                                                  option),
+                                          icon: Icon(
+                                            Icons.remove_circle_outline,
+                                            color: theme
+                                                .colorScheme.onSurfaceVariant,
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Semantics(
-                                  button: true,
-                                  label: 'Remove from history',
-                                  child: IconButton(
-                                    iconSize: 18,
-                                    splashRadius: 18,
-                                    padding: EdgeInsets.zero,
-                                    constraints: const BoxConstraints.tightFor(
-                                      width: 32,
-                                      height: 32,
-                                    ),
-                                    onPressed: () =>
-                                        _removeUrlAutocompleteSuggestion(
-                                            option),
-                                    icon: Icon(
-                                      Icons.remove_circle_outline,
-                                      color: theme.colorScheme.onSurfaceVariant,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
+                                    ],
+                                  )
+                                : suggestionWidget,
                           );
                         },
                       ),
