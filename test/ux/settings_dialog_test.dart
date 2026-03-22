@@ -84,6 +84,11 @@ void main() {
       await prefs.setBool(
           profileManager.getScopedStorageKey(aiSearchSuggestionsEnabledKey),
           true);
+      await prefs.setBool(
+        profileManager
+            .getScopedStorageKey(urlAutocompleteSuggestionRemovalEnabledKey),
+        true,
+      );
       await prefs.setString(profileManager.getScopedStorageKey(themeModeKey),
           AppThemeMode.dark.name);
 
@@ -95,6 +100,7 @@ void main() {
       expect(_readSwitchTile(tester, 'Legacy User Agent').value, isTrue);
       expect(_readSwitchTile(tester, 'Git Fetch').value, isTrue);
       expect(_readSwitchTile(tester, 'AI Search Suggestions').value, isTrue);
+      expect(_readSwitchTile(tester, 'Suggestion Erase').value, isTrue);
 
       final darkChip = find.widgetWithText(ChoiceChip, 'dark');
       expect(darkChip, findsOneWidget);
@@ -115,6 +121,7 @@ void main() {
         _dialogHost(aiAvailable: false),
       );
       expect(_readSwitchTile(tester, 'Legacy User Agent').value, isTrue);
+      expect(_readSwitchTile(tester, 'Suggestion Erase').value, isFalse);
       await tester.tap(find.text('Cancel'));
       await tester.pumpAndSettle();
 
@@ -126,6 +133,7 @@ void main() {
         _dialogHost(aiAvailable: false),
       );
       expect(_readSwitchTile(tester, 'Legacy User Agent').value, isFalse);
+      expect(_readSwitchTile(tester, 'Suggestion Erase').value, isFalse);
     });
 
     testWidgets('switching profiles refreshes toggles in the same dialog',
@@ -139,11 +147,21 @@ void main() {
 
       await prefs.setBool(
           profileManager.getScopedStorageKey(useModernUserAgentKey), false);
+      await prefs.setBool(
+        profileManager
+            .getScopedStorageKey(urlAutocompleteSuggestionRemovalEnabledKey),
+        false,
+      );
       await prefs.setString(profileManager.getScopedStorageKey(themeModeKey),
           AppThemeMode.light.name);
       await profileManager.switchProfile(workProfile.id);
       await prefs.setBool(
           profileManager.getScopedStorageKey(useModernUserAgentKey), true);
+      await prefs.setBool(
+        profileManager
+            .getScopedStorageKey(urlAutocompleteSuggestionRemovalEnabledKey),
+        true,
+      );
       await prefs.setString(profileManager.getScopedStorageKey(themeModeKey),
           AppThemeMode.dark.name);
       await profileManager.switchProfile('default');
@@ -153,12 +171,14 @@ void main() {
         _dialogHost(aiAvailable: false),
       );
       expect(_readSwitchTile(tester, 'Legacy User Agent').value, isFalse);
+      expect(_readSwitchTile(tester, 'Suggestion Erase').value, isFalse);
       final lightChip = find.widgetWithText(ChoiceChip, 'light');
       expect(tester.widget<ChoiceChip>(lightChip).selected, isTrue);
 
       await profileManager.switchProfile(workProfile.id);
       await tester.pumpAndSettle();
       expect(_readSwitchTile(tester, 'Legacy User Agent').value, isTrue);
+      expect(_readSwitchTile(tester, 'Suggestion Erase').value, isTrue);
       final darkChip = find.widgetWithText(ChoiceChip, 'dark');
       expect(tester.widget<ChoiceChip>(darkChip).selected, isTrue);
     });
@@ -173,6 +193,11 @@ void main() {
       await prefs.setBool(
           profileManager.getScopedStorageKey(aiSearchSuggestionsEnabledKey),
           false);
+      await prefs.setBool(
+        profileManager
+            .getScopedStorageKey(urlAutocompleteSuggestionRemovalEnabledKey),
+        false,
+      );
       await prefs.setString(profileManager.getScopedStorageKey(themeModeKey),
           AppThemeMode.system.name);
 
@@ -204,6 +229,16 @@ void main() {
       await tester.tap(_switchTileByTitle('AI Search Suggestions'));
       await tester.pumpAndSettle();
 
+      if (settingsScrollable.evaluate().isNotEmpty) {
+        await tester.scrollUntilVisible(
+          _switchTileByTitle('Suggestion Erase'),
+          120,
+          scrollable: settingsScrollable.first,
+        );
+      }
+      await tester.tap(_switchTileByTitle('Suggestion Erase'));
+      await tester.pumpAndSettle();
+
       final darkChip = find.widgetWithText(ChoiceChip, 'dark');
       if (settingsScrollable.evaluate().isNotEmpty) {
         await tester.scrollUntilVisible(
@@ -226,6 +261,10 @@ void main() {
       expect(
           prefsAfter.getBool(profileManager
               .getScopedStorageKey(aiSearchSuggestionsEnabledKey)),
+          isTrue);
+      expect(
+          prefsAfter.getBool(profileManager
+              .getScopedStorageKey(urlAutocompleteSuggestionRemovalEnabledKey)),
           isTrue);
       expect(
           prefsAfter
