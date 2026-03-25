@@ -1457,6 +1457,7 @@ class PageFontIntent extends Intent {}
 
 class TabData {
   String currentUrl;
+  String? pageTitle;
   final TextEditingController urlController;
   final FocusNode urlFocusNode;
   final TextEditingController torrySearchController;
@@ -3521,6 +3522,74 @@ class _BrowserPageState extends State<BrowserPage>
     });
   }
 
+  String _normalizeTabTitle(String? title) {
+    final normalized = title?.replaceAll(RegExp(r'\s+'), ' ').trim() ?? '';
+    return normalized;
+  }
+
+  String _tabFallbackTitleFromUrl(String url) {
+    final uri = Uri.tryParse(url);
+    if (uri == null) return url;
+    if (uri.scheme == 'file') {
+      if (uri.pathSegments.isNotEmpty) return uri.pathSegments.last;
+      return 'File';
+    }
+    if (uri.scheme == 'about') {
+      return uri.pathSegments.isNotEmpty ? uri.pathSegments.last : 'About';
+    }
+    final host = uri.host;
+    if (host.isEmpty) return url;
+    return host.toLowerCase().startsWith('www.') ? host.substring(4) : host;
+  }
+
+  String _tabTitleForDisplay(TabData tab) {
+    final normalized = _normalizeTabTitle(tab.pageTitle);
+    if (normalized.isNotEmpty) return normalized;
+    if (tab.currentUrl == defaultHomepageUrl) return 'Home';
+    return _tabFallbackTitleFromUrl(tab.currentUrl);
+  }
+
+  String? _stringFromJsResult(dynamic result) {
+    if (result == null) return null;
+    if (result is String) {
+      final unescaped = FaviconUrlPolicy.unescapeWrappedJson(result);
+      return unescaped.trim();
+    }
+    return result.toString().trim();
+  }
+
+  Future<void> _updateTabTitle(TabData tab, {String? hintedTitle}) async {
+    if (!mounted || tab.isClosed) return;
+    final controller = tab.webViewController;
+    if (controller == null) return;
+
+    var candidate = _normalizeTabTitle(hintedTitle);
+    if (candidate.isEmpty) {
+      try {
+        candidate = _normalizeTabTitle(await controller.getTitle());
+      } catch (_) {
+        // Best effort only.
+      }
+    }
+    if (candidate.isEmpty) {
+      try {
+        candidate = _normalizeTabTitle(
+          _stringFromJsResult(
+            await controller.runJavaScriptReturningResult('document.title'),
+          ),
+        );
+      } catch (_) {
+        // Best effort only.
+      }
+    }
+
+    if (!mounted || tab.isClosed) return;
+    if (candidate.isEmpty || candidate == tab.pageTitle) return;
+    setState(() {
+      tab.pageTitle = candidate;
+    });
+  }
+
   Widget _buildTabItem(TabData tab, int index, bool isSelected,
       {bool showDragHandle = false}) {
     final theme = Theme.of(context);
@@ -3539,7 +3608,7 @@ class _BrowserPageState extends State<BrowserPage>
         _buildTabFavicon(tab, theme),
         const SizedBox(width: 6),
         Text(
-          (Uri.tryParse(tab.currentUrl)?.host ?? tab.currentUrl).truncate(14),
+          _tabTitleForDisplay(tab).truncate(18),
           style: TextStyle(
             fontSize: 12,
             fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
@@ -5616,7 +5685,24 @@ class _BrowserPageState extends State<BrowserPage>
       // Partial workaround for SPA history: listen for popstate events via JS.
       tab.webViewController!.addJavaScriptChannel('HistoryChannel',
           onMessageReceived: (JavaScriptMessage message) {
-        final url = message.message;
+        final payload = message.message;
+        var url = payload;
+        String? title;
+        try {
+          final decoded = jsonDecode(payload);
+          if (decoded is Map) {
+            final decodedUrl = decoded['url'];
+            if (decodedUrl is String && decodedUrl.trim().isNotEmpty) {
+              url = decodedUrl;
+            }
+            final decodedTitle = decoded['title'];
+            if (decodedTitle is String && decodedTitle.trim().isNotEmpty) {
+              title = decodedTitle;
+            }
+          }
+        } catch (_) {
+          // Backwards-compatible: treat payload as a raw URL.
+        }
         // Validate URL to prevent LFI and spoofing attacks
         if (!_isValidHistoryUrl(url)) {
           logger.w(
@@ -5626,12 +5712,19 @@ class _BrowserPageState extends State<BrowserPage>
         }
         _recordHistory(tab, url);
         // Update the URL bar for SPA navigation
-        if (!tab.isClosed && mounted && tab.currentUrl != url) {
+        if (!tab.isClosed && mounted) {
           setState(() {
-            tab.currentUrl = url;
-            tab.urlController.text = url;
+            if (tab.currentUrl != url) {
+              tab.currentUrl = url;
+              tab.urlController.text = url;
+            }
+            final normalizedTitle = _normalizeTabTitle(title);
+            if (normalizedTitle.isNotEmpty) {
+              tab.pageTitle = normalizedTitle;
+            }
           });
         }
+        unawaited(_updateTabTitle(tab, hintedTitle: title));
         _updateThemeFromTab(tab);
         _updateAmbientFromTab(tab);
       });
@@ -5692,6 +5785,7 @@ class _BrowserPageState extends State<BrowserPage>
                 tab.currentUrl = url;
                 tab.urlController.text = tab.currentUrl;
                 tab.state = const BrowserState.loading();
+                tab.pageTitle = null;
                 tab.detectedBrightness = null;
                 tab.detectedSeedColor = null;
                 tab.ambientSeedColor = null;
@@ -5723,18 +5817,18 @@ class _BrowserPageState extends State<BrowserPage>
             tab.webViewController!.runJavaScript('''
             if (!window.historyListenerAdded) {
               window.addEventListener('popstate', function(event) {
-                HistoryChannel.postMessage(window.location.href);
+                HistoryChannel.postMessage(JSON.stringify({ url: window.location.href, title: document.title || '' }));
               });
               // Override pushState and replaceState to capture programmatic changes
               window.originalPushState = window.history.pushState;
               window.history.pushState = function(state, title, url) {
                 window.originalPushState.call(this, state, title, url);
-                HistoryChannel.postMessage(window.location.href);
+                HistoryChannel.postMessage(JSON.stringify({ url: window.location.href, title: document.title || '' }));
               };
               window.originalReplaceState = window.history.replaceState;
               window.history.replaceState = function(state, title, url) {
                 window.originalReplaceState.call(this, state, title, url);
-                HistoryChannel.postMessage(window.location.href);
+                HistoryChannel.postMessage(JSON.stringify({ url: window.location.href, title: document.title || '' }));
               };
               window.historyListenerAdded = true;
             }
@@ -5757,6 +5851,7 @@ class _BrowserPageState extends State<BrowserPage>
             _attemptAutofill(tab);
           }
           _syncPagePointerEvents(tab);
+          unawaited(_updateTabTitle(tab));
           _updateThemeFromTab(tab);
           _updateAmbientFromTab(tab);
           Future.delayed(const Duration(milliseconds: 400), () {
