@@ -355,6 +355,7 @@ class SettingsDialog extends HookWidget {
     final strictMode = useState(false);
     final passwordManagerEnabled = useState(false);
     final reorderableTabs = useState(false);
+    final tabFaviconBadgeEnabled = useState(false);
     final aiSearchSuggestionsEnabled =
         useState(this.aiSearchSuggestionsEnabled);
     final advancedCacheEnabled = useState(this.advancedCacheEnabled);
@@ -403,6 +404,8 @@ class SettingsDialog extends HookWidget {
             readBool(passwordManagerEnabledKey, defaultValue: false);
         reorderableTabs.value =
             readBool(reorderableTabsKey, defaultValue: false);
+        tabFaviconBadgeEnabled.value =
+            readBool(tabFaviconBadgeEnabledKey, defaultValue: false);
         aiSearchSuggestionsEnabled.value =
             readBool(aiSearchSuggestionsEnabledKey, defaultValue: false);
         advancedCacheEnabled.value =
@@ -685,6 +688,16 @@ class SettingsDialog extends HookWidget {
                       title: const Text('Reorderable Tabs'),
                       value: reorderableTabs.value,
                       onChanged: (value) => reorderableTabs.value = value,
+                      hoverColor: Colors.transparent,
+                    ),
+                  ),
+                  MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: SwitchListTile(
+                      title: const Text('Tab Favicon Badge'),
+                      value: tabFaviconBadgeEnabled.value,
+                      onChanged: (value) =>
+                          tabFaviconBadgeEnabled.value = value,
                       hoverColor: Colors.transparent,
                     ),
                   ),
@@ -1077,6 +1090,10 @@ class SettingsDialog extends HookWidget {
                 passwordManagerEnabled.value);
             await prefs.setBool(
                 scopedKey(reorderableTabsKey), reorderableTabs.value);
+            await prefs.setBool(
+              scopedKey(tabFaviconBadgeEnabledKey),
+              tabFaviconBadgeEnabled.value,
+            );
             await prefs.setBool(scopedKey(aiSearchSuggestionsEnabledKey),
                 aiSearchSuggestionsEnabled.value);
             await prefs.setBool(
@@ -1875,6 +1892,7 @@ class _BrowserPageState extends State<BrowserPage>
   final Map<String, String> _faviconCacheByHost = {};
   final Map<String, bool> _faviconHostSafetyCache = {};
   String? _legacyLayoutFixScript;
+  bool _tabFaviconBadgeEnabled = false;
 
   static const String _themeProbeScript = '''
 (() => {
@@ -2025,6 +2043,7 @@ class _BrowserPageState extends State<BrowserPage>
     _syncAmbientAnimation();
     _pageFontFamily = widget.pageFontFamily;
     _loadReorderableTabs();
+    _loadTabFaviconBadgeEnabled();
     _loadFontOverrides();
     _loadNavigationCacheIndex();
     tabs.add(_createTab(widget.initialUrl));
@@ -3639,17 +3658,45 @@ class _BrowserPageState extends State<BrowserPage>
       color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
     );
     final faviconUrl = tab.faviconUrl;
-    if (faviconUrl == null || faviconUrl.trim().isEmpty) {
-      return fallback;
+    final showFallback = faviconUrl == null || faviconUrl.trim().isEmpty;
+
+    if (!_tabFaviconBadgeEnabled) {
+      if (showFallback) return fallback;
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(3),
+        child: Image.network(
+          faviconUrl,
+          width: 15,
+          height: 15,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => fallback,
+        ),
+      );
     }
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(3),
-      child: Image.network(
-        faviconUrl,
-        width: 15,
-        height: 15,
-        fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => fallback,
+
+    final content = showFallback
+        ? fallback
+        : Image.network(
+            faviconUrl,
+            width: 13,
+            height: 13,
+            fit: BoxFit.contain,
+            errorBuilder: (_, __, ___) => fallback,
+          );
+
+    return SizedBox(
+      width: 15,
+      height: 15,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(3),
+          border: Border.all(
+            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.35),
+            width: 0.5,
+          ),
+        ),
+        child: Center(child: content),
       ),
     );
   }
@@ -3795,6 +3842,18 @@ class _BrowserPageState extends State<BrowserPage>
     if (!mounted) return;
     setState(() {
       _reorderableTabs = resolved;
+    });
+  }
+
+  Future<void> _loadTabFaviconBadgeEnabled() async {
+    final prefs = await SharedPreferences.getInstance();
+    final resolved = prefs.getBool(
+          profileManager.getScopedStorageKey(tabFaviconBadgeEnabledKey),
+        ) ??
+        false;
+    if (!mounted) return;
+    setState(() {
+      _tabFaviconBadgeEnabled = resolved;
     });
   }
 
@@ -4400,6 +4459,7 @@ class _BrowserPageState extends State<BrowserPage>
               child: SettingsDialog(
                 onSettingsChanged: () {
                   _loadReorderableTabs();
+                  _loadTabFaviconBadgeEnabled();
                   widget.onSettingsChanged?.call();
                 },
                 onClearCaches: _clearAllCaches,

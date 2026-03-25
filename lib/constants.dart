@@ -21,6 +21,7 @@ const String browsingHistoryKey = 'browsingHistory';
 const String aiSearchSuggestionsEnabledKey = 'aiSearchSuggestionsEnabled';
 const String advancedCacheEnabledKey = 'advancedCacheEnabled';
 const String ambientToolbarEnabledKey = 'ambientToolbarEnabled';
+const String tabFaviconBadgeEnabledKey = 'tabFaviconBadgeEnabled';
 const String urlAutocompleteSuggestionRemovalEnabledKey =
     'urlAutocompleteSuggestionRemovalEnabled';
 const String navigationCacheIndexKey = 'navigationCacheIndex';
