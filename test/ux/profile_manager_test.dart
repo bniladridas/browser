@@ -124,6 +124,43 @@ void main() {
       expect(newPm.activeProfileId, 'profile_test');
       expect(newPm.profiles.length, 1);
     });
+
+    test('migrates legacy prefs into default profile', () async {
+      SharedPreferences.setMockInitialValues({
+        tabFaviconBadgeEnabledKey: true,
+        autoHideAddressBarKey: true,
+        bookmarksStorageKey: '{"v":1,"items":[]}',
+        browsingHistoryKey: '[]',
+      });
+      profileManager.resetForTesting();
+      await profileManager.initialize();
+
+      final prefs = await SharedPreferences.getInstance();
+      expect(
+        prefs.getBool(
+            profileManager.getScopedStorageKey(tabFaviconBadgeEnabledKey)),
+        isTrue,
+      );
+      expect(
+        prefs
+            .getBool(profileManager.getScopedStorageKey(autoHideAddressBarKey)),
+        isTrue,
+      );
+      expect(
+        prefs
+            .getString(profileManager.getScopedStorageKey(bookmarksStorageKey)),
+        '{"v":1,"items":[]}',
+      );
+      expect(
+        prefs.getString(profileManager.getScopedStorageKey(browsingHistoryKey)),
+        '[]',
+      );
+
+      expect(prefs.getBool(tabFaviconBadgeEnabledKey), isNull);
+      expect(prefs.getBool(autoHideAddressBarKey), isNull);
+      expect(prefs.getString(bookmarksStorageKey), isNull);
+      expect(prefs.getString(browsingHistoryKey), isNull);
+    });
   });
 
   group('UserProfile model', () {
@@ -214,7 +251,7 @@ void main() {
       await tester.tap(find.text('Open'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Profiles'), findsWidgets);
+      expect(find.text('Profile'), findsWidgets);
     });
   });
 }

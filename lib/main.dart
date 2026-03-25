@@ -64,6 +64,7 @@ class _MyAppState extends State<MyApp> {
   bool advancedCacheEnabled = false;
   bool ambientToolbarEnabled = false;
   bool urlAutocompleteSuggestionRemovalEnabled = false;
+  bool autoHideAddressBarEnabled = false;
   bool _didCheckWhatsNew = false;
   final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
 
@@ -223,6 +224,8 @@ class _MyAppState extends State<MyApp> {
         urlAutocompleteSuggestionRemovalEnabledKey,
         defaultValue: false,
       );
+      final resolvedAutoHideAddressBarEnabled =
+          readBool(autoHideAddressBarKey, defaultValue: false);
       final themeString = readString(themeModeKey);
       setState(() {
         homepage = resolvedHomepage;
@@ -238,6 +241,7 @@ class _MyAppState extends State<MyApp> {
         ambientToolbarEnabled = resolvedAmbientToolbarEnabled;
         urlAutocompleteSuggestionRemovalEnabled =
             resolvedUrlAutocompleteSuggestionRemovalEnabled;
+        autoHideAddressBarEnabled = resolvedAutoHideAddressBarEnabled;
         themeMode = themeString == null
             ? AppThemeMode.system
             : AppThemeMode.values.firstWhere(
@@ -339,6 +343,7 @@ class _MyAppState extends State<MyApp> {
           aiSearchSuggestionsEnabled: aiSearchSuggestionsEnabled,
           advancedCacheEnabled: advancedCacheEnabled,
           ambientToolbarEnabled: ambientToolbarEnabled,
+          autoHideAddressBarEnabled: autoHideAddressBarEnabled,
           urlAutocompleteSuggestionRemovalEnabled:
               urlAutocompleteSuggestionRemovalEnabled,
           themeMode: effectiveThemeMode,

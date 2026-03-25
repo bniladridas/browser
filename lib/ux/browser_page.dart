@@ -316,6 +316,7 @@ class SettingsDialog extends HookWidget {
     this.aiSearchSuggestionsEnabled = false,
     this.advancedCacheEnabled = false,
     this.ambientToolbarEnabled = false,
+    this.autoHideAddressBarEnabled = false,
   });
 
   final void Function()? onSettingsChanged;
@@ -326,6 +327,7 @@ class SettingsDialog extends HookWidget {
   final bool aiSearchSuggestionsEnabled;
   final bool advancedCacheEnabled;
   final bool ambientToolbarEnabled;
+  final bool autoHideAddressBarEnabled;
 
   String _themeLabel(AppThemeMode mode) {
     switch (mode) {
@@ -355,6 +357,8 @@ class SettingsDialog extends HookWidget {
     final strictMode = useState(false);
     final passwordManagerEnabled = useState(false);
     final reorderableTabs = useState(false);
+    final tabFaviconBadgeEnabled = useState(false);
+    final autoHideAddressBarEnabled = useState(this.autoHideAddressBarEnabled);
     final aiSearchSuggestionsEnabled =
         useState(this.aiSearchSuggestionsEnabled);
     final advancedCacheEnabled = useState(this.advancedCacheEnabled);
@@ -403,6 +407,8 @@ class SettingsDialog extends HookWidget {
             readBool(passwordManagerEnabledKey, defaultValue: false);
         reorderableTabs.value =
             readBool(reorderableTabsKey, defaultValue: false);
+        tabFaviconBadgeEnabled.value =
+            readBool(tabFaviconBadgeEnabledKey, defaultValue: false);
         aiSearchSuggestionsEnabled.value =
             readBool(aiSearchSuggestionsEnabledKey, defaultValue: false);
         advancedCacheEnabled.value =
@@ -413,6 +419,8 @@ class SettingsDialog extends HookWidget {
           urlAutocompleteSuggestionRemovalEnabledKey,
           defaultValue: false,
         );
+        autoHideAddressBarEnabled.value =
+            readBool(autoHideAddressBarKey, defaultValue: false);
         final themeString = readString(themeModeKey);
         selectedTheme.value = themeString == null
             ? (currentTheme ?? AppThemeMode.system)
@@ -524,17 +532,12 @@ class SettingsDialog extends HookWidget {
                     style: theme.textTheme.bodyMedium?.copyWith(fontSize: 13),
                     decoration: InputDecoration(
                       labelText: 'Homepage',
-                      hintText: 'leave blank for welcome page',
-                      hintStyle: theme.textTheme.bodySmall?.copyWith(
-                        fontSize: 11,
-                        color: theme.colorScheme.onSurfaceVariant
-                            .withValues(alpha: 0.6),
-                      ),
                       isDense: true,
                       filled: false,
                       enabledBorder: UnderlineInputBorder(
                         borderSide: BorderSide(
-                          color: theme.colorScheme.onSurfaceVariant,
+                          color: theme.colorScheme.onSurface
+                              .withValues(alpha: 0.18),
                         ),
                       ),
                       focusedBorder: UnderlineInputBorder(
@@ -545,62 +548,62 @@ class SettingsDialog extends HookWidget {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  Padding(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                    child: Row(
-                      children: [
-                        Text(
-                          'Profiles',
-                          style: theme.textTheme.titleSmall?.copyWith(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: theme.colorScheme.primary,
-                          ),
-                        ),
-                        const Spacer(),
-                        MouseRegion(
-                          cursor: SystemMouseCursors.click,
-                          child: TextButton(
-                            onPressed: () => _showProfileManagerDialog(
-                                context, ambientToolbarEnabled.value),
-                            style: TextButton.styleFrom(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 8),
-                              minimumSize: const Size(0, 24),
-                            ),
-                            child: const Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.settings, size: 14),
-                                SizedBox(width: 4),
-                                Text('Manage'),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                  const SizedBox(height: 12),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: ListenableBuilder(
-                      listenable: profileManager,
-                      builder: (context, _) => Text(
-                        'Active: ${profileManager.activeProfile?.name ?? "None"}',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          fontSize: 10,
-                          color: theme.colorScheme.onSurfaceVariant,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.surfaceContainerHigh,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: theme.colorScheme.onSurface
+                              .withValues(alpha: 0.12),
+                          width: 0.5,
+                        ),
+                      ),
+                      child: ListTile(
+                        dense: true,
+                        visualDensity: compactDensity,
+                        title: Text(
+                          'Profile',
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        subtitle: ListenableBuilder(
+                          listenable: profileManager,
+                          builder: (context, _) => Text(
+                            profileManager.activeProfile?.name ?? 'None',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              fontSize: 11,
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                        trailing: MouseRegion(
+                          cursor: SystemMouseCursors.click,
+                          child: IconButton(
+                            key: const Key('settings.manage_profiles'),
+                            icon: const Icon(Icons.settings, size: 18),
+                            onPressed: () => _showProfileManagerDialog(
+                              context,
+                              ambientToolbarEnabled.value,
+                            ),
+                          ),
                         ),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  const Divider(),
+                  const SizedBox(height: 10),
+                  Divider(
+                    height: 1,
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.10),
+                  ),
                   MouseRegion(
                     cursor: SystemMouseCursors.click,
                     child: SwitchListTile(
-                      title: const Text('Hide App Bar'),
+                      title: const Text('Hide toolbar'),
                       value: hideAppBar.value,
                       onChanged: (value) => hideAppBar.value = value,
                       hoverColor: Colors.transparent,
@@ -609,7 +612,17 @@ class SettingsDialog extends HookWidget {
                   MouseRegion(
                     cursor: SystemMouseCursors.click,
                     child: SwitchListTile(
-                      title: const Text('Legacy User Agent'),
+                      title: const Text('Hide URL'),
+                      value: autoHideAddressBarEnabled.value,
+                      onChanged: (value) =>
+                          autoHideAddressBarEnabled.value = value,
+                      hoverColor: Colors.transparent,
+                    ),
+                  ),
+                  MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: SwitchListTile(
+                      title: const Text('Legacy UA'),
                       value: useModernUserAgent.value,
                       onChanged: (value) => useModernUserAgent.value = value,
                       hoverColor: Colors.transparent,
@@ -618,7 +631,7 @@ class SettingsDialog extends HookWidget {
                   MouseRegion(
                     cursor: SystemMouseCursors.click,
                     child: SwitchListTile(
-                      title: const Text('Git Fetch'),
+                      title: const Text('Git fetch'),
                       value: enableGitFetch.value,
                       onChanged: (value) => enableGitFetch.value = value,
                       hoverColor: Colors.transparent,
@@ -627,7 +640,7 @@ class SettingsDialog extends HookWidget {
                   MouseRegion(
                     cursor: SystemMouseCursors.click,
                     child: SwitchListTile(
-                      title: const Text('Private Browsing'),
+                      title: const Text('Private'),
                       value: privateBrowsing.value,
                       onChanged: (value) => privateBrowsing.value = value,
                       hoverColor: Colors.transparent,
@@ -636,7 +649,7 @@ class SettingsDialog extends HookWidget {
                   MouseRegion(
                     cursor: SystemMouseCursors.click,
                     child: SwitchListTile(
-                      title: const Text('Ad Blocking'),
+                      title: const Text('Block ads'),
                       value: adBlocking.value,
                       onChanged: (value) => adBlocking.value = value,
                       hoverColor: Colors.transparent,
@@ -645,7 +658,7 @@ class SettingsDialog extends HookWidget {
                   MouseRegion(
                     cursor: SystemMouseCursors.click,
                     child: SwitchListTile(
-                      title: const Text('Strict Mode'),
+                      title: const Text('Strict'),
                       value: strictMode.value,
                       onChanged: (value) => strictMode.value = value,
                       hoverColor: Colors.transparent,
@@ -654,7 +667,7 @@ class SettingsDialog extends HookWidget {
                   MouseRegion(
                     cursor: SystemMouseCursors.click,
                     child: SwitchListTile(
-                      title: const Text('Password Manager'),
+                      title: const Text('Passwords'),
                       value: passwordManagerEnabled.value,
                       onChanged: (value) =>
                           passwordManagerEnabled.value = value,
@@ -682,7 +695,7 @@ class SettingsDialog extends HookWidget {
                   MouseRegion(
                     cursor: SystemMouseCursors.click,
                     child: SwitchListTile(
-                      title: const Text('Reorderable Tabs'),
+                      title: const Text('Reorder tabs'),
                       value: reorderableTabs.value,
                       onChanged: (value) => reorderableTabs.value = value,
                       hoverColor: Colors.transparent,
@@ -691,7 +704,17 @@ class SettingsDialog extends HookWidget {
                   MouseRegion(
                     cursor: SystemMouseCursors.click,
                     child: SwitchListTile(
-                      title: const Text('AI Search Suggestions'),
+                      title: const Text('Favicon badge'),
+                      value: tabFaviconBadgeEnabled.value,
+                      onChanged: (value) =>
+                          tabFaviconBadgeEnabled.value = value,
+                      hoverColor: Colors.transparent,
+                    ),
+                  ),
+                  MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: SwitchListTile(
+                      title: const Text('AI suggestions'),
                       value: aiSearchSuggestionsEnabled.value,
                       onChanged: (value) =>
                           aiSearchSuggestionsEnabled.value = value,
@@ -701,7 +724,7 @@ class SettingsDialog extends HookWidget {
                   MouseRegion(
                     cursor: SystemMouseCursors.click,
                     child: SwitchListTile(
-                      title: const Text('Suggestion Erase'),
+                      title: const Text('Erase suggestions'),
                       value: urlAutocompleteSuggestionRemovalEnabled.value,
                       onChanged: (value) =>
                           urlAutocompleteSuggestionRemovalEnabled.value = value,
@@ -711,7 +734,7 @@ class SettingsDialog extends HookWidget {
                   MouseRegion(
                     cursor: SystemMouseCursors.click,
                     child: SwitchListTile(
-                      title: const Text('Advanced Cache'),
+                      title: const Text('Advanced cache'),
                       value: advancedCacheEnabled.value,
                       onChanged: (value) => advancedCacheEnabled.value = value,
                       hoverColor: Colors.transparent,
@@ -720,7 +743,7 @@ class SettingsDialog extends HookWidget {
                   MouseRegion(
                     cursor: SystemMouseCursors.click,
                     child: SwitchListTile(
-                      title: const Text('Ambient Mode'),
+                      title: const Text('Ambient'),
                       value: ambientToolbarEnabled.value,
                       onChanged: (value) => ambientToolbarEnabled.value = value,
                       hoverColor: Colors.transparent,
@@ -767,11 +790,18 @@ class SettingsDialog extends HookWidget {
                   const SizedBox(height: 8),
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.all(8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
                     decoration: BoxDecoration(
-                      color:
-                          Theme.of(context).colorScheme.surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(10),
+                      color: theme.colorScheme.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color:
+                            theme.colorScheme.onSurface.withValues(alpha: 0.12),
+                        width: 0.5,
+                      ),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -807,9 +837,7 @@ class SettingsDialog extends HookWidget {
                                   ),
                                   const SizedBox(width: 4),
                                   Text(
-                                    aiAvailable
-                                        ? 'Firebase ready'
-                                        : 'Firebase missing',
+                                    aiAvailable ? 'Ready' : 'Setup',
                                     style: theme.textTheme.bodySmall?.copyWith(
                                       fontSize: 9,
                                       fontWeight: FontWeight.w600,
@@ -821,40 +849,33 @@ class SettingsDialog extends HookWidget {
                                 ],
                               ),
                             ),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        InkWell(
-                          onTap: () => showFirebaseConfig.value =
-                              !showFirebaseConfig.value,
-                          hoverColor: Colors.transparent,
-                          splashColor: Colors.transparent,
-                          highlightColor: Colors.transparent,
-                          child: MouseRegion(
-                            cursor: SystemMouseCursors.click,
-                            child: Row(
-                              children: [
-                                Icon(
+                            const Spacer(),
+                            MouseRegion(
+                              cursor: SystemMouseCursors.click,
+                              child: IconButton(
+                                key: const Key(
+                                    'settings.firebase_config_toggle'),
+                                visualDensity: compactDensity,
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(
+                                  minWidth: 32,
+                                  minHeight: 32,
+                                ),
+                                icon: Icon(
                                   showFirebaseConfig.value
                                       ? Icons.expand_less
                                       : Icons.expand_more,
-                                  size: 12,
+                                  size: 18,
                                   color: theme.colorScheme.onSurfaceVariant,
                                 ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  'Config',
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    fontSize: 9,
-                                    color: theme.colorScheme.onSurfaceVariant,
-                                  ),
-                                ),
-                              ],
+                                onPressed: () => showFirebaseConfig.value =
+                                    !showFirebaseConfig.value,
+                              ),
                             ),
-                          ),
+                          ],
                         ),
                         if (showFirebaseConfig.value) ...[
-                          const SizedBox(height: 4),
+                          const SizedBox(height: 8),
                           TextField(
                             controller: firebaseApiKey,
                             obscureText: true,
@@ -1077,6 +1098,10 @@ class SettingsDialog extends HookWidget {
                 passwordManagerEnabled.value);
             await prefs.setBool(
                 scopedKey(reorderableTabsKey), reorderableTabs.value);
+            await prefs.setBool(
+              scopedKey(tabFaviconBadgeEnabledKey),
+              tabFaviconBadgeEnabled.value,
+            );
             await prefs.setBool(scopedKey(aiSearchSuggestionsEnabledKey),
                 aiSearchSuggestionsEnabled.value);
             await prefs.setBool(
@@ -1086,6 +1111,10 @@ class SettingsDialog extends HookWidget {
             await prefs.setBool(
               scopedKey(urlAutocompleteSuggestionRemovalEnabledKey),
               urlAutocompleteSuggestionRemovalEnabled.value,
+            );
+            await prefs.setBool(
+              scopedKey(autoHideAddressBarKey),
+              autoHideAddressBarEnabled.value,
             );
             await prefs.setString(
                 scopedKey(themeModeKey), selectedTheme.value.name);
@@ -1457,8 +1486,10 @@ class PageFontIntent extends Intent {}
 
 class TabData {
   String currentUrl;
+  String? pageTitle;
   final TextEditingController urlController;
   final FocusNode urlFocusNode;
+  bool isUrlObscured = false;
   final TextEditingController torrySearchController;
   final FocusNode torrySearchFocusNode;
   WebViewController? webViewController;
@@ -1688,6 +1719,7 @@ class BrowserPage extends StatefulWidget {
       this.aiSearchSuggestionsEnabled = false,
       this.advancedCacheEnabled = false,
       this.ambientToolbarEnabled = false,
+      this.autoHideAddressBarEnabled = false,
       this.urlAutocompleteSuggestionRemovalEnabled = false,
       this.themeMode = AppThemeMode.system,
       this.aiAvailable = true,
@@ -1708,6 +1740,7 @@ class BrowserPage extends StatefulWidget {
   final bool aiSearchSuggestionsEnabled;
   final bool advancedCacheEnabled;
   final bool ambientToolbarEnabled;
+  final bool autoHideAddressBarEnabled;
   final bool urlAutocompleteSuggestionRemovalEnabled;
   final AppThemeMode themeMode;
   final bool aiAvailable;
@@ -1781,7 +1814,7 @@ class _BrowserPageState extends State<BrowserPage>
   late AnimationController _refreshIconController;
   AnimationController? _ambientController;
   final LayerLink _urlAutocompleteLink = LayerLink();
-  final GlobalKey _urlAutocompleteTargetKey = GlobalKey();
+  BuildContext? _urlAutocompleteTargetContext;
   OverlayEntry? _urlAutocompleteOverlayEntry;
   List<String> _urlAutocompleteOptions = const <String>[];
   double? _urlAutocompleteTargetWidth;
@@ -1874,6 +1907,11 @@ class _BrowserPageState extends State<BrowserPage>
   final Map<String, String> _faviconCacheByHost = {};
   final Map<String, bool> _faviconHostSafetyCache = {};
   String? _legacyLayoutFixScript;
+  bool _tabFaviconBadgeEnabled = false;
+  int? _hoveredTabIndex;
+  static const Duration _addressBarAutoHideDelay = Duration(seconds: 4);
+  Timer? _addressBarAutoHideTimer;
+  bool _isAddressBarHovered = false;
 
   static const String _themeProbeScript = '''
 (() => {
@@ -2024,6 +2062,7 @@ class _BrowserPageState extends State<BrowserPage>
     _syncAmbientAnimation();
     _pageFontFamily = widget.pageFontFamily;
     _loadReorderableTabs();
+    _loadTabFaviconBadgeEnabled();
     _loadFontOverrides();
     _loadNavigationCacheIndex();
     tabs.add(_createTab(widget.initialUrl));
@@ -2205,8 +2244,11 @@ class _BrowserPageState extends State<BrowserPage>
         _removeUrlAutocompleteOverlay();
       });
       _syncPagePointerEvents(tab);
+      _maybeScheduleAddressBarAutoHide(tab);
       return;
     }
+    _cancelAddressBarAutoHide();
+    _setActiveTabUrlObscured(false);
     _updateUrlAutocompleteOverlay(tab);
     _syncPagePointerEvents(tab);
   }
@@ -2276,8 +2318,7 @@ class _BrowserPageState extends State<BrowserPage>
         _removeUrlAutocompleteOverlay();
         return;
       }
-      final targetBox =
-          _urlAutocompleteTargetKey.currentContext?.findRenderObject();
+      final targetBox = _urlAutocompleteTargetContext?.findRenderObject();
       if (targetBox is RenderBox && targetBox.hasSize) {
         _urlAutocompleteTargetWidth = targetBox.size.width;
         final overlayBox =
@@ -2563,6 +2604,15 @@ class _BrowserPageState extends State<BrowserPage>
     if (!oldWidget.privateBrowsing && widget.privateBrowsing) {
       bookmarkManager.clear();
       _history.clear();
+    }
+    if (oldWidget.autoHideAddressBarEnabled !=
+        widget.autoHideAddressBarEnabled) {
+      if (!widget.autoHideAddressBarEnabled) {
+        _cancelAddressBarAutoHide();
+        _setActiveTabUrlObscured(false);
+      } else {
+        _maybeScheduleAddressBarAutoHide(activeTab, revealImmediately: true);
+      }
     }
   }
 
@@ -2880,12 +2930,86 @@ class _BrowserPageState extends State<BrowserPage>
     previousTabIndex = tabController.index;
     _syncPointerEventsForAllTabs();
     _applyThemeForTab(tabs[tabController.index]);
+    _setActiveTabUrlObscured(false);
+    _maybeScheduleAddressBarAutoHide(activeTab, revealImmediately: true);
     if (mounted) {
       setState(() {});
     }
   }
 
   TabData get activeTab => tabs[tabController.index];
+
+  void _cancelAddressBarAutoHide() {
+    _addressBarAutoHideTimer?.cancel();
+    _addressBarAutoHideTimer = null;
+  }
+
+  bool _shouldAutoHideAddressBar(TabData tab) {
+    if (!widget.autoHideAddressBarEnabled) return false;
+    if (!_isDesktopPlatform) return false;
+    if (widget.hideAppBar) return false;
+    if (_isAddressBarHovered) return false;
+    if (tab.urlFocusNode.hasFocus) return false;
+    if (_urlAutocompleteOpen) return false;
+    if (_quickUrlPromptOpen) return false;
+    if (tab.currentUrl == defaultHomepageUrl) return false;
+    if (tab.state is BrowserError) return false;
+    return true;
+  }
+
+  void _setActiveTabUrlObscured(bool obscured) {
+    final tab = activeTab;
+    if (tab.isUrlObscured == obscured) return;
+    if (obscured) {
+      _removeUrlAutocompleteOverlay();
+      tab.urlFocusNode.unfocus();
+    }
+    if (!mounted) {
+      tab.isUrlObscured = obscured;
+      return;
+    }
+    setState(() {
+      tab.isUrlObscured = obscured;
+    });
+  }
+
+  void _maybeScheduleAddressBarAutoHide(
+    TabData tab, {
+    bool revealImmediately = false,
+  }) {
+    if (!mounted) return;
+    if (!_isDesktopPlatform) return;
+    if (!identical(tab, activeTab)) return;
+
+    _cancelAddressBarAutoHide();
+    if (revealImmediately) {
+      _setActiveTabUrlObscured(false);
+    }
+    if (!_shouldAutoHideAddressBar(tab)) return;
+
+    final scheduledIndex = tabController.index;
+    _addressBarAutoHideTimer = Timer(_addressBarAutoHideDelay, () {
+      if (!mounted) return;
+      if (tab.isClosed) return;
+      if (tabController.index != scheduledIndex) return;
+      if (!identical(tab, activeTab)) return;
+      if (!_shouldAutoHideAddressBar(tab)) return;
+      _setActiveTabUrlObscured(true);
+    });
+  }
+
+  void _handleAddressBarHoverChanged(bool hovered) {
+    if (!_isDesktopPlatform) return;
+    if (_isAddressBarHovered == hovered) return;
+    _isAddressBarHovered = hovered;
+    if (!mounted) return;
+    if (hovered) {
+      _cancelAddressBarAutoHide();
+      _setActiveTabUrlObscured(false);
+      return;
+    }
+    _maybeScheduleAddressBarAutoHide(activeTab);
+  }
 
   Future<void> _handlePasswordPromptAction(SavePasswordAction action) async {
     final promptData = activeTab.pendingPasswordPrompt;
@@ -3521,45 +3645,143 @@ class _BrowserPageState extends State<BrowserPage>
     });
   }
 
+  String _normalizeTabTitle(String? title) {
+    final normalized = title?.replaceAll(RegExp(r'\s+'), ' ').trim() ?? '';
+    return normalized;
+  }
+
+  String _tabFallbackTitleFromUrl(String url) {
+    final uri = Uri.tryParse(url);
+    if (uri == null) return url;
+    if (uri.scheme == 'file') {
+      if (uri.pathSegments.isNotEmpty) return uri.pathSegments.last;
+      return 'File';
+    }
+    if (uri.scheme == 'about') {
+      return uri.pathSegments.isNotEmpty ? uri.pathSegments.last : 'About';
+    }
+    final host = uri.host;
+    if (host.isEmpty) return url;
+    return host.toLowerCase().startsWith('www.') ? host.substring(4) : host;
+  }
+
+  String _tabTitleForDisplay(TabData tab) {
+    final normalized = _normalizeTabTitle(tab.pageTitle);
+    if (normalized.isNotEmpty) return normalized;
+    if (tab.currentUrl == defaultHomepageUrl) return 'Home';
+    return _tabFallbackTitleFromUrl(tab.currentUrl);
+  }
+
+  String? _stringFromJsResult(dynamic result) {
+    if (result == null) return null;
+    if (result is String) {
+      final unescaped = FaviconUrlPolicy.unescapeWrappedJson(result);
+      return unescaped.trim();
+    }
+    return result.toString().trim();
+  }
+
+  Future<void> _updateTabTitle(TabData tab, {String? hintedTitle}) async {
+    if (!mounted || tab.isClosed) return;
+    final controller = tab.webViewController;
+    if (controller == null) return;
+
+    var candidate = _normalizeTabTitle(hintedTitle);
+    if (candidate.isEmpty) {
+      try {
+        candidate = _normalizeTabTitle(await controller.getTitle());
+      } catch (_) {
+        // Best effort only.
+      }
+    }
+    if (candidate.isEmpty) {
+      try {
+        candidate = _normalizeTabTitle(
+          _stringFromJsResult(
+            await controller.runJavaScriptReturningResult('document.title'),
+          ),
+        );
+      } catch (_) {
+        // Best effort only.
+      }
+    }
+
+    if (!mounted || tab.isClosed) return;
+    if (candidate.isEmpty || candidate == tab.pageTitle) return;
+    setState(() {
+      tab.pageTitle = candidate;
+    });
+  }
+
   Widget _buildTabItem(TabData tab, int index, bool isSelected,
       {bool showDragHandle = false}) {
     final theme = Theme.of(context);
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (showDragHandle) ...[
-          Icon(
-            Icons.drag_indicator,
-            size: 16,
-            color:
-                Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
-          ),
-          const SizedBox(width: 4),
-        ],
-        _buildTabFavicon(tab, theme),
-        const SizedBox(width: 6),
-        Text(
-          (Uri.tryParse(tab.currentUrl)?.host ?? tab.currentUrl).truncate(14),
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-            color: isSelected
-                ? theme.colorScheme.onSurface
-                : theme.colorScheme.onSurface.withValues(alpha: 0.6),
-          ),
-        ),
-        if (tabs.length > 1) ...[
+    final canHoverTabs = _isDesktopPlatform;
+    final shouldShowClose = tabs.length > 1 &&
+        (!canHoverTabs || isSelected || _hoveredTabIndex == index);
+
+    return MouseRegion(
+      onEnter: (_) {
+        if (!mounted || !canHoverTabs) return;
+        if (_hoveredTabIndex == index) return;
+        setState(() {
+          _hoveredTabIndex = index;
+        });
+      },
+      onExit: (_) {
+        if (!mounted || !canHoverTabs) return;
+        if (_hoveredTabIndex != index) return;
+        setState(() {
+          _hoveredTabIndex = null;
+        });
+      },
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (showDragHandle) ...[
+            Icon(
+              Icons.drag_indicator,
+              size: 16,
+              color: Theme.of(context)
+                  .colorScheme
+                  .onSurface
+                  .withValues(alpha: 0.5),
+            ),
+            const SizedBox(width: 4),
+          ],
+          _buildTabFavicon(tab, theme),
           const SizedBox(width: 6),
-          GestureDetector(
-            onTap: () => _closeTab(index),
-            child: Icon(
-              Icons.close,
-              size: 15,
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+          Text(
+            _tabTitleForDisplay(tab).truncate(18),
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+              color: isSelected
+                  ? theme.colorScheme.onSurface
+                  : theme.colorScheme.onSurface.withValues(alpha: 0.6),
             ),
           ),
+          if (tabs.length > 1) ...[
+            const SizedBox(width: 6),
+            IgnorePointer(
+              ignoring: !shouldShowClose,
+              child: AnimatedOpacity(
+                opacity: shouldShowClose ? 1 : 0,
+                duration: const Duration(milliseconds: 120),
+                curve: Curves.easeOut,
+                child: GestureDetector(
+                  onTap: () => _closeTab(index),
+                  child: Icon(
+                    Icons.close,
+                    size: 15,
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ],
-      ],
+      ),
     );
   }
 
@@ -3569,18 +3791,66 @@ class _BrowserPageState extends State<BrowserPage>
       size: 15,
       color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
     );
+    const isFlutterTest = bool.fromEnvironment('FLUTTER_TEST');
     final faviconUrl = tab.faviconUrl;
-    if (faviconUrl == null || faviconUrl.trim().isEmpty) {
-      return fallback;
-    }
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(3),
-      child: Image.network(
-        faviconUrl,
+    final showFallback = faviconUrl == null || faviconUrl.trim().isEmpty;
+
+    if (isIntegrationTest || isFlutterTest) {
+      if (!_tabFaviconBadgeEnabled) return fallback;
+      return SizedBox(
         width: 15,
         height: 15,
-        fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => fallback,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(3),
+            border: Border.all(
+              color: theme.colorScheme.outlineVariant.withValues(alpha: 0.35),
+              width: 0.5,
+            ),
+          ),
+          child: Center(child: fallback),
+        ),
+      );
+    }
+
+    if (!_tabFaviconBadgeEnabled) {
+      if (showFallback) return fallback;
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(3),
+        child: Image.network(
+          faviconUrl,
+          width: 15,
+          height: 15,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => fallback,
+        ),
+      );
+    }
+
+    final content = showFallback
+        ? fallback
+        : Image.network(
+            faviconUrl,
+            width: 13,
+            height: 13,
+            fit: BoxFit.contain,
+            errorBuilder: (_, __, ___) => fallback,
+          );
+
+    return SizedBox(
+      width: 15,
+      height: 15,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(3),
+          border: Border.all(
+            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.35),
+            width: 0.5,
+          ),
+        ),
+        child: Center(child: content),
       ),
     );
   }
@@ -3593,10 +3863,17 @@ class _BrowserPageState extends State<BrowserPage>
       'www.google.com',
       '/s2/favicons',
       <String, String>{
-        'domain': uri.host,
+        'domain_url': '${uri.scheme}://${uri.host}',
         'sz': '64',
       },
     ).toString();
+  }
+
+  String? _hostFaviconIcoUrlFor(String url) {
+    final uri = Uri.tryParse(url);
+    if (uri == null || uri.host.isEmpty) return null;
+    if (uri.scheme != 'http' && uri.scheme != 'https') return null;
+    return uri.replace(path: '/favicon.ico', queryParameters: null).toString();
   }
 
   Future<bool> _isSafeFaviconUrl(String url) async {
@@ -3676,8 +3953,8 @@ class _BrowserPageState extends State<BrowserPage>
     })
     .filter(Boolean)
     .sort((a, b) => {
-      if (a.relOrder !== b.relOrder) return a.relOrder - b.relOrder;
-      return a.extOrder - b.extOrder;
+      if (a.extOrder !== b.extOrder) return a.extOrder - b.extOrder;
+      return a.relOrder - b.relOrder;
     });
 
   if (candidates.length > 0) return candidates[0].abs;
@@ -3688,6 +3965,7 @@ class _BrowserPageState extends State<BrowserPage>
     } catch (_) {
       // Best effort only.
     }
+    resolvedFavicon ??= _hostFaviconIcoUrlFor(tab.currentUrl);
     resolvedFavicon ??= _defaultFaviconUrlFor(tab.currentUrl);
     final isResolvedFaviconSafeAndRenderable =
         resolvedFavicon != null && resolvedFavicon.isNotEmpty
@@ -3696,8 +3974,15 @@ class _BrowserPageState extends State<BrowserPage>
     if (resolvedFavicon != null &&
         resolvedFavicon.isNotEmpty &&
         !isResolvedFaviconSafeAndRenderable) {
-      // Keep current working favicon when page reports non-renderable icons.
-      resolvedFavicon = tab.faviconUrl ?? _defaultFaviconUrlFor(tab.currentUrl);
+      // Prefer the host favicon.ico when pages expose only non-renderable icons (e.g. SVG),
+      // otherwise fall back to the current working favicon or a generic resolver.
+      final hostIco = _hostFaviconIcoUrlFor(tab.currentUrl);
+      final hostIcoRenderable = hostIco != null && hostIco.isNotEmpty
+          ? await _isSafeAndRenderableFaviconUrl(hostIco)
+          : false;
+      resolvedFavicon = hostIcoRenderable
+          ? hostIco
+          : (tab.faviconUrl ?? _defaultFaviconUrlFor(tab.currentUrl));
     }
     final isResolvedFaviconSafe =
         resolvedFavicon != null && resolvedFavicon.isNotEmpty
@@ -3729,6 +4014,18 @@ class _BrowserPageState extends State<BrowserPage>
     });
   }
 
+  Future<void> _loadTabFaviconBadgeEnabled() async {
+    final prefs = await SharedPreferences.getInstance();
+    final resolved = prefs.getBool(
+          profileManager.getScopedStorageKey(tabFaviconBadgeEnabledKey),
+        ) ??
+        false;
+    if (!mounted) return;
+    setState(() {
+      _tabFaviconBadgeEnabled = resolved;
+    });
+  }
+
   Future<void> _setWindowMovable(bool movable) async {
     if (isIntegrationTest) return;
     try {
@@ -3757,6 +4054,7 @@ class _BrowserPageState extends State<BrowserPage>
     _removeUrlAutocompleteOverlay(updatePointerEvents: false);
     _overflowMenuCloseTimer?.cancel();
     _windowButtonsSyncRetryTimer?.cancel();
+    _addressBarAutoHideTimer?.cancel();
     profileManager.removeListener(_onProfileChanged);
     WidgetsBinding.instance.removeObserver(this);
     _keyboardFocusNode.dispose();
@@ -3972,11 +4270,17 @@ class _BrowserPageState extends State<BrowserPage>
 
   void _handleLoadError(TabData tab, String newErrorMessage) {
     final now = DateTime.now();
+    final httpStatus = () {
+      final match = RegExp(r'^HTTP\s+(\d{3})\b').firstMatch(newErrorMessage);
+      if (match == null) return null;
+      return int.tryParse(match.group(1) ?? '');
+    }();
+    final duplicateWindowMs = httpStatus == 429 ? 30000 : 1500;
     final isDuplicate = tab.lastErrorMessage == newErrorMessage &&
         tab.lastErrorAt != null &&
-        now.difference(tab.lastErrorAt!).inMilliseconds < 1500;
+        now.difference(tab.lastErrorAt!).inMilliseconds < duplicateWindowMs;
     if (!isDuplicate) {
-      if (newErrorMessage.startsWith('HTTP 404')) {
+      if (newErrorMessage.startsWith('HTTP 404') || httpStatus == 429) {
         quietLogger.w('Web view load error: $newErrorMessage');
       } else {
         logger.e('Web view load error: $newErrorMessage');
@@ -4331,6 +4635,7 @@ class _BrowserPageState extends State<BrowserPage>
               child: SettingsDialog(
                 onSettingsChanged: () {
                   _loadReorderableTabs();
+                  _loadTabFaviconBadgeEnabled();
                   widget.onSettingsChanged?.call();
                 },
                 onClearCaches: _clearAllCaches,
@@ -4340,6 +4645,7 @@ class _BrowserPageState extends State<BrowserPage>
                 advancedCacheEnabled: widget.advancedCacheEnabled,
                 aiAvailable: widget.aiAvailable,
                 ambientToolbarEnabled: widget.ambientToolbarEnabled,
+                autoHideAddressBarEnabled: widget.autoHideAddressBarEnabled,
               ),
             ),
           );
@@ -5616,7 +5922,24 @@ class _BrowserPageState extends State<BrowserPage>
       // Partial workaround for SPA history: listen for popstate events via JS.
       tab.webViewController!.addJavaScriptChannel('HistoryChannel',
           onMessageReceived: (JavaScriptMessage message) {
-        final url = message.message;
+        final payload = message.message;
+        var url = payload;
+        String? title;
+        try {
+          final decoded = jsonDecode(payload);
+          if (decoded is Map) {
+            final decodedUrl = decoded['url'];
+            if (decodedUrl is String && decodedUrl.trim().isNotEmpty) {
+              url = decodedUrl;
+            }
+            final decodedTitle = decoded['title'];
+            if (decodedTitle is String && decodedTitle.trim().isNotEmpty) {
+              title = decodedTitle;
+            }
+          }
+        } catch (_) {
+          // Backwards-compatible: treat payload as a raw URL.
+        }
         // Validate URL to prevent LFI and spoofing attacks
         if (!_isValidHistoryUrl(url)) {
           logger.w(
@@ -5626,12 +5949,19 @@ class _BrowserPageState extends State<BrowserPage>
         }
         _recordHistory(tab, url);
         // Update the URL bar for SPA navigation
-        if (!tab.isClosed && mounted && tab.currentUrl != url) {
+        if (!tab.isClosed && mounted) {
           setState(() {
-            tab.currentUrl = url;
-            tab.urlController.text = url;
+            if (tab.currentUrl != url) {
+              tab.currentUrl = url;
+              tab.urlController.text = url;
+            }
+            final normalizedTitle = _normalizeTabTitle(title);
+            if (normalizedTitle.isNotEmpty) {
+              tab.pageTitle = normalizedTitle;
+            }
           });
         }
+        unawaited(_updateTabTitle(tab, hintedTitle: title));
         _updateThemeFromTab(tab);
         _updateAmbientFromTab(tab);
       });
@@ -5692,6 +6022,7 @@ class _BrowserPageState extends State<BrowserPage>
                 tab.currentUrl = url;
                 tab.urlController.text = tab.currentUrl;
                 tab.state = const BrowserState.loading();
+                tab.pageTitle = null;
                 tab.detectedBrightness = null;
                 tab.detectedSeedColor = null;
                 tab.ambientSeedColor = null;
@@ -5718,23 +6049,27 @@ class _BrowserPageState extends State<BrowserPage>
               }
             });
           }
+          if (identical(tab, activeTab)) {
+            _setActiveTabUrlObscured(false);
+            _maybeScheduleAddressBarAutoHide(tab, revealImmediately: true);
+          }
           // Add listeners for SPA navigations: popstate, pushState, replaceState
           if (tab.webViewController != null) {
             tab.webViewController!.runJavaScript('''
             if (!window.historyListenerAdded) {
               window.addEventListener('popstate', function(event) {
-                HistoryChannel.postMessage(window.location.href);
+                HistoryChannel.postMessage(JSON.stringify({ url: window.location.href, title: document.title || '' }));
               });
               // Override pushState and replaceState to capture programmatic changes
               window.originalPushState = window.history.pushState;
               window.history.pushState = function(state, title, url) {
                 window.originalPushState.call(this, state, title, url);
-                HistoryChannel.postMessage(window.location.href);
+                HistoryChannel.postMessage(JSON.stringify({ url: window.location.href, title: document.title || '' }));
               };
               window.originalReplaceState = window.history.replaceState;
               window.history.replaceState = function(state, title, url) {
                 window.originalReplaceState.call(this, state, title, url);
-                HistoryChannel.postMessage(window.location.href);
+                HistoryChannel.postMessage(JSON.stringify({ url: window.location.href, title: document.title || '' }));
               };
               window.historyListenerAdded = true;
             }
@@ -5757,6 +6092,7 @@ class _BrowserPageState extends State<BrowserPage>
             _attemptAutofill(tab);
           }
           _syncPagePointerEvents(tab);
+          unawaited(_updateTabTitle(tab));
           _updateThemeFromTab(tab);
           _updateAmbientFromTab(tab);
           Future.delayed(const Duration(milliseconds: 400), () {
@@ -6148,52 +6484,121 @@ class _BrowserPageState extends State<BrowserPage>
                     ),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: CompositedTransformTarget(
-                        key: _urlAutocompleteTargetKey,
-                        link: _urlAutocompleteLink,
-                        child: TextField(
-                          key: const Key('browser.url_field'),
-                          controller: activeTab.urlController,
-                          focusNode: activeTab.urlFocusNode,
-                          onChanged: (_) =>
-                              _updateUrlAutocompleteOverlay(activeTab),
-                          style: TextStyle(
-                            color: toolbarForeground,
-                            fontSize: 13,
+                      child: MouseRegion(
+                        onEnter: (_) => _handleAddressBarHoverChanged(true),
+                        onExit: (_) => _handleAddressBarHoverChanged(false),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                              child: AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 180),
+                                switchInCurve: Curves.easeOut,
+                                switchOutCurve: Curves.easeIn,
+                                transitionBuilder: (child, animation) {
+                              return FadeTransition(
+                                opacity: animation,
+                                child: SizeTransition(
+                                  sizeFactor: animation,
+                                  axis: Axis.horizontal,
+                                  axisAlignment: -1.0,
+                                  child: child,
+                                ),
+                              );
+                            },
+                            child: activeTab.isUrlObscured
+                                ? SizedBox(
+                                    key: const ValueKey('url_obscured'),
+                                    height: 38,
+                                    child: Align(
+                                      alignment: Alignment.centerLeft,
+                                      child: Text(
+                                        '🍎',
+                                        strutStyle: const StrutStyle(
+                                          fontSize: 14,
+                                          height: 1.0,
+                                          forceStrutHeight: true,
+                                        ),
+                                        style: TextStyle(
+                                          color: toolbarForeground,
+                                          fontSize: 14,
+                                          height: 1.0,
+                                        ),
+                                      ),
+                                    ),
+                                  )
+                                : KeyedSubtree(
+                                    key: const ValueKey('url_field'),
+                                    child: CompositedTransformTarget(
+                                      link: _urlAutocompleteLink,
+                                      child: Builder(
+                                        builder: (context) {
+                                          _urlAutocompleteTargetContext =
+                                              context;
+                                          return TextField(
+                                            key:
+                                                const Key('browser.url_field'),
+                                            controller: activeTab.urlController,
+                                            focusNode: activeTab.urlFocusNode,
+                                            onChanged: (_) =>
+                                                _updateUrlAutocompleteOverlay(
+                                              activeTab,
+                                            ),
+                                            style: TextStyle(
+                                              color: toolbarForeground,
+                                              fontSize: 13,
+                                            ),
+                                            decoration: InputDecoration(
+                                              hintText: 'Search or enter URL',
+                                              hintStyle: TextStyle(
+                                                color: toolbarForeground
+                                                    .withValues(alpha: 0.72),
+                                                fontSize: 13,
+                                              ),
+                                              border: InputBorder.none,
+                                              contentPadding:
+                                                  const EdgeInsets.symmetric(
+                                                vertical: 10,
+                                              ),
+                                            ),
+                                            onTap: () {
+                                              _cancelAddressBarAutoHide();
+                                              _setActiveTabUrlObscured(false);
+                                              if (widget
+                                                      .aiSearchSuggestionsEnabled &&
+                                                  activeTab.urlController.text
+                                                      .trim()
+                                                      .isEmpty) {
+                                                _showAiSearchSuggestionsSheet();
+                                              } else {
+                                                _updateUrlAutocompleteOverlay(
+                                                  activeTab,
+                                                );
+                                              }
+                                            },
+                                            onSubmitted: (value) {
+                                              _removeUrlAutocompleteOverlay();
+                                              activeTab.urlFocusNode.unfocus();
+                                              final decision =
+                                                  resolveUrlSubmission(
+                                                submittedValue: value,
+                                                aiSearchSuggestionsEnabled:
+                                                    widget
+                                                        .aiSearchSuggestionsEnabled,
+                                              );
+                                              if (decision
+                                                  .shouldShowAiSuggestions) {
+                                                _showAiSearchSuggestionsSheet();
+                                              }
+                                              if (decision.shouldLoadUrl) {
+                                                _loadUrl(
+                                                    decision.normalizedInput);
+                                              }
+                                            },
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                  ),
                           ),
-                          decoration: InputDecoration(
-                            hintText: 'Search or enter URL',
-                            hintStyle: TextStyle(
-                              color: toolbarForeground.withValues(alpha: 0.72),
-                              fontSize: 13,
-                            ),
-                            border: InputBorder.none,
-                            contentPadding:
-                                const EdgeInsets.symmetric(vertical: 10),
-                          ),
-                          onTap: () {
-                            if (widget.aiSearchSuggestionsEnabled &&
-                                activeTab.urlController.text.trim().isEmpty) {
-                              _showAiSearchSuggestionsSheet();
-                            } else {
-                              _updateUrlAutocompleteOverlay(activeTab);
-                            }
-                          },
-                          onSubmitted: (value) {
-                            _removeUrlAutocompleteOverlay();
-                            activeTab.urlFocusNode.unfocus();
-                            final decision = resolveUrlSubmission(
-                              submittedValue: value,
-                              aiSearchSuggestionsEnabled:
-                                  widget.aiSearchSuggestionsEnabled,
-                            );
-                            if (decision.shouldShowAiSuggestions) {
-                              _showAiSearchSuggestionsSheet();
-                            }
-                            if (decision.shouldLoadUrl) {
-                              _loadUrl(decision.normalizedInput);
-                            }
-                          },
                         ),
                       ),
                     ),

@@ -89,6 +89,10 @@ void main() {
             .getScopedStorageKey(urlAutocompleteSuggestionRemovalEnabledKey),
         true,
       );
+      await prefs.setBool(
+        profileManager.getScopedStorageKey(autoHideAddressBarKey),
+        true,
+      );
       await prefs.setString(profileManager.getScopedStorageKey(themeModeKey),
           AppThemeMode.dark.name);
 
@@ -97,10 +101,11 @@ void main() {
         _dialogHost(aiAvailable: false),
       );
 
-      expect(_readSwitchTile(tester, 'Legacy User Agent').value, isTrue);
-      expect(_readSwitchTile(tester, 'Git Fetch').value, isTrue);
-      expect(_readSwitchTile(tester, 'AI Search Suggestions').value, isTrue);
-      expect(_readSwitchTile(tester, 'Suggestion Erase').value, isTrue);
+      expect(_readSwitchTile(tester, 'Legacy UA').value, isTrue);
+      expect(_readSwitchTile(tester, 'Git fetch').value, isTrue);
+      expect(_readSwitchTile(tester, 'AI suggestions').value, isTrue);
+      expect(_readSwitchTile(tester, 'Erase suggestions').value, isTrue);
+      expect(_readSwitchTile(tester, 'Hide URL').value, isTrue);
 
       final darkChip = find.widgetWithText(ChoiceChip, 'dark');
       expect(darkChip, findsOneWidget);
@@ -120,8 +125,9 @@ void main() {
         tester,
         _dialogHost(aiAvailable: false),
       );
-      expect(_readSwitchTile(tester, 'Legacy User Agent').value, isTrue);
-      expect(_readSwitchTile(tester, 'Suggestion Erase').value, isFalse);
+      expect(_readSwitchTile(tester, 'Legacy UA').value, isTrue);
+      expect(_readSwitchTile(tester, 'Erase suggestions').value, isFalse);
+      expect(_readSwitchTile(tester, 'Hide URL').value, isFalse);
       await tester.tap(find.text('Cancel'));
       await tester.pumpAndSettle();
 
@@ -132,8 +138,8 @@ void main() {
         tester,
         _dialogHost(aiAvailable: false),
       );
-      expect(_readSwitchTile(tester, 'Legacy User Agent').value, isFalse);
-      expect(_readSwitchTile(tester, 'Suggestion Erase').value, isFalse);
+      expect(_readSwitchTile(tester, 'Legacy UA').value, isFalse);
+      expect(_readSwitchTile(tester, 'Erase suggestions').value, isFalse);
     });
 
     testWidgets('switching profiles refreshes toggles in the same dialog',
@@ -170,15 +176,15 @@ void main() {
         tester,
         _dialogHost(aiAvailable: false),
       );
-      expect(_readSwitchTile(tester, 'Legacy User Agent').value, isFalse);
-      expect(_readSwitchTile(tester, 'Suggestion Erase').value, isFalse);
+      expect(_readSwitchTile(tester, 'Legacy UA').value, isFalse);
+      expect(_readSwitchTile(tester, 'Erase suggestions').value, isFalse);
       final lightChip = find.widgetWithText(ChoiceChip, 'light');
       expect(tester.widget<ChoiceChip>(lightChip).selected, isTrue);
 
       await profileManager.switchProfile(workProfile.id);
       await tester.pumpAndSettle();
-      expect(_readSwitchTile(tester, 'Legacy User Agent').value, isTrue);
-      expect(_readSwitchTile(tester, 'Suggestion Erase').value, isTrue);
+      expect(_readSwitchTile(tester, 'Legacy UA').value, isTrue);
+      expect(_readSwitchTile(tester, 'Erase suggestions').value, isTrue);
       final darkChip = find.widgetWithText(ChoiceChip, 'dark');
       expect(tester.widget<ChoiceChip>(darkChip).selected, isTrue);
     });
@@ -216,27 +222,27 @@ void main() {
         matching: find.byType(Scrollable),
       );
 
-      await tester.tap(_switchTileByTitle('Legacy User Agent'));
+      await tester.tap(_switchTileByTitle('Legacy UA'));
       await tester.pumpAndSettle();
 
       if (settingsScrollable.evaluate().isNotEmpty) {
         await tester.scrollUntilVisible(
-          _switchTileByTitle('AI Search Suggestions'),
+          _switchTileByTitle('AI suggestions'),
           120,
           scrollable: settingsScrollable.first,
         );
       }
-      await tester.tap(_switchTileByTitle('AI Search Suggestions'));
+      await tester.tap(_switchTileByTitle('AI suggestions'));
       await tester.pumpAndSettle();
 
       if (settingsScrollable.evaluate().isNotEmpty) {
         await tester.scrollUntilVisible(
-          _switchTileByTitle('Suggestion Erase'),
+          _switchTileByTitle('Erase suggestions'),
           120,
           scrollable: settingsScrollable.first,
         );
       }
-      await tester.tap(_switchTileByTitle('Suggestion Erase'));
+      await tester.tap(_switchTileByTitle('Erase suggestions'));
       await tester.pumpAndSettle();
 
       final darkChip = find.widgetWithText(ChoiceChip, 'dark');
@@ -290,7 +296,7 @@ void main() {
         ),
       );
 
-      await tester.tap(_switchTileByTitle('Legacy User Agent'));
+      await tester.tap(_switchTileByTitle('Legacy UA'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Cancel'));
       await tester.pumpAndSettle();
@@ -319,15 +325,17 @@ void main() {
         matching: find.byType(Scrollable),
       );
       await tester.scrollUntilVisible(
-        find.text('Config'),
+        find.byKey(const Key('settings.firebase_config_toggle')),
         100,
         scrollable: settingsScrollable.first,
       );
 
-      expect(find.text('Config'), findsOneWidget);
+      expect(find.byKey(const Key('settings.firebase_config_toggle')),
+          findsOneWidget);
 
       // Expand Firebase config
-      await tester.tap(find.text('Config'));
+      await tester
+          .tap(find.byKey(const Key('settings.firebase_config_toggle')));
       await tester.pumpAndSettle();
 
       expect(find.text('API Key'), findsOneWidget);
@@ -358,13 +366,14 @@ void main() {
         matching: find.byType(Scrollable),
       );
       await tester.scrollUntilVisible(
-        find.text('Config'),
+        find.byKey(const Key('settings.firebase_config_toggle')),
         100,
         scrollable: settingsScrollable.first,
       );
 
       // Expand Firebase config
-      await tester.tap(find.text('Config'));
+      await tester
+          .tap(find.byKey(const Key('settings.firebase_config_toggle')));
       await tester.pumpAndSettle();
 
       // Scroll to fields
@@ -415,13 +424,14 @@ void main() {
         matching: find.byType(Scrollable),
       );
       await tester.scrollUntilVisible(
-        find.text('Config'),
+        find.byKey(const Key('settings.firebase_config_toggle')),
         100,
         scrollable: settingsScrollable.first,
       );
 
       // Expand Firebase config
-      await tester.tap(find.text('Config'));
+      await tester
+          .tap(find.byKey(const Key('settings.firebase_config_toggle')));
       await tester.pumpAndSettle();
 
       // Scroll to fields

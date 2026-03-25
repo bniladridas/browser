@@ -7,7 +7,6 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:browser/main.dart';
@@ -122,7 +121,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Settings'));
     await tester.pumpAndSettle();
-    await setSwitchTile(tester, title: 'Git Fetch', enabled: true);
+    await setSwitchTile(tester, title: 'Git fetch', enabled: true);
     await tester.tap(find.text('Save'));
     await tester.pumpAndSettle();
     await tester.pumpAndSettle(const Duration(seconds: 2));
@@ -220,7 +219,7 @@ void main() {
       // Toggle private browsing (this clears cache)
       await setSwitchTile(
         tester,
-        title: 'Private Browsing',
+        title: 'Private',
         enabled: true,
       );
 
@@ -247,12 +246,12 @@ void main() {
       expect(find.text('Settings'), findsOneWidget);
 
       // Check for user agent switch
-      expect(find.text('Legacy User Agent'), findsOneWidget);
+      expect(find.text('Legacy UA'), findsOneWidget);
 
       // Toggle the switch
       await setSwitchTile(
         tester,
-        title: 'Legacy User Agent',
+        title: 'Legacy UA',
         enabled: true,
       );
 
@@ -301,29 +300,30 @@ void main() {
       await tester.pumpAndSettle();
 
       // Check for new toggles
-      expect(find.text('Private Browsing'), findsOneWidget);
-      expect(find.text('Ad Blocking'), findsOneWidget);
-      expect(find.text('Suggestion Erase'), findsOneWidget);
+      expect(find.text('Private'), findsOneWidget);
+      expect(find.text('Block ads'), findsOneWidget);
+      expect(find.text('Erase suggestions'), findsOneWidget);
+      expect(find.text('Hide URL'), findsOneWidget);
       expect(find.byType(ChoiceChip), findsWidgets);
 
       // Toggle private browsing
       await setSwitchTile(
         tester,
-        title: 'Private Browsing',
+        title: 'Private',
         enabled: true,
       );
 
       // Toggle ad blocking
       await setSwitchTile(
         tester,
-        title: 'Ad Blocking',
+        title: 'Block ads',
         enabled: true,
       );
 
       // Toggle suggestion erase.
       await setSwitchTile(
         tester,
-        title: 'Suggestion Erase',
+        title: 'Erase suggestions',
         enabled: true,
       );
 
@@ -356,7 +356,31 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('Settings'));
       await tester.pumpAndSettle();
-      expect(readSwitchTileValue(tester, 'Suggestion Erase'), isTrue);
+      expect(readSwitchTileValue(tester, 'Erase suggestions'), isTrue);
+    }, timeout: testTimeout);
+
+    testWidgets('Hide URL setting persists', (WidgetTester tester) async {
+      await _launchApp(tester);
+
+      await openOverflowMenu(tester);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Settings'));
+      await tester.pumpAndSettle();
+
+      await setSwitchTile(tester, title: 'Hide URL', enabled: true);
+
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+      expect(find.text('Settings saved'), findsOneWidget);
+
+      await openOverflowMenu(tester);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Settings'));
+      await tester.pumpAndSettle();
+
+      expect(readSwitchTileValue(tester, 'Hide URL'), isTrue);
+      await tester.tap(find.text('Cancel'), warnIfMissed: false);
+      await tester.pumpAndSettle();
     }, timeout: testTimeout);
 
     testWidgets('URL submit loads non-empty value',
@@ -439,40 +463,42 @@ void main() {
 
       final aiSuggestionsTitle =
           find.byKey(const Key('browser.ai_suggestions_title'));
+      if (aiSuggestionsTitle.evaluate().isEmpty) {
+        // Desktop text-input action can be flaky; tapping the URL field should
+        // still open suggestions when enabled.
+        await tester.tap(entryField, warnIfMissed: false);
+        await tester.pumpAndSettle(const Duration(seconds: 2));
+      }
       expect(aiSuggestionsTitle, findsOneWidget);
 
       final aiSuggestionsSheet =
           find.byKey(const Key('browser.ai_suggestions_sheet'));
-      if (!Platform.isMacOS) {
-        try {
-          HardwareKeyboard.instance.handleKeyEvent(
-            const KeyDownEvent(
-              timeStamp: Duration.zero,
-              physicalKey: PhysicalKeyboardKey.escape,
-              logicalKey: LogicalKeyboardKey.escape,
-            ),
-          );
-          await tester.pump(const Duration(milliseconds: 100));
-          HardwareKeyboard.instance.handleKeyEvent(
-            const KeyUpEvent(
-              timeStamp: Duration.zero,
-              physicalKey: PhysicalKeyboardKey.escape,
-              logicalKey: LogicalKeyboardKey.escape,
-            ),
-          );
-        } catch (_) {
-          // Key dispatch can be flaky; fallback below handles it.
+      Future<void> waitForGone(Finder finder) async {
+        for (var attempt = 0; attempt < 20; attempt++) {
+          await tester.pump(const Duration(milliseconds: 200));
+          if (finder.evaluate().isEmpty) return;
         }
-        await tester.pump(const Duration(milliseconds: 300));
       }
 
-      if (aiSuggestionsSheet.evaluate().isNotEmpty ||
-          aiSuggestionsTitle.evaluate().isNotEmpty) {
-        // If drag dismissal is flaky in CI, tap outside the sheet as fallback.
-        await tester.tapAt(const Offset(8, 8));
-        await tester.pump(const Duration(milliseconds: 300));
+      // Prefer dismissing via modal barrier to avoid tapping macOS window
+      // controls (top-left traffic lights) which can close the app.
+      if (aiSuggestionsSheet.evaluate().isNotEmpty) {
+        final rect = tester.getRect(aiSuggestionsSheet);
+        await tester.dragFrom(
+          Offset(rect.center.dx, rect.top + 10),
+          const Offset(0, 420),
+        );
+        await tester.pumpAndSettle(const Duration(milliseconds: 600));
+        if (aiSuggestionsSheet.evaluate().isNotEmpty) {
+          await tester.tapAt(Offset(rect.center.dx, 60));
+        }
+      } else {
+        await tester.tapAt(const Offset(220, 80));
       }
+      await tester.pumpAndSettle(const Duration(milliseconds: 800));
 
+      await waitForGone(aiSuggestionsTitle);
+      await waitForGone(aiSuggestionsSheet);
       expect(aiSuggestionsTitle, findsNothing);
       expect(aiSuggestionsSheet, findsNothing);
     }, timeout: testTimeout);
@@ -498,19 +524,20 @@ void main() {
       await tester.tap(find.text('Settings'));
       await tester.pumpAndSettle();
 
-      // Scroll to Config section
+      // Scroll to Firebase config toggle
       final settingsScrollable = find.descendant(
         of: find.byType(AlertDialog),
         matching: find.byType(Scrollable),
       );
       await tester.scrollUntilVisible(
-        find.text('Config'),
+        find.byKey(const Key('settings.firebase_config_toggle')),
         100,
         scrollable: settingsScrollable.first,
       );
 
       // Expand Firebase config
-      await tester.tap(find.text('Config'));
+      await tester
+          .tap(find.byKey(const Key('settings.firebase_config_toggle')));
       await tester.pumpAndSettle();
 
       // Scroll to fields
@@ -551,11 +578,12 @@ void main() {
         matching: find.byType(Scrollable),
       );
       await tester.scrollUntilVisible(
-        find.text('Config'),
+        find.byKey(const Key('settings.firebase_config_toggle')),
         100,
         scrollable: reopenedScrollable.first,
       );
-      await tester.tap(find.text('Config'));
+      await tester
+          .tap(find.byKey(const Key('settings.firebase_config_toggle')));
       await tester.pumpAndSettle();
       await tester.scrollUntilVisible(
         find.text('API Key'),
@@ -593,12 +621,12 @@ void main() {
         matching: find.byType(Scrollable),
       );
       await tester.scrollUntilVisible(
-        find.text('Profiles'),
+        find.text('Profile'),
         100,
         scrollable: settingsScrollable.first,
       );
 
-      expect(find.text('Profiles'), findsOneWidget);
+      expect(find.text('Profile'), findsOneWidget);
     }, timeout: testTimeout);
 
     testWidgets('Profile manager opens and displays profiles',
@@ -615,11 +643,11 @@ void main() {
         matching: find.byType(Scrollable),
       );
       await tester.scrollUntilVisible(
-        find.text('Profiles'),
+        find.byKey(const Key('settings.manage_profiles')),
         100,
         scrollable: settingsScrollable.first,
       );
-      await tester.tap(find.text('Manage'));
+      await tester.tap(find.byKey(const Key('settings.manage_profiles')));
       await tester.pumpAndSettle();
 
       expect(find.text('Manage Profiles'), findsOneWidget);
@@ -640,11 +668,11 @@ void main() {
         matching: find.byType(Scrollable),
       );
       await tester.scrollUntilVisible(
-        find.text('Profiles'),
+        find.byKey(const Key('settings.manage_profiles')),
         100,
         scrollable: settingsScrollable.first,
       );
-      await tester.tap(find.text('Manage'));
+      await tester.tap(find.byKey(const Key('settings.manage_profiles')));
       await tester.pumpAndSettle();
 
       expect(find.text('Create new profile'), findsOneWidget);
@@ -676,11 +704,11 @@ void main() {
           matching: find.byType(Scrollable),
         );
         await tester.scrollUntilVisible(
-          find.text('Profiles'),
+          find.byKey(const Key('settings.manage_profiles')),
           100,
           scrollable: settingsScrollable.first,
         );
-        await tester.tap(find.text('Manage'));
+        await tester.tap(find.byKey(const Key('settings.manage_profiles')));
         await tester.pumpAndSettle();
 
         if (find.text('Work').evaluate().isNotEmpty) {

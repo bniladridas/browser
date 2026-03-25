@@ -21,8 +21,10 @@ const String browsingHistoryKey = 'browsingHistory';
 const String aiSearchSuggestionsEnabledKey = 'aiSearchSuggestionsEnabled';
 const String advancedCacheEnabledKey = 'advancedCacheEnabled';
 const String ambientToolbarEnabledKey = 'ambientToolbarEnabled';
+const String tabFaviconBadgeEnabledKey = 'tabFaviconBadgeEnabled';
 const String urlAutocompleteSuggestionRemovalEnabledKey =
     'urlAutocompleteSuggestionRemovalEnabled';
+const String autoHideAddressBarKey = 'autoHideAddressBar';
 const String navigationCacheIndexKey = 'navigationCacheIndex';
 const String whatsNewSeenVersionKey = 'whatsNewSeenVersion';
 
@@ -35,8 +37,12 @@ const String firebaseStorageBucketPref = 'firebase_FIREBASE_STORAGE_BUCKET';
 
 const String defaultHomepageUrl = 'about:browser-home';
 
+const _integrationTestFlag = String.fromEnvironment('INTEGRATION_TEST');
+const _integrationReportFlag =
+    String.fromEnvironment('INTEGRATION_TEST_SHOULD_REPORT_RESULTS_TO_NATIVE');
+
 bool get isIntegrationTest =>
-    const bool.fromEnvironment('INTEGRATION_TEST', defaultValue: false);
+    _integrationTestFlag.isNotEmpty || _integrationReportFlag.isNotEmpty;
 
 bool _windowChromeReady = false;
 

@@ -121,10 +121,12 @@ class ProfileManager extends ChangeNotifier {
       strictModeKey,
       passwordManagerEnabledKey,
       reorderableTabsKey,
+      tabFaviconBadgeEnabledKey,
       aiSearchSuggestionsEnabledKey,
       advancedCacheEnabledKey,
       ambientToolbarEnabledKey,
       urlAutocompleteSuggestionRemovalEnabledKey,
+      autoHideAddressBarKey,
     ];
 
     const stringKeys = <String>[
@@ -132,6 +134,8 @@ class ProfileManager extends ChangeNotifier {
       themeModeKey,
       pageFontFamilyKey,
       pageFontOverridesKey,
+      bookmarksStorageKey,
+      browsingHistoryKey,
       navigationCacheIndexKey,
     ];
 
