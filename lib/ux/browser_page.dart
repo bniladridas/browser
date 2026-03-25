@@ -608,7 +608,7 @@ class SettingsDialog extends HookWidget {
                   MouseRegion(
                     cursor: SystemMouseCursors.click,
                     child: SwitchListTile(
-                      title: const Text('Hide App Bar'),
+                      title: const Text('Hide toolbar'),
                       value: hideAppBar.value,
                       onChanged: (value) => hideAppBar.value = value,
                       hoverColor: Colors.transparent,
@@ -627,7 +627,7 @@ class SettingsDialog extends HookWidget {
                   MouseRegion(
                     cursor: SystemMouseCursors.click,
                     child: SwitchListTile(
-                      title: const Text('Legacy User Agent'),
+                      title: const Text('Legacy UA'),
                       value: useModernUserAgent.value,
                       onChanged: (value) => useModernUserAgent.value = value,
                       hoverColor: Colors.transparent,
@@ -636,7 +636,7 @@ class SettingsDialog extends HookWidget {
                   MouseRegion(
                     cursor: SystemMouseCursors.click,
                     child: SwitchListTile(
-                      title: const Text('Git Fetch'),
+                      title: const Text('Git fetch'),
                       value: enableGitFetch.value,
                       onChanged: (value) => enableGitFetch.value = value,
                       hoverColor: Colors.transparent,
@@ -645,7 +645,7 @@ class SettingsDialog extends HookWidget {
                   MouseRegion(
                     cursor: SystemMouseCursors.click,
                     child: SwitchListTile(
-                      title: const Text('Private Browsing'),
+                      title: const Text('Private'),
                       value: privateBrowsing.value,
                       onChanged: (value) => privateBrowsing.value = value,
                       hoverColor: Colors.transparent,
@@ -654,7 +654,7 @@ class SettingsDialog extends HookWidget {
                   MouseRegion(
                     cursor: SystemMouseCursors.click,
                     child: SwitchListTile(
-                      title: const Text('Ad Blocking'),
+                      title: const Text('Block ads'),
                       value: adBlocking.value,
                       onChanged: (value) => adBlocking.value = value,
                       hoverColor: Colors.transparent,
@@ -663,7 +663,7 @@ class SettingsDialog extends HookWidget {
                   MouseRegion(
                     cursor: SystemMouseCursors.click,
                     child: SwitchListTile(
-                      title: const Text('Strict Mode'),
+                      title: const Text('Strict'),
                       value: strictMode.value,
                       onChanged: (value) => strictMode.value = value,
                       hoverColor: Colors.transparent,
@@ -672,7 +672,7 @@ class SettingsDialog extends HookWidget {
                   MouseRegion(
                     cursor: SystemMouseCursors.click,
                     child: SwitchListTile(
-                      title: const Text('Password Manager'),
+                      title: const Text('Passwords'),
                       value: passwordManagerEnabled.value,
                       onChanged: (value) =>
                           passwordManagerEnabled.value = value,
@@ -700,7 +700,7 @@ class SettingsDialog extends HookWidget {
                   MouseRegion(
                     cursor: SystemMouseCursors.click,
                     child: SwitchListTile(
-                      title: const Text('Reorderable Tabs'),
+                      title: const Text('Reorder tabs'),
                       value: reorderableTabs.value,
                       onChanged: (value) => reorderableTabs.value = value,
                       hoverColor: Colors.transparent,
@@ -709,7 +709,7 @@ class SettingsDialog extends HookWidget {
                   MouseRegion(
                     cursor: SystemMouseCursors.click,
                     child: SwitchListTile(
-                      title: const Text('Tab Favicon Badge'),
+                      title: const Text('Favicon badge'),
                       value: tabFaviconBadgeEnabled.value,
                       onChanged: (value) =>
                           tabFaviconBadgeEnabled.value = value,
@@ -719,7 +719,7 @@ class SettingsDialog extends HookWidget {
                   MouseRegion(
                     cursor: SystemMouseCursors.click,
                     child: SwitchListTile(
-                      title: const Text('AI Search Suggestions'),
+                      title: const Text('AI suggestions'),
                       value: aiSearchSuggestionsEnabled.value,
                       onChanged: (value) =>
                           aiSearchSuggestionsEnabled.value = value,
@@ -729,7 +729,7 @@ class SettingsDialog extends HookWidget {
                   MouseRegion(
                     cursor: SystemMouseCursors.click,
                     child: SwitchListTile(
-                      title: const Text('Suggestion Erase'),
+                      title: const Text('Erase suggestions'),
                       value: urlAutocompleteSuggestionRemovalEnabled.value,
                       onChanged: (value) =>
                           urlAutocompleteSuggestionRemovalEnabled.value = value,
@@ -739,7 +739,7 @@ class SettingsDialog extends HookWidget {
                   MouseRegion(
                     cursor: SystemMouseCursors.click,
                     child: SwitchListTile(
-                      title: const Text('Advanced Cache'),
+                      title: const Text('Advanced cache'),
                       value: advancedCacheEnabled.value,
                       onChanged: (value) => advancedCacheEnabled.value = value,
                       hoverColor: Colors.transparent,
@@ -748,7 +748,7 @@ class SettingsDialog extends HookWidget {
                   MouseRegion(
                     cursor: SystemMouseCursors.click,
                     child: SwitchListTile(
-                      title: const Text('Ambient Mode'),
+                      title: const Text('Ambient'),
                       value: ambientToolbarEnabled.value,
                       onChanged: (value) => ambientToolbarEnabled.value = value,
                       hoverColor: Colors.transparent,
