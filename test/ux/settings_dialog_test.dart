@@ -89,6 +89,10 @@ void main() {
             .getScopedStorageKey(urlAutocompleteSuggestionRemovalEnabledKey),
         true,
       );
+      await prefs.setBool(
+        profileManager.getScopedStorageKey(autoHideAddressBarKey),
+        true,
+      );
       await prefs.setString(profileManager.getScopedStorageKey(themeModeKey),
           AppThemeMode.dark.name);
 
@@ -101,6 +105,7 @@ void main() {
       expect(_readSwitchTile(tester, 'Git Fetch').value, isTrue);
       expect(_readSwitchTile(tester, 'AI Search Suggestions').value, isTrue);
       expect(_readSwitchTile(tester, 'Suggestion Erase').value, isTrue);
+      expect(_readSwitchTile(tester, 'Hide URL').value, isTrue);
 
       final darkChip = find.widgetWithText(ChoiceChip, 'dark');
       expect(darkChip, findsOneWidget);
@@ -122,6 +127,7 @@ void main() {
       );
       expect(_readSwitchTile(tester, 'Legacy User Agent').value, isTrue);
       expect(_readSwitchTile(tester, 'Suggestion Erase').value, isFalse);
+      expect(_readSwitchTile(tester, 'Hide URL').value, isFalse);
       await tester.tap(find.text('Cancel'));
       await tester.pumpAndSettle();
 

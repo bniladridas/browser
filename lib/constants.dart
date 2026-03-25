@@ -24,6 +24,7 @@ const String ambientToolbarEnabledKey = 'ambientToolbarEnabled';
 const String tabFaviconBadgeEnabledKey = 'tabFaviconBadgeEnabled';
 const String urlAutocompleteSuggestionRemovalEnabledKey =
     'urlAutocompleteSuggestionRemovalEnabled';
+const String autoHideAddressBarKey = 'autoHideAddressBar';
 const String navigationCacheIndexKey = 'navigationCacheIndex';
 const String whatsNewSeenVersionKey = 'whatsNewSeenVersion';
 
