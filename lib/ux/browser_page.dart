@@ -1893,6 +1893,7 @@ class _BrowserPageState extends State<BrowserPage>
   final Map<String, bool> _faviconHostSafetyCache = {};
   String? _legacyLayoutFixScript;
   bool _tabFaviconBadgeEnabled = false;
+  int? _hoveredTabIndex;
 
   static const String _themeProbeScript = '''
 (() => {
@@ -3612,42 +3613,70 @@ class _BrowserPageState extends State<BrowserPage>
   Widget _buildTabItem(TabData tab, int index, bool isSelected,
       {bool showDragHandle = false}) {
     final theme = Theme.of(context);
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (showDragHandle) ...[
-          Icon(
-            Icons.drag_indicator,
-            size: 16,
-            color:
-                Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
-          ),
-          const SizedBox(width: 4),
-        ],
-        _buildTabFavicon(tab, theme),
-        const SizedBox(width: 6),
-        Text(
-          _tabTitleForDisplay(tab).truncate(18),
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-            color: isSelected
-                ? theme.colorScheme.onSurface
-                : theme.colorScheme.onSurface.withValues(alpha: 0.6),
-          ),
-        ),
-        if (tabs.length > 1) ...[
+    final canHoverTabs = _isDesktopPlatform;
+    final shouldShowClose = tabs.length > 1 &&
+        (!canHoverTabs || isSelected || _hoveredTabIndex == index);
+
+    return MouseRegion(
+      onEnter: (_) {
+        if (!mounted || !canHoverTabs) return;
+        if (_hoveredTabIndex == index) return;
+        setState(() {
+          _hoveredTabIndex = index;
+        });
+      },
+      onExit: (_) {
+        if (!mounted || !canHoverTabs) return;
+        if (_hoveredTabIndex != index) return;
+        setState(() {
+          _hoveredTabIndex = null;
+        });
+      },
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (showDragHandle) ...[
+            Icon(
+              Icons.drag_indicator,
+              size: 16,
+              color:
+                  Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+            ),
+            const SizedBox(width: 4),
+          ],
+          _buildTabFavicon(tab, theme),
           const SizedBox(width: 6),
-          GestureDetector(
-            onTap: () => _closeTab(index),
-            child: Icon(
-              Icons.close,
-              size: 15,
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+          Text(
+            _tabTitleForDisplay(tab).truncate(18),
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+              color: isSelected
+                  ? theme.colorScheme.onSurface
+                  : theme.colorScheme.onSurface.withValues(alpha: 0.6),
             ),
           ),
+          if (tabs.length > 1) ...[
+            const SizedBox(width: 6),
+            IgnorePointer(
+              ignoring: !shouldShowClose,
+              child: AnimatedOpacity(
+                opacity: shouldShowClose ? 1 : 0,
+                duration: const Duration(milliseconds: 120),
+                curve: Curves.easeOut,
+                child: GestureDetector(
+                  onTap: () => _closeTab(index),
+                  child: Icon(
+                    Icons.close,
+                    size: 15,
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ],
-      ],
+      ),
     );
   }
 
@@ -4100,11 +4129,17 @@ class _BrowserPageState extends State<BrowserPage>
 
   void _handleLoadError(TabData tab, String newErrorMessage) {
     final now = DateTime.now();
+    final httpStatus = () {
+      final match = RegExp(r'^HTTP\s+(\d{3})\b').firstMatch(newErrorMessage);
+      if (match == null) return null;
+      return int.tryParse(match.group(1) ?? '');
+    }();
+    final duplicateWindowMs = httpStatus == 429 ? 30000 : 1500;
     final isDuplicate = tab.lastErrorMessage == newErrorMessage &&
         tab.lastErrorAt != null &&
-        now.difference(tab.lastErrorAt!).inMilliseconds < 1500;
+        now.difference(tab.lastErrorAt!).inMilliseconds < duplicateWindowMs;
     if (!isDuplicate) {
-      if (newErrorMessage.startsWith('HTTP 404')) {
+      if (newErrorMessage.startsWith('HTTP 404') || httpStatus == 429) {
         quietLogger.w('Web view load error: $newErrorMessage');
       } else {
         logger.e('Web view load error: $newErrorMessage');
