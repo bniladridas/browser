@@ -1814,7 +1814,7 @@ class _BrowserPageState extends State<BrowserPage>
   late AnimationController _refreshIconController;
   AnimationController? _ambientController;
   final LayerLink _urlAutocompleteLink = LayerLink();
-  final GlobalKey _urlAutocompleteTargetKey = GlobalKey();
+  BuildContext? _urlAutocompleteTargetContext;
   OverlayEntry? _urlAutocompleteOverlayEntry;
   List<String> _urlAutocompleteOptions = const <String>[];
   double? _urlAutocompleteTargetWidth;
@@ -2318,8 +2318,7 @@ class _BrowserPageState extends State<BrowserPage>
         _removeUrlAutocompleteOverlay();
         return;
       }
-      final targetBox =
-          _urlAutocompleteTargetKey.currentContext?.findRenderObject();
+      final targetBox = _urlAutocompleteTargetContext?.findRenderObject();
       if (targetBox is RenderBox && targetBox.hasSize) {
         _urlAutocompleteTargetWidth = targetBox.size.width;
         final overlayBox =
@@ -3864,7 +3863,7 @@ class _BrowserPageState extends State<BrowserPage>
       'www.google.com',
       '/s2/favicons',
       <String, String>{
-        'domain': uri.host,
+        'domain_url': '${uri.scheme}://${uri.host}',
         'sz': '64',
       },
     ).toString();
@@ -6490,11 +6489,11 @@ class _BrowserPageState extends State<BrowserPage>
                         onExit: (_) => _handleAddressBarHoverChanged(false),
                         child: Align(
                           alignment: Alignment.centerLeft,
-                          child: AnimatedSwitcher(
-                            duration: const Duration(milliseconds: 180),
-                            switchInCurve: Curves.easeOut,
-                            switchOutCurve: Curves.easeIn,
-                            transitionBuilder: (child, animation) {
+                              child: AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 180),
+                                switchInCurve: Curves.easeOut,
+                                switchOutCurve: Curves.easeIn,
+                                transitionBuilder: (child, animation) {
                               return FadeTransition(
                                 opacity: animation,
                                 child: SizeTransition(
@@ -6529,63 +6528,72 @@ class _BrowserPageState extends State<BrowserPage>
                                 : KeyedSubtree(
                                     key: const ValueKey('url_field'),
                                     child: CompositedTransformTarget(
-                                      key: _urlAutocompleteTargetKey,
                                       link: _urlAutocompleteLink,
-                                      child: TextField(
-                                        key: const Key('browser.url_field'),
-                                        controller: activeTab.urlController,
-                                        focusNode: activeTab.urlFocusNode,
-                                        onChanged: (_) =>
-                                            _updateUrlAutocompleteOverlay(
-                                          activeTab,
-                                        ),
-                                        style: TextStyle(
-                                          color: toolbarForeground,
-                                          fontSize: 13,
-                                        ),
-                                        decoration: InputDecoration(
-                                          hintText: 'Search or enter URL',
-                                          hintStyle: TextStyle(
-                                            color: toolbarForeground.withValues(
-                                                alpha: 0.72),
-                                            fontSize: 13,
-                                          ),
-                                          border: InputBorder.none,
-                                          contentPadding:
-                                              const EdgeInsets.symmetric(
-                                            vertical: 10,
-                                          ),
-                                        ),
-                                        onTap: () {
-                                          _cancelAddressBarAutoHide();
-                                          _setActiveTabUrlObscured(false);
-                                          if (widget
-                                                  .aiSearchSuggestionsEnabled &&
-                                              activeTab.urlController.text
-                                                  .trim()
-                                                  .isEmpty) {
-                                            _showAiSearchSuggestionsSheet();
-                                          } else {
-                                            _updateUrlAutocompleteOverlay(
+                                      child: Builder(
+                                        builder: (context) {
+                                          _urlAutocompleteTargetContext =
+                                              context;
+                                          return TextField(
+                                            key:
+                                                const Key('browser.url_field'),
+                                            controller: activeTab.urlController,
+                                            focusNode: activeTab.urlFocusNode,
+                                            onChanged: (_) =>
+                                                _updateUrlAutocompleteOverlay(
                                               activeTab,
-                                            );
-                                          }
-                                        },
-                                        onSubmitted: (value) {
-                                          _removeUrlAutocompleteOverlay();
-                                          activeTab.urlFocusNode.unfocus();
-                                          final decision = resolveUrlSubmission(
-                                            submittedValue: value,
-                                            aiSearchSuggestionsEnabled: widget
-                                                .aiSearchSuggestionsEnabled,
+                                            ),
+                                            style: TextStyle(
+                                              color: toolbarForeground,
+                                              fontSize: 13,
+                                            ),
+                                            decoration: InputDecoration(
+                                              hintText: 'Search or enter URL',
+                                              hintStyle: TextStyle(
+                                                color: toolbarForeground
+                                                    .withValues(alpha: 0.72),
+                                                fontSize: 13,
+                                              ),
+                                              border: InputBorder.none,
+                                              contentPadding:
+                                                  const EdgeInsets.symmetric(
+                                                vertical: 10,
+                                              ),
+                                            ),
+                                            onTap: () {
+                                              _cancelAddressBarAutoHide();
+                                              _setActiveTabUrlObscured(false);
+                                              if (widget
+                                                      .aiSearchSuggestionsEnabled &&
+                                                  activeTab.urlController.text
+                                                      .trim()
+                                                      .isEmpty) {
+                                                _showAiSearchSuggestionsSheet();
+                                              } else {
+                                                _updateUrlAutocompleteOverlay(
+                                                  activeTab,
+                                                );
+                                              }
+                                            },
+                                            onSubmitted: (value) {
+                                              _removeUrlAutocompleteOverlay();
+                                              activeTab.urlFocusNode.unfocus();
+                                              final decision =
+                                                  resolveUrlSubmission(
+                                                submittedValue: value,
+                                                aiSearchSuggestionsEnabled:
+                                                    widget
+                                                        .aiSearchSuggestionsEnabled,
+                                              );
+                                              if (decision
+                                                  .shouldShowAiSuggestions) {
+                                                _showAiSearchSuggestionsSheet();
+                                              }
+                                              if (decision.shouldLoadUrl) {
+                                                _loadUrl(
+                                                    decision.normalizedInput);
+                                              }
+                                            },
                                           );
-                                          if (decision
-                                              .shouldShowAiSuggestions) {
-                                            _showAiSearchSuggestionsSheet();
-                                          }
-                                          if (decision.shouldLoadUrl) {
-                                            _loadUrl(decision.normalizedInput);
-                                          }
                                         },
                                       ),
                                     ),
