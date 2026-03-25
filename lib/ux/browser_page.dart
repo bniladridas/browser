@@ -584,6 +584,7 @@ class SettingsDialog extends HookWidget {
                         trailing: MouseRegion(
                           cursor: SystemMouseCursors.click,
                           child: IconButton(
+                            key: const Key('settings.manage_profiles'),
                             icon: const Icon(Icons.settings, size: 18),
                             onPressed: () => _showProfileManagerDialog(
                               context,
@@ -3791,8 +3792,28 @@ class _BrowserPageState extends State<BrowserPage>
       size: 15,
       color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
     );
+    const isFlutterTest = bool.fromEnvironment('FLUTTER_TEST');
     final faviconUrl = tab.faviconUrl;
     final showFallback = faviconUrl == null || faviconUrl.trim().isEmpty;
+
+    if (isIntegrationTest || isFlutterTest) {
+      if (!_tabFaviconBadgeEnabled) return fallback;
+      return SizedBox(
+        width: 15,
+        height: 15,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(3),
+            border: Border.all(
+              color: theme.colorScheme.outlineVariant.withValues(alpha: 0.35),
+              width: 0.5,
+            ),
+          ),
+          child: Center(child: fallback),
+        ),
+      );
+    }
 
     if (!_tabFaviconBadgeEnabled) {
       if (showFallback) return fallback;
