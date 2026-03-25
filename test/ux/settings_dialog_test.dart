@@ -325,15 +325,17 @@ void main() {
         matching: find.byType(Scrollable),
       );
       await tester.scrollUntilVisible(
-        find.text('Config'),
+        find.byKey(const Key('settings.firebase_config_toggle')),
         100,
         scrollable: settingsScrollable.first,
       );
 
-      expect(find.text('Config'), findsOneWidget);
+      expect(find.byKey(const Key('settings.firebase_config_toggle')),
+          findsOneWidget);
 
       // Expand Firebase config
-      await tester.tap(find.text('Config'));
+      await tester
+          .tap(find.byKey(const Key('settings.firebase_config_toggle')));
       await tester.pumpAndSettle();
 
       expect(find.text('API Key'), findsOneWidget);
@@ -364,13 +366,14 @@ void main() {
         matching: find.byType(Scrollable),
       );
       await tester.scrollUntilVisible(
-        find.text('Config'),
+        find.byKey(const Key('settings.firebase_config_toggle')),
         100,
         scrollable: settingsScrollable.first,
       );
 
       // Expand Firebase config
-      await tester.tap(find.text('Config'));
+      await tester
+          .tap(find.byKey(const Key('settings.firebase_config_toggle')));
       await tester.pumpAndSettle();
 
       // Scroll to fields
@@ -421,13 +424,14 @@ void main() {
         matching: find.byType(Scrollable),
       );
       await tester.scrollUntilVisible(
-        find.text('Config'),
+        find.byKey(const Key('settings.firebase_config_toggle')),
         100,
         scrollable: settingsScrollable.first,
       );
 
       // Expand Firebase config
-      await tester.tap(find.text('Config'));
+      await tester
+          .tap(find.byKey(const Key('settings.firebase_config_toggle')));
       await tester.pumpAndSettle();
 
       // Scroll to fields

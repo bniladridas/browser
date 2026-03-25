@@ -532,17 +532,12 @@ class SettingsDialog extends HookWidget {
                     style: theme.textTheme.bodyMedium?.copyWith(fontSize: 13),
                     decoration: InputDecoration(
                       labelText: 'Homepage',
-                      hintText: 'leave blank for welcome page',
-                      hintStyle: theme.textTheme.bodySmall?.copyWith(
-                        fontSize: 11,
-                        color: theme.colorScheme.onSurfaceVariant
-                            .withValues(alpha: 0.6),
-                      ),
                       isDense: true,
                       filled: false,
                       enabledBorder: UnderlineInputBorder(
                         borderSide: BorderSide(
-                          color: theme.colorScheme.onSurfaceVariant,
+                          color: theme.colorScheme.onSurface
+                              .withValues(alpha: 0.18),
                         ),
                       ),
                       focusedBorder: UnderlineInputBorder(
@@ -553,58 +548,57 @@ class SettingsDialog extends HookWidget {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  Padding(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                    child: Row(
-                      children: [
-                        Text(
-                          'Profiles',
-                          style: theme.textTheme.titleSmall?.copyWith(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: theme.colorScheme.primary,
-                          ),
-                        ),
-                        const Spacer(),
-                        MouseRegion(
-                          cursor: SystemMouseCursors.click,
-                          child: TextButton(
-                            onPressed: () => _showProfileManagerDialog(
-                                context, ambientToolbarEnabled.value),
-                            style: TextButton.styleFrom(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 8),
-                              minimumSize: const Size(0, 24),
-                            ),
-                            child: const Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.settings, size: 14),
-                                SizedBox(width: 4),
-                                Text('Manage'),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                  const SizedBox(height: 12),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: ListenableBuilder(
-                      listenable: profileManager,
-                      builder: (context, _) => Text(
-                        'Active: ${profileManager.activeProfile?.name ?? "None"}',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          fontSize: 10,
-                          color: theme.colorScheme.onSurfaceVariant,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.surfaceContainerHigh,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: theme.colorScheme.onSurface
+                              .withValues(alpha: 0.12),
+                          width: 0.5,
+                        ),
+                      ),
+                      child: ListTile(
+                        dense: true,
+                        visualDensity: compactDensity,
+                        title: Text(
+                          'Profile',
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        subtitle: ListenableBuilder(
+                          listenable: profileManager,
+                          builder: (context, _) => Text(
+                            profileManager.activeProfile?.name ?? 'None',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              fontSize: 11,
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                        trailing: MouseRegion(
+                          cursor: SystemMouseCursors.click,
+                          child: IconButton(
+                            icon: const Icon(Icons.settings, size: 18),
+                            onPressed: () => _showProfileManagerDialog(
+                              context,
+                              ambientToolbarEnabled.value,
+                            ),
+                          ),
                         ),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  const Divider(),
+                  const SizedBox(height: 10),
+                  Divider(
+                    height: 1,
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.10),
+                  ),
                   MouseRegion(
                     cursor: SystemMouseCursors.click,
                     child: SwitchListTile(
@@ -795,11 +789,18 @@ class SettingsDialog extends HookWidget {
                   const SizedBox(height: 8),
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.all(8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
                     decoration: BoxDecoration(
-                      color:
-                          Theme.of(context).colorScheme.surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(10),
+                      color: theme.colorScheme.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color:
+                            theme.colorScheme.onSurface.withValues(alpha: 0.12),
+                        width: 0.5,
+                      ),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -835,9 +836,7 @@ class SettingsDialog extends HookWidget {
                                   ),
                                   const SizedBox(width: 4),
                                   Text(
-                                    aiAvailable
-                                        ? 'Firebase ready'
-                                        : 'Firebase missing',
+                                    aiAvailable ? 'Ready' : 'Setup',
                                     style: theme.textTheme.bodySmall?.copyWith(
                                       fontSize: 9,
                                       fontWeight: FontWeight.w600,
@@ -849,40 +848,33 @@ class SettingsDialog extends HookWidget {
                                 ],
                               ),
                             ),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        InkWell(
-                          onTap: () => showFirebaseConfig.value =
-                              !showFirebaseConfig.value,
-                          hoverColor: Colors.transparent,
-                          splashColor: Colors.transparent,
-                          highlightColor: Colors.transparent,
-                          child: MouseRegion(
-                            cursor: SystemMouseCursors.click,
-                            child: Row(
-                              children: [
-                                Icon(
+                            const Spacer(),
+                            MouseRegion(
+                              cursor: SystemMouseCursors.click,
+                              child: IconButton(
+                                key: const Key(
+                                    'settings.firebase_config_toggle'),
+                                visualDensity: compactDensity,
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(
+                                  minWidth: 32,
+                                  minHeight: 32,
+                                ),
+                                icon: Icon(
                                   showFirebaseConfig.value
                                       ? Icons.expand_less
                                       : Icons.expand_more,
-                                  size: 12,
+                                  size: 18,
                                   color: theme.colorScheme.onSurfaceVariant,
                                 ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  'Config',
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    fontSize: 9,
-                                    color: theme.colorScheme.onSurfaceVariant,
-                                  ),
-                                ),
-                              ],
+                                onPressed: () => showFirebaseConfig.value =
+                                    !showFirebaseConfig.value,
+                              ),
                             ),
-                          ),
+                          ],
                         ),
                         if (showFirebaseConfig.value) ...[
-                          const SizedBox(height: 4),
+                          const SizedBox(height: 8),
                           TextField(
                             controller: firebaseApiKey,
                             obscureText: true,
