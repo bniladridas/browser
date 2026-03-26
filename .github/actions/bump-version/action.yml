@@ -164,7 +164,9 @@ runs:
         WHATS_NEW_CONTENT="${WHATS_NEW_SECTION:-${SUMMARY_SECTION}}"
 
         BUG_FIX_SECTION="$(extract_section "Bug Fixes" | sed '/^[[:space:]]*$/d')"
-        if [[ -z "$BUG_FIX_SECTION" || "$BUG_FIX_SECTION" == "(none)" || "$BUG_FIX_SECTION" == "- (none)" ]]; then
+        if [[ -z "$BUG_FIX_SECTION" ]]; then
+          BUG_FIX_CONTENT="$SUMMARY_SECTION"
+        elif [[ "$BUG_FIX_SECTION" == "(none)" || "$BUG_FIX_SECTION" == "- (none)" ]]; then
           BUG_FIX_CONTENT="- (none)"
         else
           BUG_FIX_CONTENT="$BUG_FIX_SECTION"
