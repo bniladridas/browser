@@ -9,6 +9,10 @@
 <body>
   <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
   <button class="settings-fab" type="button" aria-label="Settings" title="Settings" aria-expanded="false" onclick="toggleSettingsModal(event)">⚙</button>
+  <div class="zoom-controls">
+    <button type="button" aria-label="Zoom in" onclick="zoomIn()">➕</button>
+    <button type="button" aria-label="Zoom out" onclick="zoomOut()">➖</button>
+  </div>
   <div class="settings-modal" id="settingsModal" role="dialog" aria-label="Settings" aria-hidden="true">
     <div class="settings-modal-title">Settings</div>
     <div class="settings-modal-note">Theme</div>
@@ -231,6 +235,23 @@
     (function () {
       initTheme();
       loadReleaseInfo();
+
+      const currentZoom = { level: 1 };
+      function zoomIn() {
+        if (currentZoom.level < 2) {
+          currentZoom.level += 0.1;
+          document.body.style.zoom = currentZoom.level;
+        }
+      }
+      function zoomOut() {
+        if (currentZoom.level > 0.5) {
+          currentZoom.level -= 0.1;
+          document.body.style.zoom = currentZoom.level;
+        }
+      }
+      window.zoomIn = zoomIn;
+      window.zoomOut = zoomOut;
+
       const toggleBtn = document.querySelector('.sidebar-toggle');
       if (!toggleBtn) return;
       const getScrollPosition = () => window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
