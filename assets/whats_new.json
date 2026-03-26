@@ -62,5 +62,8 @@
   ],
   "1.13.0": [
     "Minor improvements and fixes."
+  ],
+  "1.14.0": [
+    "Settings polish and URL privacy option."
   ]
 }
