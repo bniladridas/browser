@@ -156,10 +156,10 @@ runs:
       run: |
         VERSION=${{ steps.version.outputs.version }}
         if git ls-remote --tags --exit-code origin "${TAG_PREFIX}-${VERSION}"; then
-        echo "Tag ${TAG_PREFIX}-${VERSION} already exists on remote. Skipping tag creation."
+          echo "Tag ${TAG_PREFIX}-${VERSION} already exists on remote. Skipping tag creation."
         else
-        git tag "${TAG_PREFIX}-${VERSION}"
-        git push origin "${TAG_PREFIX}-${VERSION}"
+          git tag "${TAG_PREFIX}-${VERSION}"
+          git push origin "${TAG_PREFIX}-${VERSION}"
         fi
 
     - name: Create release if not exists
@@ -172,48 +172,50 @@ runs:
         PR_NUMBER: ${{ inputs.pr-number }}
       run: |
         VERSION=${{ steps.version.outputs.version }}
-        if gh release view "${TAG_PREFIX}-${VERSION}" &>/dev/null; then
-        echo "Release for tag ${TAG_PREFIX}-${VERSION} already exists. Skipping release creation."
+        TAG="${TAG_PREFIX}-${VERSION}"
+
+        if gh release view "${TAG}" &>/dev/null; then
+          echo "Release for tag ${TAG} already exists. Skipping release creation."
         else
-        PR_TITLE=$(gh pr view "$PR_NUMBER" --json title -q '.title')
-        PR_BODY=$(gh pr view "$PR_NUMBER" --json body -q '.body')
+          PR_TITLE=$(gh pr view "$PR_NUMBER" --json title -q '.title')
+          PR_BODY=$(gh pr view "$PR_NUMBER" --json body -q '.body')
 
-        extract_section() {
-          local heading="$1"
-          # Print content under a "## <heading>" section until the next "## " heading.
-          # Be robust to heading lines with extra spacing/trailing whitespace.
-          echo "$PR_BODY" | awk -v heading="$heading" '
-            function normalize(line) {
-              sub(/^[ \t\r\n]+/, "", line)
-              sub(/[ \t\r\n]+$/, "", line)
-              gsub(/[ \t]+/, " ", line)
-              return line
-            }
-            BEGIN { h = "## " heading }
-            normalize($0) == h { p=1; next }
-            /^##[ \t]/ { if(p){ exit } }
-            p { print }
-          '
-        }
+          extract_section() {
+            local heading="$1"
+            # Print content under a "## <heading>" section until the next "## " heading.
+            # Be robust to heading lines with extra spacing/trailing whitespace.
+            echo "$PR_BODY" | awk -v heading="$heading" '
+              function normalize(line) {
+                sub(/^[ \t\r\n]+/, "", line)
+                sub(/[ \t\r\n]+$/, "", line)
+                gsub(/[ \t]+/, " ", line)
+                return line
+              }
+              BEGIN { h = "## " heading }
+              normalize($0) == h { p=1; next }
+              /^##[ \t]/ { if(p){ exit } }
+              p { print }
+            '
+          }
 
-        # Prefer explicit release-note sections from the PR body (version bump PRs include these),
-        # otherwise fall back to the PR title.
-        SUMMARY_SECTION="$(extract_section "Summary" | sed '/^[[:space:]]*$/d')"
-        SUMMARY_SECTION="${SUMMARY_SECTION:-- ${PR_TITLE}}"
+          # Prefer explicit release-note sections from the PR body (version bump PRs include these),
+          # otherwise fall back to the PR title.
+          SUMMARY_SECTION="$(extract_section "Summary" | sed '/^[[:space:]]*$/d')"
+          SUMMARY_SECTION="${SUMMARY_SECTION:-- ${PR_TITLE}}"
 
-        WHATS_NEW_SECTION="$(extract_section "What's New" | sed '/^[[:space:]]*$/d')"
-        WHATS_NEW_CONTENT="${WHATS_NEW_SECTION:-${SUMMARY_SECTION}}"
+          WHATS_NEW_SECTION="$(extract_section "What's New" | sed '/^[[:space:]]*$/d')"
+          WHATS_NEW_CONTENT="${WHATS_NEW_SECTION:-${SUMMARY_SECTION}}"
 
-        BUG_FIX_SECTION="$(extract_section "Bug Fixes" | sed '/^[[:space:]]*$/d')"
-        if [[ -z "$BUG_FIX_SECTION" ]]; then
-          BUG_FIX_CONTENT="$SUMMARY_SECTION"
-        elif [[ "$BUG_FIX_SECTION" == "(none)" || "$BUG_FIX_SECTION" == "- (none)" ]]; then
-          BUG_FIX_CONTENT="- (none)"
-        else
-          BUG_FIX_CONTENT="$BUG_FIX_SECTION"
-        fi
+          BUG_FIX_SECTION="$(extract_section "Bug Fixes" | sed '/^[[:space:]]*$/d')"
+          if [[ -z "$BUG_FIX_SECTION" ]]; then
+            BUG_FIX_CONTENT="$SUMMARY_SECTION"
+          elif [[ "$BUG_FIX_SECTION" == "(none)" || "$BUG_FIX_SECTION" == "- (none)" ]]; then
+            BUG_FIX_CONTENT="- (none)"
+          else
+            BUG_FIX_CONTENT="$BUG_FIX_SECTION"
+          fi
 
-        NOTES=$(cat <<EOF
+          NOTES=$(cat <<EOF
         ## What's New
         ${WHATS_NEW_CONTENT}
 
@@ -229,7 +231,17 @@ runs:
 
         (auto bump)
         EOF
-        )
+          )
 
-        gh release create "${TAG_PREFIX}-${VERSION}" --title "Release ${VERSION}" --notes "${NOTES}"
+          gh release create "${TAG}" --title "Release ${VERSION}" --notes "${NOTES}"
+        fi
+
+        # Trigger DMG build/upload. Push-tag events created by GITHUB_TOKEN do not trigger workflows,
+        # so dispatch the release workflow explicitly.
+        if ! gh api -X POST \
+          "repos/${GITHUB_REPOSITORY}/actions/workflows/release.yml/dispatches" \
+          -f ref="main" \
+          -f inputs[tag]="${TAG}" \
+          >/dev/null; then
+          echo "Warning: failed to dispatch release workflow for ${TAG}"
         fi
