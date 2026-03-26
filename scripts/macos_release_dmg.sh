@@ -3,13 +3,16 @@ set -euo pipefail
 
 APP_PATH="${APP_PATH:-build/macos/Build/Products/Release/browser.app}"
 DMG_PATH="${DMG_PATH:-build/macos/Build/Products/Release/browser.dmg}"
-VOLUME_NAME="${VOLUME_NAME:-Browser}"
+VOLUME_NAME="${VOLUME_NAME:-browser}"
 TMP_ROOT="${TMP_ROOT:-}"
 ALLOW_UNSIGNED="${ALLOW_UNSIGNED:-}"
-DMG_WINDOW_BOUNDS="${DMG_WINDOW_BOUNDS:-100,100,640,420}"
+DMG_WINDOW_BOUNDS="${DMG_WINDOW_BOUNDS:-100,100,900,650}"
 DMG_ICON_SIZE="${DMG_ICON_SIZE:-128}"
-DMG_BACKGROUND_IMAGE="${DMG_BACKGROUND_IMAGE:-assets/dmg/background.png}"
+DMG_BACKGROUND_IMAGE="${DMG_BACKGROUND_IMAGE:-}"
+DMG_BACKGROUND_COLOR="${DMG_BACKGROUND_COLOR:-#6b6d70}" # e.g. "#6b6d70" (generates a solid PNG)
 DMG_HEADROOM_MB="${DMG_HEADROOM_MB:-50}"
+DMG_APPLICATIONS_LINK_TYPE="${DMG_APPLICATIONS_LINK_TYPE:-symlink}" # symlink|alias
+DMG_LABEL_INDEX="${DMG_LABEL_INDEX:-4}" # Finder label index 0-7; affects filename color (0 = none)
 
 unsigned_release=false
 
@@ -76,9 +79,60 @@ app_name="$(basename "${APP_PATH}")"
 app_name="${app_name%.app}"
 rw_dmg_path="${DMG_PATH%.dmg}-rw.dmg"
 
-if [[ -n "${DMG_BACKGROUND_IMAGE}" && -f "${DMG_BACKGROUND_IMAGE}" ]]; then
+background_filename=""
+if [[ -n "${DMG_BACKGROUND_COLOR}" ]]; then
+  IFS=',' read -r bounds_left bounds_top bounds_right bounds_bottom <<<"${DMG_WINDOW_BOUNDS}"
+  width="$((bounds_right - bounds_left))"
+  height="$((bounds_bottom - bounds_top))"
+  if [[ "${width}" -le 0 || "${height}" -le 0 ]]; then
+    width=800
+    height=520
+  fi
+
+  background_filename="background.png"
   mkdir -p "${dmg_root}/.background"
-  cp "${DMG_BACKGROUND_IMAGE}" "${dmg_root}/.background/background.png"
+  python3 - "${dmg_root}/.background/${background_filename}" "${width}" "${height}" "${DMG_BACKGROUND_COLOR}" <<'PY'
+import re
+import struct
+import zlib
+import sys
+
+out_path, width_s, height_s, color = sys.argv[1:5]
+width = int(width_s)
+height = int(height_s)
+
+m = re.fullmatch(r'#?([0-9a-fA-F]{6})', color.strip())
+if not m:
+  raise SystemExit(f"Invalid DMG_BACKGROUND_COLOR: {color} (expected #RRGGBB)")
+rgb = bytes.fromhex(m.group(1))
+r, g, b = rgb[0], rgb[1], rgb[2]
+
+def chunk(tag: bytes, data: bytes) -> bytes:
+  return struct.pack(">I", len(data)) + tag + data + struct.pack(">I", zlib.crc32(tag + data) & 0xFFFFFFFF)
+
+signature = b"\x89PNG\r\n\x1a\n"
+ihdr = struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0)  # 8-bit, truecolor RGB
+
+# Raw scanlines: each row starts with filter byte 0, then RGB triplets.
+row = bytes([0]) + bytes([r, g, b]) * width
+raw = row * height
+compressed = zlib.compress(raw, level=9)
+
+png = signature + chunk(b"IHDR", ihdr) + chunk(b"IDAT", compressed) + chunk(b"IEND", b"")
+with open(out_path, "wb") as f:
+  f.write(png)
+PY
+elif [[ -n "${DMG_BACKGROUND_IMAGE}" && -f "${DMG_BACKGROUND_IMAGE}" ]]; then
+  bg_ext="${DMG_BACKGROUND_IMAGE##*.}"
+  bg_ext="$(printf '%s' "${bg_ext}" | tr '[:upper:]' '[:lower:]')"
+  case "${bg_ext}" in
+    png|jpg|jpeg) ;;
+    *) bg_ext="png" ;;
+  esac
+
+  background_filename="background.${bg_ext}"
+  mkdir -p "${dmg_root}/.background"
+  cp "${DMG_BACKGROUND_IMAGE}" "${dmg_root}/.background/${background_filename}"
 fi
 
 # Include extra headroom for metadata, icon layout and optional background.
@@ -108,6 +162,8 @@ if [[ -z "${device}" || -z "${mount_point}" ]]; then
   exit 1
 fi
 
+mounted_volume_name="$(basename "${mount_point}")"
+
 volume_icon_path="${APP_PATH}/Contents/Resources/AppIcon.icns"
 if [[ -f "${volume_icon_path}" ]]; then
   cp "${volume_icon_path}" "${mount_point}/.VolumeIcon.icns"
@@ -116,11 +172,13 @@ if [[ -f "${volume_icon_path}" ]]; then
   fi
 fi
 
-# Prefer a native macOS alias for Applications so Finder shows the expected icon.
-app_link_path="${mount_point}/Applications"
-if command -v osascript >/dev/null 2>&1 && [[ -L "${app_link_path}" ]]; then
-  mv "${app_link_path}" "${app_link_path}.symlink"
-  if osascript - "${mount_point}" >/dev/null 2>&1 <<'EOF'
+if [[ "${DMG_APPLICATIONS_LINK_TYPE}" == "alias" ]]; then
+  # Optional: create a native macOS alias for Applications.
+  # Note: on some systems Finder may render alias icons inconsistently inside DMGs; symlink is the default.
+  app_link_path="${mount_point}/Applications"
+  if command -v osascript >/dev/null 2>&1 && [[ -L "${app_link_path}" ]]; then
+    mv "${app_link_path}" "${app_link_path}.symlink"
+    if osascript - "${mount_point}" >/dev/null 2>&1 <<'EOF'
 on run argv
   set targetFolderPath to item 1 of argv
   tell application "Finder"
@@ -130,53 +188,90 @@ on run argv
   end tell
 end run
 EOF
-  then
-    rm -f "${app_link_path}.symlink"
-  else
-    mv "${app_link_path}.symlink" "${app_link_path}"
-    echo "Warning: failed to create Applications alias. Using symlink fallback." >&2
+    then
+      rm -f "${app_link_path}.symlink"
+    else
+      mv "${app_link_path}.symlink" "${app_link_path}"
+      echo "Warning: failed to create Applications alias. Using symlink fallback." >&2
+    fi
   fi
 fi
 
 if command -v osascript >/dev/null 2>&1; then
-  osascript - "${VOLUME_NAME}" "${DMG_WINDOW_BOUNDS}" "${DMG_ICON_SIZE}" "${app_name}" <<'EOF' \
-    || echo "Warning: Finder layout customization skipped." >&2
+  # hdiutil may mount the image as "Browser 1" etc. when the base volume name is already in use.
+  # Always target the actual mounted volume name to ensure Finder customization persists to this DMG.
+  osascript - "${mounted_volume_name}" "${DMG_WINDOW_BOUNDS}" "${DMG_ICON_SIZE}" "${app_name}" "${background_filename}" "${mount_point}" "${DMG_LABEL_INDEX}" <<'EOF' \
+    || echo "Warning: Finder layout customization skipped for '${mounted_volume_name}'." >&2
 on run argv
-  set volumeName to item 1 of argv
-  set windowBounds to item 2 of argv
-  set iconSize to (item 3 of argv) as integer
-  set appName to item 4 of argv
-  set oldDelimiters to AppleScript's text item delimiters
-  set AppleScript's text item delimiters to ","
-  set boundsList to text items of windowBounds
-  set AppleScript's text item delimiters to oldDelimiters
+	  set volumeName to item 1 of argv
+	  set windowBounds to item 2 of argv
+	  set iconSize to (item 3 of argv) as integer
+	  set appName to item 4 of argv
+	  set backgroundName to item 5 of argv
+	  set mountPoint to item 6 of argv
+	  set labelIndex to (item 7 of argv) as integer
+	  set oldDelimiters to AppleScript's text item delimiters
+	  set AppleScript's text item delimiters to ","
+	  set boundsList to text items of windowBounds
+	  set AppleScript's text item delimiters to oldDelimiters
 
-  tell application "Finder"
-    tell disk volumeName
-      open
-      tell container window
-        set current view to icon view
-        set toolbar visible to false
-        set statusbar visible to false
-        set bounds to {item 1 of boundsList as integer, item 2 of boundsList as integer, item 3 of boundsList as integer, item 4 of boundsList as integer}
-      end tell
-      tell icon view options of container window
-        set arrangement to not arranged
-        set icon size to iconSize
-        if exists file ".background:background.png" then
-          set background picture to file ".background:background.png"
-        end if
-      end tell
-      set position of item appName to {160, 200}
-      set position of item "Applications" to {460, 200}
-      close
-      open
-      update without registering applications
-      delay 1
-    end tell
-  end tell
-end run
+		  tell application "Finder"
+		    tell disk volumeName
+		      open
+		      delay 0.8
+		      tell container window
+		        set current view to icon view
+		        set toolbar visible to false
+		        set statusbar visible to false
+		        set bounds to {item 1 of boundsList as integer, item 2 of boundsList as integer, item 3 of boundsList as integer, item 4 of boundsList as integer}
+		      end tell
+		      delay 0.8
+		      set bgAlias to missing value
+		      try
+		        if backgroundName is not "" then
+		          set bgAlias to (POSIX file (mountPoint & "/.background/" & backgroundName)) as alias
+		        end if
+		      end try
+		      tell icon view options of container window
+		        set arrangement to not arranged
+		        set icon size to iconSize
+		        if bgAlias is not missing value then
+		          set background picture to bgAlias
+		        end if
+		      end tell
+		      delay 0.8
+		      set appItemName to appName
+		      if not (exists item appItemName) then
+		        if exists item (appName & ".app") then
+		          set appItemName to (appName & ".app")
+		        end if
+		      end if
+		      if labelIndex is not 0 then
+		        try
+		          set label index of item appItemName to labelIndex
+		        end try
+		        try
+		          set label index of item "Applications" to labelIndex
+		        end try
+		      end if
+		      try
+		        set position of item appItemName to {220, 300}
+		      end try
+		      try
+		        set position of item "Applications" to {620, 300}
+	      end try
+	      close
+	      open
+	      update without registering applications
+	      delay 1
+	    end tell
+	  end tell
+	end run
 EOF
+
+  if [[ ! -f "${mount_point}/.DS_Store" ]]; then
+    echo "Warning: Finder customization did not write .DS_Store for '${mounted_volume_name}' (${mount_point})." >&2
+  fi
 fi
 
 hdiutil detach "${device}" -quiet || {
