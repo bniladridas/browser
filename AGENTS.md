@@ -227,6 +227,12 @@ Use this sequence for version bump work:
 9. Ensure PR `## Related Items` uses GitHub keyword syntax (`Resolves #<id>`, `Closes #<id>` as applicable).
 10. Validate the `Merged PRs` list against `mergedAt` boundaries so PRs merged before the previous version bump are excluded.
 
+If the version bump becomes complex (or a tool fails mid-flow), refer to the command log in issue `#436` as a known-good example of how to complete the bump end-to-end:
+
+```bash
+gh issue view 436
+```
+
 This keeps release/version PRs repeatable and reviewable.
 
 ## Workflow Creation
