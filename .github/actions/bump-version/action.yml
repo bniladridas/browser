@@ -140,22 +140,24 @@ runs:
         extract_section() {
           local heading="$1"
           # Print content under a "## <heading>" section until the next "## " heading.
-          echo "$PR_BODY" | awk -v h="## ${heading}" '
-            $0 == h {p=1; next}
-            /^## / {if(p){exit}}
-            p {print}
+          # Be robust to heading lines with extra spacing/trailing whitespace.
+          echo "$PR_BODY" | awk -v heading="$heading" '
+            function normalize(line) {
+              sub(/^[ \t\r\n]+/, "", line)
+              sub(/[ \t\r\n]+$/, "", line)
+              gsub(/[ \t]+/, " ", line)
+              return line
+            }
+            BEGIN { h = "## " heading }
+            normalize($0) == h { p=1; next }
+            /^##[ \t]/ { if(p){ exit } }
+            p { print }
           '
         }
 
         # Prefer explicit release-note sections from the PR body (version bump PRs include these),
-        # otherwise fall back to just the Summary bullets.
-        SUMMARY_SECTION=$(
-          echo "$PR_BODY" | awk '
-            /^## Summary/ {p=1; next}
-            /^## / {if(p){exit}}
-            p {print}
-          ' | sed '/^[[:space:]]*$/d'
-        )
+        # otherwise fall back to the PR title.
+        SUMMARY_SECTION="$(extract_section "Summary" | sed '/^[[:space:]]*$/d')"
         SUMMARY_SECTION="${SUMMARY_SECTION:-- ${PR_TITLE}}"
 
         WHATS_NEW_SECTION="$(extract_section "What's New" | sed '/^[[:space:]]*$/d')"
