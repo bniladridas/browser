@@ -16,7 +16,7 @@
       <button class="settings-theme-btn" type="button" data-theme="default" onclick="setTheme('default')">Default</button>
     </div>
     <div class="settings-release">
-      <div class="settings-release-row"><span>Current</span><strong id="currentRelease">1.1.15+9</strong></div>
+      <div class="settings-release-row"><span>Current</span><strong id="currentRelease">n/a</strong></div>
       <div class="settings-release-row"><span>Latest</span><strong id="latestRelease">n/a</strong></div>
       <div class="settings-release-row"><span>Installer</span><strong>DMG (macOS)</strong></div>
     </div>
@@ -55,13 +55,14 @@
       <div class="section">
         <h3>Quick toggles</h3>
         <ul>
-          <li><strong>Hide App Bar</strong> removes the address and toolbar for a more immersive view.</li>
-          <li><strong>Legacy User Agent</strong> swaps the default string to a legacy browser when a site misbehaves.</li>
-          <li><strong>Git Fetch</strong> enables the GitHub repo picker in the Torry feed.</li>
-          <li><strong>Private Browsing</strong> keeps history and cookies out of persistent storage.</li>
-          <li><strong>Ad Blocking</strong> applies the built-in blocklist to every navigation.</li>
-          <li><strong>Strict Mode</strong> disables JavaScript where necessary for highly sensitive pages.</li>
-          <li><strong>Ambient Mode</strong> implements a dynamic, glowing background that adapts to the page content.</li>
+          <li><strong>Hide toolbar</strong> removes the address and toolbar for a more immersive view.</li>
+          <li><strong>Hide URL</strong> obscures the address text after a short idle delay and reveals it again on hover/focus.</li>
+          <li><strong>Legacy UA</strong> swaps the default string to a legacy browser when a site misbehaves.</li>
+          <li><strong>Git fetch</strong> enables the GitHub repo picker in the Torry feed.</li>
+          <li><strong>Private</strong> keeps history and cookies out of persistent storage.</li>
+          <li><strong>Block ads</strong> applies the built-in blocklist to every navigation.</li>
+          <li><strong>Strict mode</strong> disables JavaScript where necessary for highly sensitive pages.</li>
+          <li><strong>Ambient</strong> implements a dynamic background that adapts to the page content.</li>
         </ul>
       </div>
 
@@ -100,10 +101,11 @@
       <div class="section">
         <h3>Advanced helpers</h3>
         <ol>
-          <li>Reorderable Tabs lets you drag tab buttons on the strip to keep frequently used ones close.</li>
-          <li>AI Search Suggestions surfaces the TinyAI-compiled prompts when you type in the address bar.</li>
-          <li>Suggestion Erase adds a remove button to each URL suggestion so you can delete items from history instantly.</li>
-          <li>Advanced Cache keeps some resources around longer for faster page reloads when you revisit a site.</li>
+          <li>Reorder tabs lets you drag tab buttons on the strip to keep frequently used ones close.</li>
+          <li>Tab favicon badge shows a consistent favicon tile in the tab strip (helpful when icons are hard to read on dark themes).</li>
+          <li>AI suggestions surfaces search ideas when the address bar is empty.</li>
+          <li>Erase suggestions adds a remove button to each URL suggestion so you can delete items from history instantly.</li>
+          <li>Advanced cache keeps some resources around longer for faster page reloads when you revisit a site.</li>
         </ol>
         <p>You can change the global theme from the modal and it updates every view instantaneously, including the sidebar and blog pages.</p>
       </div>
