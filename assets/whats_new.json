@@ -65,5 +65,8 @@
   ],
   "1.14.0": [
     "Settings polish and URL privacy option."
+  ],
+  "1.14.1": [
+    "Improve release automation and bump stability."
   ]
 }
