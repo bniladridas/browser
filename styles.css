@@ -87,10 +87,10 @@ body:not(.sidebar-hidden) .sidebar-toggle { left: calc(var(--sidebar-width) + 0.
 .settings-fab:hover { color: var(--text); opacity: 1; }
 
 .zoom-controls {
-  position: fixed;
-  right: 0.9rem;
-  bottom: 0.9rem;
-  display: flex;
+  position: fixed !important;
+  right: 0.9rem !important;
+  bottom: 0.9rem !important;
+  display: flex !important;
   flex-direction: column;
   gap: 0.3rem;
   z-index: 120;
