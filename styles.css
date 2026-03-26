@@ -394,3 +394,37 @@ a:active {
     opacity: 1;
   }
 }
+
+[data-theme="neutral"] {
+  --text-muted: #555759;
+  --text: #555759;
+  --border: #d0d0d0;
+  --bg: #e8e8e8;
+}
+[data-theme="neutral"] body {
+  background: linear-gradient(180deg, #d8d8d8 0%, #c8c8c8 60%, #b8b8b8 100%) !important;
+}
+[data-theme="neutral"] .sidebar {
+  background: rgba(230, 230, 230, 0.95) !important;
+}
+[data-theme="neutral"] .section {
+  border-color: #d0d0d0 !important;
+  background: rgba(240, 240, 240, 0.9) !important;
+}
+[data-theme="neutral"] h1,
+[data-theme="neutral"] h1.page-title {
+  color: #555759 !important;
+}
+[data-theme="neutral"] a:hover {
+  color: #555759 !important;
+}
+[data-theme="neutral"] .sidebar-nav a:hover {
+  background: #d8d8d8 !important;
+}
+[data-theme="neutral"] .shortcut {
+  background: #d8d8d8 !important;
+}
+[data-theme="neutral"] .shortcut kbd {
+  background: #e8e8e8 !important;
+  border-color: #b0b0b0 !important;
+}
