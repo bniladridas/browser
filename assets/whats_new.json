@@ -68,5 +68,8 @@
   ],
   "1.14.1": [
     "Improve release automation and bump stability."
+  ],
+  "1.14.2": [
+    "Improved macOS installer experience."
   ]
 }
