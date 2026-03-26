@@ -227,11 +227,54 @@ Use this sequence for version bump work:
 9. Ensure PR `## Related Items` uses GitHub keyword syntax (`Resolves #<id>`, `Closes #<id>` as applicable).
 10. Validate the `Merged PRs` list against `mergedAt` boundaries so PRs merged before the previous version bump are excluded.
 
-If the version bump becomes complex (or a tool fails mid-flow), refer to the command log in issue `#436` as a known-good example of how to complete the bump end-to-end:
+If the version bump becomes complex (or a tool fails mid-flow), use this known-good command log as a reference for completing the bump end-to-end:
+
+<details>
+<summary>Example command log for a complex version bump</summary>
 
 ```bash
-gh issue view 436
+# Baseline / ancestry checks
+git fetch origin
+git rev-parse --short HEAD
+git rev-parse --short origin/main
+git merge-base --is-ancestor origin/main HEAD
+git log --oneline origin/main..HEAD
+
+# Inspect current state
+cat VERSION
+cat pubspec.yaml | sed -n '1,80p'
+cat assets/whats_new.json
+
+# Sync pubspec version from VERSION
+./scripts/pubspec.sh
+
+# Normalize whats_new.json for X.Y.Z (required)
+jq '.\"X.Y.Z\" = [\"<minimal release note sentence>\"]' assets/whats_new.json > /tmp/whats_new.json \
+  && mv /tmp/whats_new.json assets/whats_new.json
+
+# Validate
+rg -n '^version:' pubspec.yaml | head -n 5 && cat VERSION
+jq -r '.[\"X.Y.Z\"][0]' assets/whats_new.json
+flutter analyze
+flutter test
+
+# Stage/commit/push
+git status
+git diff --stat
+git add assets/whats_new.json pubspec.yaml
+git commit -m "chore: finalize X.Y.Z bump"
+git log --oneline -1 | grep -qiw "add" && echo "ERROR: Commit message contains 'add'" || echo "OK"
+git push
+
+# PR metadata updates
+gh pr list --head version-bump-X.Y.Z --json number,title
+gh pr list --state merged --base main --search "bump version" --json number,title,mergedAt --limit 20
+gh pr list --state merged --base main --search "merged:><previous-bump-mergedAt>" --json number,title,mergedAt --limit 100
+gh pr edit <pr-number> --body "<template body>"
+gh pr view <pr-number> --json title,body
 ```
+
+</details>
 
 This keeps release/version PRs repeatable and reviewable.
 
