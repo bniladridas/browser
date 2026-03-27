@@ -456,3 +456,9 @@ a:active {
   background: #e8e8e8 !important;
   border-color: #b0b0b0 !important;
 }
+[data-theme="neutral"] .content pre {
+  background: #d8d8d8 !important;
+}
+[data-theme="neutral"] .content code {
+  background: #d8d8d8 !important;
+}

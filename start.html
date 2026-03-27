@@ -70,14 +70,45 @@
 
       <div class="section">
         <h3>Install from Terminal</h3>
-        <p>If you prefer Terminal, you can mount the DMG, copy the app into <code>/Applications</code>, then eject.</p>
+        <p>Optional: if you prefer Terminal (or need to troubleshoot), these are common commands after downloading <code>browser.dmg</code>.</p>
         <p><strong>Note:</strong> the mounted volume might be <code>/Volumes/browser</code> or <code>/Volumes/browser 1</code>.</p>
-        <pre><code>cd ~/Downloads
-hdiutil attach -nobrowse browser.dmg
-ls /Volumes
-sudo ditto "/Volumes/browser/browser.app" "/Applications/browser.app"
-xattr -dr com.apple.quarantine "/Applications/browser.app"
-hdiutil detach "/Volumes/browser"</code></pre>
+        <ul>
+          <li>
+            Verify the file and (optionally) checksum
+            <pre><code>ls -lh ~/Downloads/browser.dmg
+shasum -a 256 ~/Downloads/browser.dmg</code></pre>
+          </li>
+          <li>
+            Mount (without opening Finder)
+            <pre><code>hdiutil attach -nobrowse ~/Downloads/browser.dmg</code></pre>
+          </li>
+          <li>
+            Inspect the mounted volume (name may be <code>browser</code>, <code>browser 1</code>, etc.)
+            <pre><code>ls /Volumes
+ls "/Volumes/browser"</code></pre>
+          </li>
+          <li>
+            Install via Terminal (copy app into <code>/Applications</code>)
+            <pre><code>sudo ditto "/Volumes/browser/browser.app" "/Applications/browser.app"</code></pre>
+          </li>
+          <li>
+            Remove quarantine flag (if Gatekeeper blocks it)
+            <pre><code>xattr -dr com.apple.quarantine "/Applications/browser.app"</code></pre>
+          </li>
+          <li>
+            Verify signing / Gatekeeper assessment
+            <pre><code>codesign --verify --deep --strict --verbose=2 "/Applications/browser.app"
+spctl --assess --type execute --verbose "/Applications/browser.app"</code></pre>
+          </li>
+          <li>
+            Unmount / eject
+            <pre><code>hdiutil detach "/Volumes/browser"</code></pre>
+          </li>
+          <li>
+            Delete the downloaded DMG (optional cleanup)
+            <pre><code>rm -f ~/Downloads/browser.dmg</code></pre>
+          </li>
+        </ul>
       </div>
 
       <div class="section">
