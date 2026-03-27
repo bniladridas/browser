@@ -347,6 +347,8 @@ a:active {
 .content ul, .content ol { margin: 0 0 1rem; padding-left: 1rem; }
 .content li { margin-bottom: 0.25rem; }
 .content code { background: #fafafa; padding: 0.1rem 0.3rem; border-radius: 3px; font-family: "SF Mono", Monaco, monospace; font-size: 0.85em; }
+.content pre { background: #fafafa; padding: 0.75rem; border-radius: 4px; overflow-x: auto; margin: 0.5rem 0; }
+.content pre code { background: transparent; padding: 0; }
 
 .section {
   border: 1px solid var(--border);

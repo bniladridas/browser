@@ -69,6 +69,18 @@
       </div>
 
       <div class="section">
+        <h3>Install from Terminal</h3>
+        <p>If you prefer Terminal, you can mount the DMG, copy the app into <code>/Applications</code>, then eject.</p>
+        <p><strong>Note:</strong> the mounted volume might be <code>/Volumes/browser</code> or <code>/Volumes/browser 1</code>.</p>
+        <pre><code>cd ~/Downloads
+hdiutil attach -nobrowse browser.dmg
+ls /Volumes
+sudo ditto "/Volumes/browser/browser.app" "/Applications/browser.app"
+xattr -dr com.apple.quarantine "/Applications/browser.app"
+hdiutil detach "/Volumes/browser"</code></pre>
+      </div>
+
+      <div class="section">
         <h3>Open</h3>
         <p>Open from Applications or ⌘ + Space.</p>
       </div>
