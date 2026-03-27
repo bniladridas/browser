@@ -151,14 +151,12 @@
       if (websiteEl) {
         try {
           const webRes = await fetch("WEBSITE-VERSION", { cache: "no-store" });
-          console.log("WEBSITE-VERSION fetch:", webRes.status, webRes.ok);
           if (webRes.ok) {
             websiteEl.textContent = (await webRes.text()).trim();
           } else {
             websiteEl.textContent = new Date().toISOString().split('T')[0];
           }
-        } catch (e) {
-          console.error("WEBSITE-VERSION error:", e);
+        } catch (_) {
           websiteEl.textContent = new Date().toISOString().split('T')[0];
         }
       }
