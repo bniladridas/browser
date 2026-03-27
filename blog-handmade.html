@@ -207,8 +207,7 @@
 
     (function () {
       initTheme();
-      loadReleaseInfo();
-      checkForUpdates();
+      loadReleaseInfo().then(checkForUpdates);
 
       const currentZoom = { level: 1 };
       function zoomIn() {

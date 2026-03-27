@@ -293,8 +293,7 @@ git checkout -- lib/firebase_options.dart</code></pre>
 
     (function () {
       initTheme();
-      loadReleaseInfo();
-      checkForUpdates();
+      loadReleaseInfo().then(checkForUpdates);
 
       const currentZoom = { level: 1 };
       function zoomIn() {
