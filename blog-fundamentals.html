@@ -129,6 +129,22 @@
       applyTheme(savedTheme);
     }
 
+    function checkForUpdates() {
+      const fab = document.querySelector(".settings-fab");
+      if (!fab) return;
+      const lastVersion = localStorage.getItem("last-website-version");
+      const currentVersion = document.getElementById("websiteVersion")?.textContent;
+      if (currentVersion && currentVersion !== "n/a" && currentVersion !== lastVersion) {
+        fab.classList.add("has-updates");
+      }
+      fab.addEventListener("click", () => {
+        fab.classList.remove("has-updates");
+        if (currentVersion && currentVersion !== "n/a") {
+          localStorage.setItem("last-website-version", currentVersion);
+        }
+      }, { once: true });
+    }
+
     async function loadReleaseInfo() {
       const currentEl = document.getElementById("currentRelease");
       const websiteEl = document.getElementById("websiteVersion");
@@ -197,6 +213,7 @@
     (function () {
       initTheme();
       loadReleaseInfo();
+      checkForUpdates();
 
       const currentZoom = { level: 1 };
       function zoomIn() {

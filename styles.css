@@ -82,6 +82,23 @@ body:not(.sidebar-hidden) .sidebar-toggle { left: calc(var(--sidebar-width) + 0.
   font-weight: 400;
   color: var(--text-muted);
   z-index: 120;
+}
+.settings-fab.has-updates::after {
+  content: '';
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 8px;
+  height: 8px;
+  background: #e53935;
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.1); }
+  100% { opacity: 1; transform: scale(1); }
+}
   transition: color 0.15s ease, opacity 0.15s ease;
 }
 .settings-fab:hover { color: var(--text); opacity: 1; }
