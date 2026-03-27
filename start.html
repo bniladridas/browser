@@ -138,6 +138,27 @@ spctl --assess --type execute --verbose "/Applications/browser.app"</code></pre>
           <div class="shortcut"><kbd>Esc</kbd> Unfocus Input</div>
         </div>
       </div>
+
+      <div class="section">
+        <h3>For Developers</h3>
+        <p>Clone the latest release or current state from main branch to run locally.</p>
+        <ul>
+          <li>Clone the repo
+            <pre><code>git clone https://github.com/bniladridas/browser.git
+cd browser</code></pre>
+          </li>
+          <li>Create <code>.env</code> file for AI features
+            <pre><code>FIREBASE_API_KEY=your_api_key
+FIREBASE_APP_ID=your_app_id
+FIREBASE_SENDER_ID=your_sender_id
+FIREBASE_PROJECT_ID=your_project_id
+FIREBASE_STORAGE_BUCKET=your_storage_bucket</code></pre>
+          </li>
+          <li>Run the app
+            <pre><code>flutter run</code></pre>
+          </li>
+        </ul>
+      </div>
     </div>
   </main>
 
