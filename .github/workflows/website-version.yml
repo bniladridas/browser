@@ -24,10 +24,10 @@ jobs:
           ref: gh-pages
           fetch-depth: 0
 
-      - name: Count website commits
+      - name: Count commits
         id: count
         run: |
-          COMMITS=$(git log --oneline main..gh-pages | grep -E "(docs|style|fix|chore|feat)" | wc -l)
+          COMMITS=$(git rev-list --count HEAD)
           echo "count=$COMMITS" >> $GITHUB_OUTPUT
 
       - name: Update website version
