@@ -1,0 +1,42 @@
+---
+# SPDX-License-Identifier: MIT
+#
+# Copyright 2026 bniladridas. All rights reserved.
+# Use of this source code is governed by a MIT license that can be
+# found in the LICENSE file.
+
+name: Update Website Version
+
+on:
+  push:
+    branches:
+      - gh-pages
+
+permissions:
+  contents: write
+
+jobs:
+  update-version:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          fetch-depth: 0
+
+      - name: Count website commits
+        id: count
+        run: |
+          COMMITS=$(git log --oneline main..gh-pages | grep -E "(docs|style|fix|chore|feat)" | wc -l)
+          echo "count=$COMMITS" >> $GITHUB_OUTPUT
+
+      - name: Update website version
+        run: |
+          echo "1.0.${{ steps.count.outputs.count }}" > WEBSITE-VERSION
+          cat WEBSITE-VERSION
+
+      - name: Commit and push
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: update website version"
+          file_pattern: WEBSITE-VERSION

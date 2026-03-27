@@ -22,6 +22,7 @@
     </div>
     <div class="settings-release">
       <div class="settings-release-row"><span>Current</span><strong id="currentRelease">n/a</strong></div>
+      <div class="settings-release-row"><span>Website</span><strong id="websiteVersion">n/a</strong></div>
       <div class="settings-release-row"><span>Latest</span><strong id="latestRelease">n/a</strong></div>
       <div class="settings-release-row"><span>Installer</span><strong>DMG (macOS)</strong></div>
     </div>
@@ -130,11 +131,13 @@
 
     async function loadReleaseInfo() {
       const currentEl = document.getElementById("currentRelease");
+      const websiteEl = document.getElementById("websiteVersion");
       const latestEl = document.getElementById("latestRelease");
       if (!currentEl || !latestEl) return;
 
       currentEl.textContent = "n/a";
       latestEl.textContent = "n/a";
+      if (websiteEl) websiteEl.textContent = "n/a";
 
       let fallbackCurrent = "";
       try {
@@ -161,6 +164,19 @@
 
       if (fallbackCurrent) {
         currentEl.textContent = fallbackCurrent;
+      }
+
+      if (websiteEl) {
+        try {
+          const webRes = await fetch("WEBSITE-VERSION", { cache: "no-store" });
+          if (webRes.ok) {
+            websiteEl.textContent = (await webRes.text()).trim();
+          } else {
+            websiteEl.textContent = new Date().toISOString().split('T')[0];
+          }
+        } catch (_) {
+          websiteEl.textContent = new Date().toISOString().split('T')[0];
+        }
       }
     }
 
