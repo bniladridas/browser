@@ -107,7 +107,7 @@ runs:
         normalize_whats_new_note() {
           local title="$1"
           title="$(printf '%s' "$title" | sed -E 's/[[:space:]]+\(#[0-9]+\)$//')"
-          title="$(printf '%s' "$title" | sed -E 's/^[a-z]+(\\[[^]]+\\])?[[:space:]]*::[[:space:]]*//')"
+          title="$(printf '%s' "$title" | sed -E 's/^[a-z]+([[][^]]+[]])?[[:space:]]*::[[:space:]]*//')"
           title="$(printf '%s' "$title" | sed -E 's/^[a-z]+:[[:space:]]*//')"
           title="$(printf '%s' "$title" | sed -E 's/[`*_]//g; s/[[:space:]]+/ /g; s/^ +| +$//g')"
 
