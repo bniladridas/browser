@@ -74,5 +74,8 @@
   ],
   "1.14.3": [
     "Stabilize DMG Applications icon rendering."
+  ],
+  "1.14.4": [
+    "include whatsnew.json generation to version bump workflow."
   ]
 }
