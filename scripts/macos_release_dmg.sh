@@ -10,8 +10,20 @@ DMG_WINDOW_BOUNDS="${DMG_WINDOW_BOUNDS:-100,100,900,650}"
 DMG_ICON_SIZE="${DMG_ICON_SIZE:-128}"
 DMG_BACKGROUND_IMAGE="${DMG_BACKGROUND_IMAGE:-}"
 DMG_BACKGROUND_COLOR="${DMG_BACKGROUND_COLOR:-#6b6d70}" # e.g. "#6b6d70" (generates a solid PNG)
+DMG_BACKGROUND_MIN_WIDTH="${DMG_BACKGROUND_MIN_WIDTH:-4096}"   # Ensure background covers fullscreen Finder windows.
+DMG_BACKGROUND_MIN_HEIGHT="${DMG_BACKGROUND_MIN_HEIGHT:-2560}" # Finder doesn't scale background pictures.
+DMG_BACKGROUND_MAX_WIDTH="${DMG_BACKGROUND_MAX_WIDTH:-8192}"
+DMG_BACKGROUND_MAX_HEIGHT="${DMG_BACKGROUND_MAX_HEIGHT:-8192}"
+DMG_INSTALL_NOTES_MODE="${DMG_INSTALL_NOTES_MODE:-off}" # off|background
+DMG_INSTALL_NOTES_TEXT="${DMG_INSTALL_NOTES_TEXT:-}"
+# Overlay box for background notes: "x,y,w,h" in background image pixels (top-left origin).
+DMG_INSTALL_NOTES_BOX="${DMG_INSTALL_NOTES_BOX:-120,380,560,150}"
+DMG_INSTALL_NOTES_TITLE_SIZE="${DMG_INSTALL_NOTES_TITLE_SIZE:-22}"
+DMG_INSTALL_NOTES_BODY_SIZE="${DMG_INSTALL_NOTES_BODY_SIZE:-16}"
+DMG_INSTALL_NOTES_TEXT_COLOR="${DMG_INSTALL_NOTES_TEXT_COLOR:-#ffffff}"
+DMG_INSTALL_NOTES_BOX_ALPHA="${DMG_INSTALL_NOTES_BOX_ALPHA:-0.20}"
 DMG_HEADROOM_MB="${DMG_HEADROOM_MB:-50}"
-DMG_APPLICATIONS_LINK_TYPE="${DMG_APPLICATIONS_LINK_TYPE:-symlink}" # symlink|alias
+DMG_APPLICATIONS_LINK_TYPE="${DMG_APPLICATIONS_LINK_TYPE:-alias}" # alias|symlink
 DMG_LABEL_INDEX="${DMG_LABEL_INDEX:-4}" # Finder label index 0-7; affects filename color (0 = none)
 
 unsigned_release=false
@@ -88,6 +100,14 @@ if [[ -n "${DMG_BACKGROUND_COLOR}" ]]; then
     width=800
     height=520
   fi
+  if [[ "${DMG_BACKGROUND_MIN_WIDTH}" =~ ^[0-9]+$ && "${DMG_BACKGROUND_MIN_HEIGHT}" =~ ^[0-9]+$ ]]; then
+    if [[ "${width}" -lt "${DMG_BACKGROUND_MIN_WIDTH}" ]]; then width="${DMG_BACKGROUND_MIN_WIDTH}"; fi
+    if [[ "${height}" -lt "${DMG_BACKGROUND_MIN_HEIGHT}" ]]; then height="${DMG_BACKGROUND_MIN_HEIGHT}"; fi
+  fi
+  if [[ "${DMG_BACKGROUND_MAX_WIDTH}" =~ ^[0-9]+$ && "${DMG_BACKGROUND_MAX_HEIGHT}" =~ ^[0-9]+$ ]]; then
+    if [[ "${width}" -gt "${DMG_BACKGROUND_MAX_WIDTH}" ]]; then width="${DMG_BACKGROUND_MAX_WIDTH}"; fi
+    if [[ "${height}" -gt "${DMG_BACKGROUND_MAX_HEIGHT}" ]]; then height="${DMG_BACKGROUND_MAX_HEIGHT}"; fi
+  fi
 
   background_filename="background.png"
   mkdir -p "${dmg_root}/.background"
@@ -114,9 +134,14 @@ signature = b"\x89PNG\r\n\x1a\n"
 ihdr = struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0)  # 8-bit, truecolor RGB
 
 # Raw scanlines: each row starts with filter byte 0, then RGB triplets.
+# Stream through zlib to avoid allocating width*height raw bytes for large backgrounds.
 row = bytes([0]) + bytes([r, g, b]) * width
-raw = row * height
-compressed = zlib.compress(raw, level=9)
+compressor = zlib.compressobj(level=9)
+parts = []
+for _ in range(height):
+  parts.append(compressor.compress(row))
+parts.append(compressor.flush())
+compressed = b"".join(parts)
 
 png = signature + chunk(b"IHDR", ihdr) + chunk(b"IDAT", compressed) + chunk(b"IEND", b"")
 with open(out_path, "wb") as f:
@@ -133,6 +158,128 @@ elif [[ -n "${DMG_BACKGROUND_IMAGE}" && -f "${DMG_BACKGROUND_IMAGE}" ]]; then
   background_filename="background.${bg_ext}"
   mkdir -p "${dmg_root}/.background"
   cp "${DMG_BACKGROUND_IMAGE}" "${dmg_root}/.background/${background_filename}"
+fi
+
+if [[ "${DMG_INSTALL_NOTES_MODE}" == "background" && -n "${background_filename}" && -n "${DMG_INSTALL_NOTES_TEXT}" ]] && command -v swift >/dev/null 2>&1; then
+  notes_bg_path="${dmg_root}/.background/${background_filename}"
+  if [[ -f "${notes_bg_path}" ]]; then
+    swift_script="$(mktemp -t dmg-bg-notes.XXXXXX.swift)"
+    cat >"${swift_script}" <<'SWIFT'
+import AppKit
+import Foundation
+
+func parseHex(_ hex: String) throws -> NSColor {
+  var s = hex.trimmingCharacters(in: .whitespacesAndNewlines)
+  if s.hasPrefix("#") { s.removeFirst() }
+  guard s.count == 6 else { throw NSError(domain: "hex", code: 1) }
+  let r = CGFloat(Int(s.prefix(2), radix: 16) ?? 0) / 255.0
+  let g = CGFloat(Int(s.dropFirst(2).prefix(2), radix: 16) ?? 0) / 255.0
+  let b = CGFloat(Int(s.dropFirst(4).prefix(2), radix: 16) ?? 0) / 255.0
+  return NSColor(calibratedRed: r, green: g, blue: b, alpha: 1.0)
+}
+
+func parseBox(_ s: String) throws -> (Int, Int, Int, Int) {
+  let parts = s.split(separator: ",").map { Int($0.trimmingCharacters(in: .whitespaces)) ?? -1 }
+  guard parts.count == 4, parts.allSatisfy({ $0 >= 0 }) else { throw NSError(domain: "box", code: 1) }
+  return (parts[0], parts[1], parts[2], parts[3])
+}
+
+func splitTitleBody(_ text: String) -> (String, String) {
+  let normalized = text.replacingOccurrences(of: "\r\n", with: "\n")
+  if let range = normalized.range(of: "\n\n") {
+    let title = String(normalized[..<range.lowerBound]).trimmingCharacters(in: .whitespacesAndNewlines)
+    let body = String(normalized[range.upperBound...]).trimmingCharacters(in: .whitespacesAndNewlines)
+    return (title, body)
+  }
+  return ("", normalized.trimmingCharacters(in: .whitespacesAndNewlines))
+}
+
+let args = CommandLine.arguments.dropFirst()
+guard args.count == 7 else { exit(2) }
+
+let imagePath = String(args[args.startIndex])
+let notesText = String(args[args.index(args.startIndex, offsetBy: 1)])
+let boxText = String(args[args.index(args.startIndex, offsetBy: 2)])
+let titleSize = CGFloat(Double(args[args.index(args.startIndex, offsetBy: 3)]) ?? 22.0)
+let bodySize = CGFloat(Double(args[args.index(args.startIndex, offsetBy: 4)]) ?? 16.0)
+let textHex = String(args[args.index(args.startIndex, offsetBy: 5)])
+let boxAlpha = CGFloat(Double(args[args.index(args.startIndex, offsetBy: 6)]) ?? 0.2)
+
+guard let base = NSImage(contentsOfFile: imagePath) else { exit(3) }
+let size = base.size
+guard size.width > 0, size.height > 0 else { exit(4) }
+
+let (boxX, boxYTop, boxW, boxH) = try parseBox(boxText)
+let (title, body) = splitTitleBody(notesText)
+let textColor = try parseHex(textHex)
+
+let out = NSImage(size: size)
+out.lockFocus()
+defer { out.unlockFocus() }
+
+base.draw(in: NSRect(origin: .zero, size: size))
+
+// Convert from top-left origin (env var) to AppKit bottom-left origin.
+let rectY = CGFloat(size.height) - CGFloat(boxYTop) - CGFloat(boxH)
+let rect = NSRect(x: CGFloat(boxX), y: rectY, width: CGFloat(boxW), height: CGFloat(boxH))
+
+NSColor(calibratedWhite: 0.0, alpha: max(0, min(1, boxAlpha))).setFill()
+NSBezierPath(roundedRect: rect, xRadius: 16, yRadius: 16).fill()
+
+let paragraph = NSMutableParagraphStyle()
+paragraph.lineBreakMode = .byWordWrapping
+
+let padding: CGFloat = 14
+let textRect = rect.insetBy(dx: padding, dy: padding)
+var cursorY = textRect.maxY
+
+func draw(_ string: String, font: NSFont, in rect: NSRect) -> CGFloat {
+  let attrs: [NSAttributedString.Key: Any] = [
+    .font: font,
+    .foregroundColor: textColor,
+    .paragraphStyle: paragraph,
+  ]
+  let ns = string as NSString
+  let bounding = ns.boundingRect(with: rect.size, options: [.usesLineFragmentOrigin], attributes: attrs)
+  ns.draw(in: rect, withAttributes: attrs)
+  return bounding.height
+}
+
+if !title.isEmpty {
+  let font = NSFont.boldSystemFont(ofSize: titleSize)
+  let attrs: [NSAttributedString.Key: Any] = [
+    .font: font,
+    .foregroundColor: textColor,
+    .paragraphStyle: paragraph,
+  ]
+  let ns = title as NSString
+  let bounding = ns.boundingRect(with: NSSize(width: textRect.width, height: 99999), options: [.usesLineFragmentOrigin], attributes: attrs)
+  cursorY -= bounding.height
+  ns.draw(in: NSRect(x: textRect.minX, y: cursorY, width: textRect.width, height: bounding.height), withAttributes: attrs)
+  cursorY -= 10
+}
+
+if !body.isEmpty {
+  let font = NSFont.systemFont(ofSize: bodySize)
+  _ = draw(body, font: font, in: NSRect(x: textRect.minX, y: textRect.minY, width: textRect.width, height: cursorY - textRect.minY))
+}
+
+guard let tiff = out.tiffRepresentation, let rep = NSBitmapImageRep(data: tiff),
+      let png = rep.representation(using: .png, properties: [:]) else { exit(5) }
+
+try png.write(to: URL(fileURLWithPath: imagePath), options: .atomic)
+SWIFT
+
+    swift "${swift_script}" \
+      "${notes_bg_path}" \
+      "${DMG_INSTALL_NOTES_TEXT}" \
+      "${DMG_INSTALL_NOTES_BOX}" \
+      "${DMG_INSTALL_NOTES_TITLE_SIZE}" \
+      "${DMG_INSTALL_NOTES_BODY_SIZE}" \
+      "${DMG_INSTALL_NOTES_TEXT_COLOR}" \
+      "${DMG_INSTALL_NOTES_BOX_ALPHA}"
+    rm -f "${swift_script}"
+  fi
 fi
 
 # Include extra headroom for metadata, icon layout and optional background.
@@ -173,8 +320,8 @@ if [[ -f "${volume_icon_path}" ]]; then
 fi
 
 if [[ "${DMG_APPLICATIONS_LINK_TYPE}" == "alias" ]]; then
-  # Optional: create a native macOS alias for Applications.
-  # Note: on some systems Finder may render alias icons inconsistently inside DMGs; symlink is the default.
+  # Create a native macOS alias for Applications (default).
+  # If alias creation fails, fall back to the existing symlink.
   app_link_path="${mount_point}/Applications"
   if command -v osascript >/dev/null 2>&1 && [[ -L "${app_link_path}" ]]; then
     mv "${app_link_path}" "${app_link_path}.symlink"
@@ -216,6 +363,10 @@ on run argv
 	  set AppleScript's text item delimiters to oldDelimiters
 
 		  tell application "Finder"
+		    set appsIcon to missing value
+		    try
+		      set appsIcon to icon of folder "Applications" of startup disk
+		    end try
 		    tell disk volumeName
 		      open
 		      delay 0.8
@@ -234,11 +385,22 @@ on run argv
 		      end try
 		      tell icon view options of container window
 		        set arrangement to not arranged
+		        try
+		          set shows icon preview to false
+		        end try
+		        try
+		          set shows item info to false
+		        end try
 		        set icon size to iconSize
 		        if bgAlias is not missing value then
 		          set background picture to bgAlias
 		        end if
 		      end tell
+		      if appsIcon is not missing value then
+		        try
+		          set icon of item "Applications" to appsIcon
+		        end try
+		      end if
 		      delay 0.8
 		      set appItemName to appName
 		      if not (exists item appItemName) then
@@ -249,9 +411,6 @@ on run argv
 		      if labelIndex is not 0 then
 		        try
 		          set label index of item appItemName to labelIndex
-		        end try
-		        try
-		          set label index of item "Applications" to labelIndex
 		        end try
 		      end if
 		      try
@@ -271,6 +430,14 @@ EOF
 
   if [[ ! -f "${mount_point}/.DS_Store" ]]; then
     echo "Warning: Finder customization did not write .DS_Store for '${mounted_volume_name}' (${mount_point})." >&2
+  fi
+fi
+
+if command -v SetFile >/dev/null 2>&1; then
+  # If the Applications link is an alias, set the custom icon bit so Finder renders the icon reliably.
+  # Ignore errors (SetFile may fail depending on the mounted filesystem state).
+  if [[ -f "${mount_point}/Applications" && ! -L "${mount_point}/Applications" ]]; then
+    SetFile -a C "${mount_point}/Applications" || true
   fi
 fi
 
