@@ -71,5 +71,8 @@
   ],
   "1.14.2": [
     "Improved macOS installer experience."
+  ],
+  "1.14.3": [
+    "Stabilize DMG Applications icon rendering."
   ]
 }
