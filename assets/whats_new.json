@@ -86,5 +86,8 @@
   ],
   "1.15.1": [
     "reset home tab title and sync flutter toolchain."
+  ],
+  "1.15.2": [
+    "improve macOS local file loading with WebKit-specific implementation."
   ]
 }
