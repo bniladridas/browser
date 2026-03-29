@@ -113,12 +113,17 @@ jobs:
             exit 0
           fi
 
-          open_items=$(jq -r '.[] | select(.state == "open") | "- #\(.number) - \(.title)"' \
+          open_items=$(jq -r '.[] | select((.state | ascii_downcase) == "open") | "- #\(.number) - \(.title)"' \
             "$results_file" \
             | head -n 3)
-          closed_items=$(jq -r '.[] | select(.state == "closed") | "- #\(.number) - \(.title)"' \
+          closed_items=$(jq -r '.[] | select((.state | ascii_downcase) == "closed") | "- #\(.number) - \(.title)"' \
             "$results_file" \
             | head -n 3)
+
+          if [ -z "$open_items" ] && [ -z "$closed_items" ]; then
+            echo "No displayable similar issues found."
+            exit 0
+          fi
 
           marker="<!-- issue-similarity-check -->"
           body_file=$(mktemp)
