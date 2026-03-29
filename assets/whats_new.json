@@ -89,5 +89,8 @@
   ],
   "1.15.2": [
     "improve macOS local file loading with WebKit-specific implementation."
+  ],
+  "1.15.3": [
+    "GitHub action to suggest similar issues on new submissions."
   ]
 }
