@@ -4378,11 +4378,7 @@ class _BrowserPageState extends State<BrowserPage>
         tab.lastErrorAt != null &&
         now.difference(tab.lastErrorAt!).inMilliseconds < duplicateWindowMs;
     if (!isDuplicate) {
-      if (newErrorMessage.startsWith('HTTP 404') || httpStatus == 429) {
-        quietLogger.w('Web view load error: $newErrorMessage');
-      } else {
-        logger.e('Web view load error: $newErrorMessage');
-      }
+      quietLogger.w('Web view load error: $newErrorMessage');
       tab.lastErrorMessage = newErrorMessage;
       tab.lastErrorAt = now;
     }
@@ -4465,6 +4461,7 @@ class _BrowserPageState extends State<BrowserPage>
               activeTab.forwardUrl = activeTab.currentUrl;
             }
             activeTab.currentUrl = widget.initialUrl;
+            activeTab.pageTitle = null;
             final homeDisplayUrl = _displayUrl(widget.initialUrl);
             activeTab.urlController.value = TextEditingValue(
               text: homeDisplayUrl,
@@ -4511,6 +4508,7 @@ class _BrowserPageState extends State<BrowserPage>
       if (mounted) {
         setState(() {
           activeTab.ambientSeedColor = null;
+          activeTab.pageTitle = null;
           final homeDisplayUrl = _displayUrl(defaultHomepageUrl);
           activeTab.urlController.value = TextEditingValue(
             text: homeDisplayUrl,
@@ -5775,6 +5773,7 @@ class _BrowserPageState extends State<BrowserPage>
         if (mounted) {
           setState(() {
             activeTab.currentUrl = url;
+            activeTab.pageTitle = null;
             activeTab.urlController.text = _displayUrl(url);
             activeTab.faviconUrl = _defaultFaviconUrlFor(url);
             activeTab.webViewController = null;
