@@ -56,7 +56,7 @@
   <main class="main">
     <div class="content">
       <h1 class="page-title">Features</h1>
-      <p>All the features of the browser are documented here. Toggle once and the behavior applies instantly without a restart.</p>
+      <p>This page summarizes the main browser features and the settings available in the current desktop app.</p>
 
       <div class="section">
         <h3>Quick toggles</h3>
@@ -65,7 +65,7 @@
           <li><strong>Hide URL</strong> obscures the address text after a short idle delay and reveals it again on hover/focus.</li>
           <li><strong>Legacy UA</strong> swaps the default string to a legacy browser when a site misbehaves.</li>
           <li><strong>Git fetch</strong> enables the GitHub repo picker in the Torry feed.</li>
-          <li><strong>Private</strong> keeps history and cookies out of persistent storage.</li>
+          <li><strong>Private</strong> reduces local persistence for normal browsing data and keeps private sessions separate from standard usage.</li>
           <li><strong>Block ads</strong> applies the built-in blocklist to every navigation.</li>
           <li><strong>Strict mode</strong> disables JavaScript where necessary for highly sensitive pages.</li>
           <li><strong>Passwords</strong> enables the password manager to detect and save login credentials.</li>
@@ -90,6 +90,16 @@
       </div>
 
       <div class="section">
+        <h3>Data controls</h3>
+        <p>The settings panel also includes built-in cleanup actions for local browser data.</p>
+        <ul>
+          <li><strong>Clear cache</strong> removes cached web content and related local web storage for open tabs.</li>
+          <li><strong>Clear</strong> removes local browser data through a confirmation dialog.</li>
+          <li><strong>Factory reset</strong> is available from the same dialog when you want a broader reset across profiles.</li>
+        </ul>
+      </div>
+
+      <div class="section">
         <h3>User Profiles</h3>
         <p>Create multiple profiles to keep your browsing data separate. Each profile has its own bookmarks, history, and settings.</p>
         <ul>
@@ -102,7 +112,7 @@
 
       <div class="section">
         <h3>Password Manager</h3>
-        <p>Flip this toggle to turn on the JavaScript detector that observes traditional login forms and surfaces the save prompt.</p>
+        <p>Flip this toggle to turn on the login detector that watches standard sign-in forms and surfaces a save prompt when credentials can be captured safely.</p>
         <ul>
           <li>The prompt only appears when the login form is a standard username/email + password submission.</li>
           <li>Sites that automatically switch to passkeys, multi-step iframes, or progressive flows (e.g., Google sign-in when you already have a passkey) won’t fire the detector.</li>
@@ -113,11 +123,11 @@
 
       <div class="section">
         <h3>Media & security</h3>
-        <p>Camera and microphone access is granted automatically as soon as a page asks for them, so services like Meet, Zoom, or verification forms stop hanging on “plugged-in” warnings.</p>
+        <p>Camera and microphone requests are handled in-app so supported sites can proceed without getting stuck on missing permission flow inside the embedded web view.</p>
         <ul>
-          <li>The browser now calls the permission handler built into <code>webview_flutter</code> and accepts <code>getUserMedia</code> requests for audio/video resources.</li>
-          <li>macOS will still prompt once with the OS dialog because the app declares <code>NSCameraUsageDescription</code> and <code>NSMicrophoneUsageDescription</code>.</li>
-          <li>If a site tries to capture other platform resources, the request is denied instantly so the page fails fast.</li>
+          <li>The browser uses the permission handler built into <code>webview_flutter</code> for audio and video capture requests.</li>
+          <li>macOS can still show an operating system permission prompt the first time access is requested.</li>
+          <li>Requests for unsupported resource types are denied instead of hanging indefinitely.</li>
         </ul>
       </div>
 
@@ -130,7 +140,7 @@
           <li>Erase suggestions adds a remove button to each URL suggestion so you can delete items from history instantly.</li>
           <li>Advanced cache keeps some resources around longer for faster page reloads when you revisit a site.</li>
         </ol>
-        <p>You can change the global theme from the modal and it updates every view instantaneously, including the sidebar and blog pages.</p>
+        <p>Theme changes and other common settings update directly in the app and are reflected across the website settings modal as well.</p>
       </div>
 
       <div class="section">
@@ -144,11 +154,11 @@
 
       <div class="section">
         <h3>AI Chat</h3>
-        <p>Chat with AI about the current page, get summaries, or ask questions.</p>
+        <p>Chat with AI about the current page, ask follow-up questions, and generate quick summaries when AI is configured.</p>
         <ul>
           <li>Shows status as "Ready" when configured, or "Setup" otherwise.</li>
-          <li>Uses <strong>Gemini 2.5 Flash Lite</strong> model via Firebase AI.</li>
-          <li>Configure via Firebase settings below.</li>
+          <li>Uses Firebase AI integration from the desktop app.</li>
+          <li>Configure it through the Firebase settings below.</li>
         </ul>
       </div>
 
