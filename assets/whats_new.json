@@ -98,5 +98,8 @@
   ],
   "1.15.5": [
     "replace keyword search with Python-based similarity scoring for issue matching."
+  ],
+  "1.15.6": [
+    "use temporary files instead of shell variables for issue similarity data."
   ]
 }
