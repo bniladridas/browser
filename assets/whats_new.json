@@ -95,5 +95,8 @@
   ],
   "1.15.4": [
     "simplify issue similarity search using gh CLI instead of API."
+  ],
+  "1.15.5": [
+    "replace keyword search with Python-based similarity scoring for issue matching."
   ]
 }
