@@ -92,5 +92,8 @@
   ],
   "1.15.3": [
     "GitHub action to suggest similar issues on new submissions."
+  ],
+  "1.15.4": [
+    "simplify issue similarity search using gh CLI instead of API."
   ]
 }
