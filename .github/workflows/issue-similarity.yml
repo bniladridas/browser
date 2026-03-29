@@ -37,17 +37,22 @@ jobs:
           stopwords+='html|image|images|does|doesn|dont|cant|need|like|just|'
           stopwords+='more|same|than|also)$'
 
-          issues_json=$(gh issue list \
+          issues_file=$(mktemp)
+          results_file=$(mktemp)
+
+          gh issue list \
             --repo "$REPO" \
             --state all \
             --limit 100 \
-            --json number,title,body,state,url)
+            --json number,title,body,state,url \
+            > "$issues_file"
 
-          results=$(ISSUE_NUMBER="$ISSUE_NUMBER" \
+          ISSUE_NUMBER="$ISSUE_NUMBER" \
             ISSUE_TITLE="$ISSUE_TITLE" \
             ISSUE_BODY="$ISSUE_BODY" \
             STOPWORDS="$stopwords" \
-            ISSUES_JSON="$issues_json" \
+            ISSUES_FILE="$issues_file" \
+            RESULTS_FILE="$results_file" \
             python3 - <<'PY'
           import json
           import os
@@ -57,7 +62,8 @@ jobs:
           issue_title = os.environ["ISSUE_TITLE"]
           issue_body = os.environ.get("ISSUE_BODY", "")
           stopwords = re.compile(os.environ["STOPWORDS"], re.IGNORECASE)
-          issues = json.loads(os.environ["ISSUES_JSON"])
+          with open(os.environ["ISSUES_FILE"], encoding="utf-8") as fh:
+              issues = json.load(fh)
 
           def tokenize(text):
               terms = re.findall(r"[A-Za-z0-9]+", (text or "").lower())
@@ -98,20 +104,20 @@ jobs:
               })
 
           results.sort(key=lambda item: (-item["score"], item["number"]))
-          print(json.dumps(results[:10]))
+          with open(os.environ["RESULTS_FILE"], "w", encoding="utf-8") as fh:
+              json.dump(results[:10], fh)
           PY
-          )
 
-          if [ "$(printf '%s' "$results" | jq 'length')" -eq 0 ]; then
+          if [ "$(jq 'length' "$results_file")" -eq 0 ]; then
             echo "No similar issues found."
             exit 0
           fi
 
-          open_items=$(printf '%s' "$results" \
-            | jq -r '.[] | select(.state == "open") | "- #\(.number) - \(.title)"' \
+          open_items=$(jq -r '.[] | select(.state == "open") | "- #\(.number) - \(.title)"' \
+            "$results_file" \
             | head -n 3)
-          closed_items=$(printf '%s' "$results" \
-            | jq -r '.[] | select(.state == "closed") | "- #\(.number) - \(.title)"' \
+          closed_items=$(jq -r '.[] | select(.state == "closed") | "- #\(.number) - \(.title)"' \
+            "$results_file" \
             | head -n 3)
 
           marker="<!-- issue-similarity-check -->"
