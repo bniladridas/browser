@@ -51,18 +51,11 @@ jobs:
             exit 0
           fi
 
-          query="repo:${REPO} is:issue ${search_text}"
-          results=$(gh api search/issues \
-            -f q="$query" \
-            -f per_page=10 \
-            --jq '.items
-              | map(select(.number != '"$ISSUE_NUMBER"'))
-              | map({
-                  number: .number,
-                  title: .title,
-                  state: .state,
-                  url: .html_url
-                })')
+          results=$(gh search issues "${search_text}" \
+            --repo "$REPO" \
+            --limit 10 \
+            --json number,title,state,url \
+            --jq 'map(select(.number != '"$ISSUE_NUMBER"'))')
 
           if [ "$(printf '%s' "$results" | jq 'length')" -eq 0 ]; then
             echo "No similar issues found."
