@@ -83,5 +83,8 @@
   ],
   "1.15.0": [
     "include clear data controls and macos activation."
+  ],
+  "1.15.1": [
+    "reset home tab title and sync flutter toolchain."
   ]
 }
