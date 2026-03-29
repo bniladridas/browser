@@ -1,0 +1,114 @@
+---
+# SPDX-License-Identifier: MIT
+#
+# Copyright 2026 bniladridas. All rights reserved.
+# Use of this source code is governed by a MIT license that can be
+# found in the LICENSE file.
+
+name: Suggest Similar Issues
+
+on:
+  issues:
+    types: [opened, reopened, edited]
+
+jobs:
+  suggest-similar:
+    runs-on: ubuntu-latest
+    if: github.repository_owner == 'bniladridas'
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Find and comment on similar issues
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          stopwords='^(this|that|with|from|have|will|when|where|would|should|'
+          stopwords+='into|than|then|they|them|their|there|here|what|which|'
+          stopwords+='while|after|before|about|browser|issue|page|file|files|'
+          stopwords+='html|image|images|does|doesn|dont|cant|need|like|just|'
+          stopwords+='more|same|than|also)$'
+
+          search_text=$(printf '%s\n%s\n' "$ISSUE_TITLE" "${ISSUE_BODY:-}" \
+            | tr '[:upper:]' '[:lower:]' \
+            | tr -cs '[:alnum:]' '\n' \
+            | awk 'length($0) >= 4' \
+            | grep -Evi "$stopwords" \
+            | awk '!seen[$0]++' \
+            | head -n 6 \
+            | paste -sd ' ' -)
+
+          if [ -z "$search_text" ]; then
+            echo "No useful keywords extracted; skipping similar-issue comment."
+            exit 0
+          fi
+
+          query="repo:${REPO} is:issue ${search_text}"
+          results=$(gh api search/issues \
+            -f q="$query" \
+            -f per_page=10 \
+            --jq '.items
+              | map(select(.number != '"$ISSUE_NUMBER"'))
+              | map({
+                  number: .number,
+                  title: .title,
+                  state: .state,
+                  url: .html_url
+                })')
+
+          if [ "$(printf '%s' "$results" | jq 'length')" -eq 0 ]; then
+            echo "No similar issues found."
+            exit 0
+          fi
+
+          open_items=$(printf '%s' "$results" \
+            | jq -r '.[] | select(.state == "open") | "- #\(.number) - \(.title)"' \
+            | head -n 3)
+          closed_items=$(printf '%s' "$results" \
+            | jq -r '.[] | select(.state == "closed") | "- #\(.number) - \(.title)"' \
+            | head -n 3)
+
+          marker="<!-- issue-similarity-check -->"
+          body_file=$(mktemp)
+          {
+            echo "$marker"
+            echo "I found a few potentially similar issues that may be useful to review."
+            echo
+            if [ -n "$open_items" ]; then
+              echo "Open issues:"
+              printf '%s\n' "$open_items"
+              echo
+            fi
+            if [ -n "$closed_items" ]; then
+              echo "Closed issues:"
+              printf '%s\n' "$closed_items"
+              echo
+            fi
+            echo "This is only a suggestion to help with triage."
+          } > "$body_file"
+
+          existing_comment_id=$(gh api "repos/${REPO}/issues/${ISSUE_NUMBER}/comments" \
+            --jq '.[]
+              | select(.user.login == "github-actions[bot]")
+              | select(.body | contains("'"$marker"'"))
+              | .id' \
+            | head -n 1)
+
+          if [ -n "$existing_comment_id" ]; then
+            comment_payload=$(jq -Rs '{body: .}' < "$body_file")
+            gh api "repos/${REPO}/issues/comments/${existing_comment_id}" \
+              --method PATCH \
+              --input - \
+              <<<"$comment_payload" \
+              >/dev/null
+          else
+            gh issue comment "$ISSUE_NUMBER" --body-file "$body_file" >/dev/null
+          fi
