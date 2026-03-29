@@ -80,5 +80,8 @@
   ],
   "1.14.5": [
     "cross-platform sed compatibility to pubspec version script."
+  ],
+  "1.15.0": [
+    "include clear data controls and macos activation."
   ]
 }
