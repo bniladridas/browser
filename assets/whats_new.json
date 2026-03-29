@@ -101,5 +101,8 @@
   ],
   "1.15.6": [
     "use temporary files instead of shell variables for issue similarity data."
+  ],
+  "1.15.7": [
+    "case-insensitive state filtering and empty results handling in issue similarity."
   ]
 }
