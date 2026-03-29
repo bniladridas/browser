@@ -310,6 +310,7 @@ class SettingsDialog extends HookWidget {
     super.key,
     this.onSettingsChanged,
     this.onClearCaches,
+    this.onClearAllData,
     this.onThemePreviewChanged,
     this.currentTheme,
     required this.aiAvailable,
@@ -321,6 +322,7 @@ class SettingsDialog extends HookWidget {
 
   final void Function()? onSettingsChanged;
   final void Function()? onClearCaches;
+  final void Function(bool factoryReset)? onClearAllData;
   final void Function(AppThemeMode mode)? onThemePreviewChanged;
   final AppThemeMode? currentTheme;
   final bool aiAvailable;
@@ -1148,6 +1150,96 @@ class SettingsDialog extends HookWidget {
           },
           child: const Text('Save'),
         ),
+        if (onClearAllData != null)
+          TextButton(
+            onPressed: () async {
+              final theme = Theme.of(context);
+              final confirm = await showDialog<bool?>(
+                context: context,
+                builder: (dialogContext) {
+                  bool factoryReset = false;
+                  return Theme(
+                    data: theme.copyWith(
+                      splashFactory: NoSplash.splashFactory,
+                      hoverColor: Colors.transparent,
+                    ),
+                    child: StatefulBuilder(
+                      builder: (dialogContext, setState) => AlertDialog(
+                        title: Text(
+                          'Clear All Data',
+                          style: theme.textTheme.titleSmall
+                              ?.copyWith(fontSize: 15),
+                        ),
+                        content: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'This will clear all cached data, saved passwords, and settings.',
+                              style: theme.textTheme.bodySmall
+                                  ?.copyWith(fontSize: 12),
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                MouseRegion(
+                                  cursor: SystemMouseCursors.click,
+                                  child: Checkbox(
+                                    value: factoryReset,
+                                    onChanged: (v) {
+                                      setState(() => factoryReset = v ?? false);
+                                    },
+                                    overlayColor: WidgetStateProperty.all(
+                                        Colors.transparent),
+                                    materialTapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
+                                  ),
+                                ),
+                                Expanded(
+                                  child: Text(
+                                    'Factory reset (erase all profiles)',
+                                    style: theme.textTheme.bodySmall
+                                        ?.copyWith(fontSize: 12),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () =>
+                                Navigator.of(dialogContext).pop(null),
+                            style: ButtonStyle(
+                              overlayColor:
+                                  WidgetStateProperty.all(Colors.transparent),
+                            ),
+                            child: const Text('Cancel'),
+                          ),
+                          FilledButton(
+                            onPressed: () =>
+                                Navigator.of(dialogContext).pop(factoryReset),
+                            style: ButtonStyle(
+                              overlayColor:
+                                  WidgetStateProperty.all(Colors.transparent),
+                            ),
+                            child: const Text('Clear'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              );
+              if (confirm != null) {
+                onClearAllData?.call(confirm);
+              }
+            },
+            child: Text(
+              'Clear',
+              style: TextStyle(color: theme.colorScheme.error),
+            ),
+          ),
       ],
     );
   }
@@ -1810,6 +1902,8 @@ class _BrowserPageState extends State<BrowserPage>
   List<RegExp> adBlockerPatterns = [];
   bool _isOnline = true;
   final ConnectivityService _connectivityService = ConnectivityService();
+  final PasswordStorageRepository _passwordRepository =
+      PasswordStorageRepository();
   StreamSubscription<bool>? _connectivitySubscription;
   late AnimationController _refreshIconController;
   AnimationController? _ambientController;
@@ -3089,8 +3183,6 @@ class _BrowserPageState extends State<BrowserPage>
       requestId = data['requestId'] as int;
       final options = data['options'] as Map<String, dynamic>;
 
-      logger.d('WebAuthn request: $type (ID: $requestId)');
-
       final webAuthnService = WebAuthnService();
 
       if (type == 'create') {
@@ -3387,12 +3479,6 @@ class _BrowserPageState extends State<BrowserPage>
     final requestedTypes = request.types;
     final granted = requestedTypes.isNotEmpty &&
         requestedTypes.every(allowedMediaPermissions.contains);
-    final sanitizedUrl = _sanitizeUrlForLog(tab.currentUrl);
-    final typeList = requestedTypes.map((type) => type.name).join(', ');
-    logger.d(
-      'WebView permission ${granted ? 'granted' : 'denied'} '
-      'for $sanitizedUrl [${typeList.isEmpty ? '<none>' : typeList}]',
-    );
     if (granted) {
       await request.grant();
       return;
@@ -4026,6 +4112,19 @@ class _BrowserPageState extends State<BrowserPage>
     });
   }
 
+  Future<void> _reloadAllSettings() async {
+    if (!mounted) return;
+    final prefs = await SharedPreferences.getInstance();
+    String scopedKey(String key) => profileManager.getScopedStorageKey(key);
+
+    if (!mounted) return;
+    setState(() {
+      _reorderableTabs = prefs.getBool(scopedKey(reorderableTabsKey)) ?? false;
+      _tabFaviconBadgeEnabled =
+          prefs.getBool(scopedKey(tabFaviconBadgeEnabledKey)) ?? false;
+    });
+  }
+
   Future<void> _setWindowMovable(bool movable) async {
     if (isIntegrationTest) return;
     try {
@@ -4261,9 +4360,8 @@ class _BrowserPageState extends State<BrowserPage>
         await http.head(uri, headers: {
           'User-Agent': _getUserAgent(widget.useModernUserAgent)
         }).timeout(_navigationCachePrewarmTimeout);
-      } catch (e) {
+      } catch (_) {
         // Best effort prewarm only.
-        logger.d('Failed to prewarm navigation cache for $url', error: e);
       }
     }
   }
@@ -4610,6 +4708,91 @@ class _BrowserPageState extends State<BrowserPage>
     }
   }
 
+  Future<void> _clearAllDiskData([bool factoryReset = false]) async {
+    try {
+      await _clearAllCaches();
+      await _passwordRepository.clearAllCredentials();
+      final prefs = await SharedPreferences.getInstance();
+      int keysCleared = 0;
+      if (factoryReset) {
+        final allProfiles = profileManager.profiles.toList();
+        final profilesToDelete =
+            allProfiles.where((p) => p.id != 'default').toList();
+        final defaultPrefix = 'default_';
+        final defaultKeysToRemove = prefs
+            .getKeys()
+            .where((key) => key.startsWith(defaultPrefix))
+            .toList();
+        if (profilesToDelete.isEmpty && defaultKeysToRemove.isEmpty) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Already at factory defaults')),
+            );
+            Navigator.of(context).pop(true);
+          }
+          return;
+        }
+        for (final profile in profilesToDelete) {
+          await profileManager.deleteProfile(profile.id);
+        }
+        keysCleared += defaultKeysToRemove.length;
+        for (final key in defaultKeysToRemove) {
+          await prefs.remove(key);
+        }
+        await prefs.remove('user_profiles');
+        await prefs.remove('active_profile_id');
+        await profileManager.initialize();
+      } else {
+        final activeProfileId = profileManager.activeProfileId;
+        if (activeProfileId != null) {
+          final prefix = '${activeProfileId}_';
+          final keysToRemove =
+              prefs.getKeys().where((key) => key.startsWith(prefix)).toList();
+          keysCleared += keysToRemove.length;
+          for (final key in keysToRemove) {
+            await prefs.remove(key);
+          }
+        }
+        final globalKeysToRemoveList = [
+          navigationCacheIndexKey,
+          useModernUserAgentKey,
+          aiSearchSuggestionsEnabledKey,
+          advancedCacheEnabledKey,
+          privateBrowsingKey,
+          adBlockingKey,
+          strictModeKey,
+        ];
+        final globalKeysToRemove = prefs
+            .getKeys()
+            .where((key) => globalKeysToRemoveList.contains(key))
+            .toList();
+        keysCleared += globalKeysToRemove.length;
+        for (final key in globalKeysToRemove) {
+          await prefs.remove(key);
+        }
+      }
+      await prefs.reload();
+      if (mounted) {
+        final message = factoryReset
+            ? 'Factory reset complete'
+            : (keysCleared > 0 ? 'All data cleared' : 'Nothing to clear');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(message)),
+        );
+        Navigator.of(context).pop(true);
+        widget.onSettingsChanged?.call();
+      }
+    } catch (e, s) {
+      logger.w('Failed to clear all disk data', error: e, stackTrace: s);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed: $e')),
+        );
+        Navigator.of(context).pop(true);
+      }
+    }
+  }
+
   void _showSettings() async {
     final saved = await _showWithModalInteractionBlock<bool>(
       () => showGeneralDialog<bool>(
@@ -4634,11 +4817,11 @@ class _BrowserPageState extends State<BrowserPage>
               ),
               child: SettingsDialog(
                 onSettingsChanged: () {
-                  _loadReorderableTabs();
-                  _loadTabFaviconBadgeEnabled();
+                  _reloadAllSettings();
                   widget.onSettingsChanged?.call();
                 },
                 onClearCaches: _clearAllCaches,
+                onClearAllData: _clearAllDiskData,
                 onThemePreviewChanged: widget.onThemePreviewChanged,
                 currentTheme: widget.themeMode,
                 aiSearchSuggestionsEnabled: widget.aiSearchSuggestionsEnabled,
@@ -6489,11 +6672,11 @@ class _BrowserPageState extends State<BrowserPage>
                         onExit: (_) => _handleAddressBarHoverChanged(false),
                         child: Align(
                           alignment: Alignment.centerLeft,
-                              child: AnimatedSwitcher(
-                                duration: const Duration(milliseconds: 180),
-                                switchInCurve: Curves.easeOut,
-                                switchOutCurve: Curves.easeIn,
-                                transitionBuilder: (child, animation) {
+                          child: AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 180),
+                            switchInCurve: Curves.easeOut,
+                            switchOutCurve: Curves.easeIn,
+                            transitionBuilder: (child, animation) {
                               return FadeTransition(
                                 opacity: animation,
                                 child: SizeTransition(
@@ -6534,8 +6717,7 @@ class _BrowserPageState extends State<BrowserPage>
                                           _urlAutocompleteTargetContext =
                                               context;
                                           return TextField(
-                                            key:
-                                                const Key('browser.url_field'),
+                                            key: const Key('browser.url_field'),
                                             controller: activeTab.urlController,
                                             focusNode: activeTab.urlFocusNode,
                                             onChanged: (_) =>
@@ -6580,9 +6762,8 @@ class _BrowserPageState extends State<BrowserPage>
                                               final decision =
                                                   resolveUrlSubmission(
                                                 submittedValue: value,
-                                                aiSearchSuggestionsEnabled:
-                                                    widget
-                                                        .aiSearchSuggestionsEnabled,
+                                                aiSearchSuggestionsEnabled: widget
+                                                    .aiSearchSuggestionsEnabled,
                                               );
                                               if (decision
                                                   .shouldShowAiSuggestions) {
