@@ -104,5 +104,8 @@
   ],
   "1.15.7": [
     "case-insensitive state filtering and empty results handling in issue similarity."
+  ],
+  "1.15.8": [
+    "remove unused rebuild key from BrowserPage."
   ]
 }
