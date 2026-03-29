@@ -67,7 +67,6 @@ class _MyAppState extends State<MyApp> {
   bool autoHideAddressBarEnabled = false;
   bool _didCheckWhatsNew = false;
   final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
-  int _browserPageRebuildKey = 0;
   @override
   void initState() {
     super.initState();
@@ -253,7 +252,6 @@ class _MyAppState extends State<MyApp> {
           adjustedThemeMode = ThemeMode.system;
           adjustedSeedColor = Colors.blue;
         }
-        _browserPageRebuildKey++;
       });
     }
   }
@@ -332,7 +330,6 @@ class _MyAppState extends State<MyApp> {
         ),
         themeMode: resolvedThemeMode,
         home: BrowserPage(
-          key: ValueKey(_browserPageRebuildKey),
           initialUrl: homepage,
           hideAppBar: hideAppBar,
           useModernUserAgent: useModernUserAgent,

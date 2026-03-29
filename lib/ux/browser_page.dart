@@ -2667,6 +2667,9 @@ class _BrowserPageState extends State<BrowserPage>
   @override
   void didUpdateWidget(covariant BrowserPage oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialUrl != widget.initialUrl) {
+      _syncHomeUrlChange(oldWidget.initialUrl, widget.initialUrl);
+    }
     if (oldWidget.hideAppBar != widget.hideAppBar) {
       _syncMacWindowButtonsVisibility();
     }
@@ -2708,6 +2711,39 @@ class _BrowserPageState extends State<BrowserPage>
       } else {
         _maybeScheduleAddressBarAutoHide(activeTab, revealImmediately: true);
       }
+    }
+  }
+
+  void _syncHomeUrlChange(String oldHomeUrl, String newHomeUrl) {
+    if (!mounted) return;
+
+    var changed = false;
+    for (final tab in tabs) {
+      if (tab.currentUrl == oldHomeUrl) {
+        changed = true;
+        tab.currentUrl = newHomeUrl;
+        tab.pageTitle = null;
+        tab.urlController.value = TextEditingValue(
+          text: _displayUrl(newHomeUrl),
+          selection: TextSelection.collapsed(
+            offset: _displayUrl(newHomeUrl).length,
+          ),
+        );
+        tab.faviconUrl = _defaultFaviconUrlFor(newHomeUrl);
+        tab.state = BrowserState.success(newHomeUrl);
+        if (newHomeUrl == defaultHomepageUrl) {
+          tab.webViewController = null;
+          tab.hideStaleWebViewUntilPageFinish = false;
+        }
+      }
+      if (tab.forwardUrl == oldHomeUrl) {
+        changed = true;
+        tab.forwardUrl = newHomeUrl;
+      }
+    }
+
+    if (changed) {
+      setState(() {});
     }
   }
 
