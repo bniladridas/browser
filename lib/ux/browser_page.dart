@@ -20,6 +20,7 @@ import 'dart:io';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 import 'package:webview_flutter/webview_flutter.dart';
+import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
 import 'package:http/http.dart' as http;
 import 'package:file_selector/file_selector.dart';
 import 'package:desktop_drop/desktop_drop.dart';
@@ -5810,7 +5811,7 @@ class _BrowserPageState extends State<BrowserPage>
       if (processedUrl.startsWith('file:///') ||
           processedUrl.startsWith('file://')) {
         final path = processedUrl.replaceFirst('file://', '');
-        await activeTab.webViewController?.loadFile(path);
+        await _loadLocalFile(path);
       } else {
         activeTab.webViewController?.loadRequest(Uri.parse(processedUrl));
       }
@@ -5820,6 +5821,26 @@ class _BrowserPageState extends State<BrowserPage>
             error: e, stackTrace: s);
       }
     }
+  }
+
+  Future<void> _loadLocalFile(String path) async {
+    final controller = activeTab.webViewController;
+    if (controller == null) return;
+
+    if (defaultTargetPlatform == TargetPlatform.macOS &&
+        controller.platform is WebKitWebViewController) {
+      final webKitController = controller.platform as WebKitWebViewController;
+      final parentPath = File(path).parent.path;
+      await webKitController.loadFileWithParams(
+        WebKitLoadFileParams(
+          absoluteFilePath: path,
+          readAccessPath: parentPath,
+        ),
+      );
+      return;
+    }
+
+    await controller.loadFile(path);
   }
 
   void _performTorrySearch(TabData tab, [String? text]) {
