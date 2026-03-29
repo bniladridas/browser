@@ -33,29 +33,74 @@ jobs:
 
           stopwords='^(this|that|with|from|have|will|when|where|would|should|'
           stopwords+='into|than|then|they|them|their|there|here|what|which|'
-          stopwords+='while|after|before|about|browser|issue|page|file|files|'
+          stopwords+='while|after|before|about|browser|page|file|files|'
           stopwords+='html|image|images|does|doesn|dont|cant|need|like|just|'
           stopwords+='more|same|than|also)$'
 
-          search_text=$(printf '%s\n%s\n' "$ISSUE_TITLE" "${ISSUE_BODY:-}" \
-            | tr '[:upper:]' '[:lower:]' \
-            | tr -cs '[:alnum:]' '\n' \
-            | awk 'length($0) >= 4' \
-            | grep -Evi "$stopwords" \
-            | awk '!seen[$0]++' \
-            | head -n 6 \
-            | paste -sd ' ' -)
-
-          if [ -z "$search_text" ]; then
-            echo "No useful keywords extracted; skipping similar-issue comment."
-            exit 0
-          fi
-
-          results=$(gh search issues "${search_text}" \
+          issues_json=$(gh issue list \
             --repo "$REPO" \
-            --limit 10 \
-            --json number,title,state,url \
-            --jq 'map(select(.number != '"$ISSUE_NUMBER"'))')
+            --state all \
+            --limit 100 \
+            --json number,title,body,state,url)
+
+          results=$(ISSUE_NUMBER="$ISSUE_NUMBER" \
+            ISSUE_TITLE="$ISSUE_TITLE" \
+            ISSUE_BODY="$ISSUE_BODY" \
+            STOPWORDS="$stopwords" \
+            ISSUES_JSON="$issues_json" \
+            python3 - <<'PY'
+          import json
+          import os
+          import re
+
+          issue_number = int(os.environ["ISSUE_NUMBER"])
+          issue_title = os.environ["ISSUE_TITLE"]
+          issue_body = os.environ.get("ISSUE_BODY", "")
+          stopwords = re.compile(os.environ["STOPWORDS"], re.IGNORECASE)
+          issues = json.loads(os.environ["ISSUES_JSON"])
+
+          def tokenize(text):
+              terms = re.findall(r"[A-Za-z0-9]+", (text or "").lower())
+              return {
+                  term for term in terms
+                  if len(term) >= 4 and not stopwords.match(term)
+              }
+
+          source_title_terms = tokenize(issue_title)
+          source_all_terms = tokenize(f"{issue_title}\n{issue_body}")
+
+          results = []
+          for item in issues:
+              if item["number"] == issue_number:
+                  continue
+
+              target_title_terms = tokenize(item.get("title", ""))
+              target_all_terms = tokenize(
+                  f'{item.get("title", "")}\n{item.get("body", "")}'
+              )
+
+              title_overlap = source_title_terms & target_title_terms
+              body_overlap = source_all_terms & target_all_terms
+              score = len(title_overlap) * 3 + len(body_overlap)
+
+              if issue_title.strip().lower() == item.get("title", "").strip().lower():
+                  score += 10
+
+              if score <= 0:
+                  continue
+
+              results.append({
+                  "number": item["number"],
+                  "title": item["title"],
+                  "state": item["state"],
+                  "url": item["url"],
+                  "score": score,
+              })
+
+          results.sort(key=lambda item: (-item["score"], item["number"]))
+          print(json.dumps(results[:10]))
+          PY
+          )
 
           if [ "$(printf '%s' "$results" | jq 'length')" -eq 0 ]; then
             echo "No similar issues found."
