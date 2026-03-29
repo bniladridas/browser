@@ -19,17 +19,19 @@ PODS:
     - FirebaseAuth (~> 12.9.0)
   - Firebase/CoreOnly (12.9.0):
     - FirebaseCore (~> 12.9.0)
-  - firebase_app_check (0.4.1-5):
+  - firebase_ai (3.10.0):
+    - FlutterMacOS
+  - firebase_app_check (0.4.2):
     - Firebase/AppCheck (~> 12.9.0)
     - Firebase/CoreOnly (~> 12.9.0)
     - firebase_core
     - FlutterMacOS
-  - firebase_auth (6.2.0):
+  - firebase_auth (6.3.0):
     - Firebase/Auth (~> 12.9.0)
     - Firebase/CoreOnly (~> 12.9.0)
     - firebase_core
     - FlutterMacOS
-  - firebase_core (4.5.0):
+  - firebase_core (4.6.0):
     - Firebase/CoreOnly (~> 12.9.0)
     - FlutterMacOS
   - FirebaseAppCheck (12.9.0):
@@ -108,6 +110,7 @@ DEPENDENCIES:
   - desktop_drop (from `Flutter/ephemeral/.symlinks/plugins/desktop_drop/macos`)
   - device_info_plus (from `Flutter/ephemeral/.symlinks/plugins/device_info_plus/macos`)
   - file_selector_macos (from `Flutter/ephemeral/.symlinks/plugins/file_selector_macos/macos`)
+  - firebase_ai (from `Flutter/ephemeral/.symlinks/plugins/firebase_ai/macos`)
   - firebase_app_check (from `Flutter/ephemeral/.symlinks/plugins/firebase_app_check/macos`)
   - firebase_auth (from `Flutter/ephemeral/.symlinks/plugins/firebase_auth/macos`)
   - firebase_core (from `Flutter/ephemeral/.symlinks/plugins/firebase_core/macos`)
@@ -144,6 +147,8 @@ EXTERNAL SOURCES:
     :path: Flutter/ephemeral/.symlinks/plugins/device_info_plus/macos
   file_selector_macos:
     :path: Flutter/ephemeral/.symlinks/plugins/file_selector_macos/macos
+  firebase_ai:
+    :path: Flutter/ephemeral/.symlinks/plugins/firebase_ai/macos
   firebase_app_check:
     :path: Flutter/ephemeral/.symlinks/plugins/firebase_app_check/macos
   firebase_auth:
@@ -174,9 +179,10 @@ SPEC CHECKSUMS:
   device_info_plus: 4fb280989f669696856f8b129e4a5e3cd6c48f76
   file_selector_macos: 9e9e068e90ebee155097d00e89ae91edb2374db7
   Firebase: 065f2bb395062046623036d8e6dc857bc2521d56
-  firebase_app_check: 1ea404b52b0910bf632b1ea2e00ceb8d1730cb44
-  firebase_auth: def738277a306ec5676724b44ce49b37edd3bc91
-  firebase_core: c74b220e9288decea6bed17399c249734a7e76d2
+  firebase_ai: 06132fc2e250706e325426f330a30e832418b57e
+  firebase_app_check: f537b491cf474f916fd60e3559328c7ba39a3ffa
+  firebase_auth: e48180de625a2d9c673f74790b4af512a08490ba
+  firebase_core: 82d678e9e10fc0b515ea1872dd446eee4722f144
   FirebaseAppCheck: 94dae4d9bb682bdef85a778b0c1024a4613f1e89
   FirebaseAppCheckInterop: 4bade10286cc977e516f75d2d8312cbdfa534789
   FirebaseAuth: 3a39f6436c21ebfd7919b698228b4f89ff94c23b
