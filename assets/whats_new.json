@@ -116,5 +116,8 @@
   ],
   "1.15.11": [
     "replace local bump-version action with libnudget/bump@main."
+  ],
+  "1.15.12": [
+    "remove local bump-version action."
   ]
 }
