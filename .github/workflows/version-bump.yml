@@ -29,7 +29,7 @@ jobs:
           fetch-tags: true
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: ./.github/actions/bump-version
+      - uses: libnudget/bump@main
         with:
           pr-number: ${{ github.event.pull_request.number }}
           token: ${{ secrets.GITHUB_TOKEN }}
