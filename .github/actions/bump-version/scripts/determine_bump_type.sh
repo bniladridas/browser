@@ -20,7 +20,7 @@ fi
 LABELS=$(gh pr view "$PR_NUMBER" --json labels -q '.labels[].name')
 printf "Labels: %s\n" "${LABELS}"
 
-BUMP_COUNT=$(printf "%s" "${LABELS}" | grep -c -E "^(major|minor|patch)$")
+BUMP_COUNT=$(printf "%s\n" "${LABELS}" | grep -c -E "^(major|minor|patch)$" || true)
 if [ "$BUMP_COUNT" -gt 1 ]; then
   printf "Warning: Multiple bump labels found. Using precedence: major > minor > patch.\n"
 fi
