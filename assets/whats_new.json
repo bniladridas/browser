@@ -107,5 +107,8 @@
   ],
   "1.15.8": [
     "remove unused rebuild key from BrowserPage."
+  ],
+  "1.15.9": [
+    "replace inline shell/Python script with libnudget/echo action for issue similarity."
   ]
 }
