@@ -110,5 +110,8 @@
   ],
   "1.15.9": [
     "replace inline shell/Python script with libnudget/echo action for issue similarity."
+  ],
+  "1.15.10": [
+    "extract bump-version inline scripts to separate shell files."
   ]
 }
