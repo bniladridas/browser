@@ -113,5 +113,8 @@
   ],
   "1.15.10": [
     "extract bump-version inline scripts to separate shell files."
+  ],
+  "1.15.11": [
+    "replace local bump-version action with libnudget/bump@main."
   ]
 }
