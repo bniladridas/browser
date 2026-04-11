@@ -6254,11 +6254,20 @@ class _BrowserPageState extends State<BrowserPage>
         _handleWebAuthnMessage(tab, message.message);
       });
       tab.webViewController!.setNavigationDelegate(NavigationDelegate(
-        onPageStarted: (url) {
+        onUrlChange: (change) {
+          if (!tab.isClosed && change.url != null && mounted) {
+            setState(() {
+              tab.currentUrl = change.url!;
+              tab.urlController.text = change.url!;
+            });
+          }
+        },
+        onPageStarted: (url) async {
           if (!tab.isClosed) {
+            final actualUrl = await tab.webViewController?.currentUrl() ?? url;
             if (mounted) {
               setState(() {
-                tab.currentUrl = url;
+                tab.currentUrl = actualUrl;
                 tab.urlController.text = tab.currentUrl;
                 tab.state = const BrowserState.loading();
                 tab.pageTitle = null;
@@ -6266,10 +6275,11 @@ class _BrowserPageState extends State<BrowserPage>
                 tab.detectedSeedColor = null;
                 tab.ambientSeedColor = null;
                 tab.lastAmbientProbeAt = null;
-                final host = _hostFromUrl(url);
+                final host = _hostFromUrl(actualUrl);
                 final nextFavicon = host != null
-                    ? (_faviconCacheByHost[host] ?? _defaultFaviconUrlFor(url))
-                    : _defaultFaviconUrlFor(url);
+                    ? (_faviconCacheByHost[host] ??
+                        _defaultFaviconUrlFor(actualUrl))
+                    : _defaultFaviconUrlFor(actualUrl);
                 if (nextFavicon != null && nextFavicon.isNotEmpty) {
                   tab.faviconUrl = nextFavicon;
                 }
@@ -6279,12 +6289,13 @@ class _BrowserPageState extends State<BrowserPage>
             _syncPagePointerEvents(tab);
           }
         },
-        onPageFinished: (url) {
+        onPageFinished: (url) async {
+          final actualUrl = await tab.webViewController?.currentUrl() ?? url;
           tab.hideStaleWebViewUntilPageFinish = false;
           if (mounted) {
             setState(() {
               if (tab.state is! BrowserError) {
-                tab.state = BrowserState.success(url);
+                tab.state = BrowserState.success(actualUrl);
               }
             });
           }
