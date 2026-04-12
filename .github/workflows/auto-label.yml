@@ -18,4 +18,5 @@ jobs:
     permissions:
       pull-requests: write
     steps:
+      - uses: actions/checkout@v4
       - uses: libnudget/auto-label@v1
