@@ -125,5 +125,8 @@
   ],
   "1.15.14": [
     "replace inline auto-label script with libnudget actions."
+  ],
+  "1.15.15": [
+    "checkout step to auto-label workflow."
   ]
 }
