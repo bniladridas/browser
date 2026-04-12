@@ -119,5 +119,8 @@
   ],
   "1.15.12": [
     "remove local bump-version action."
+  ],
+  "1.15.13": [
+    "improve url tracking for google login and youtube."
   ]
 }
