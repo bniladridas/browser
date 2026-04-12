@@ -5,17 +5,20 @@
 # Use of this source code is governed by a MIT license that can be
 # found in the LICENSE file.
 
-name: Auto Label PRs
+name: Close Stale Issues
 
 on:
-  pull_request:
-    types: [opened, synchronize]
+  schedule:
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  issues: write
 
 jobs:
-  label:
+  close-stale-issues:
     runs-on: ubuntu-latest
     if: github.repository_owner == 'bniladridas'
-    permissions:
-      pull-requests: write
     steps:
-      - uses: libnudget/auto-label@v1
+      - uses: libnudget/stale@v1
