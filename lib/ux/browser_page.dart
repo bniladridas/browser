@@ -1583,6 +1583,7 @@ class TabData {
   final TextEditingController urlController;
   final FocusNode urlFocusNode;
   bool isUrlObscured = false;
+  bool hasUserInteractedWithPage = false;
   final TextEditingController torrySearchController;
   final FocusNode torrySearchFocusNode;
   WebViewController? webViewController;
@@ -2923,6 +2924,186 @@ class _BrowserPageState extends State<BrowserPage>
 ''');
     } catch (e, s) {
       logger.w('Failed to apply page font override', error: e, stackTrace: s);
+    }
+  }
+
+  Future<void> _clearUnwantedInitialPageFocus(TabData tab) async {
+    if (widget.strictMode) return;
+    if (await _isPageUserInteracted(tab)) return;
+    final controller = tab.webViewController;
+    if (controller == null || tab.isClosed) return;
+    try {
+      await controller.runJavaScript('''
+(() => {
+  try {
+    const el = document.activeElement;
+    if (!el || el === document.body || el === document.documentElement) return;
+    const tag = (el.tagName || '').toLowerCase();
+    if (!tag) return;
+    const isEditable =
+      el.isContentEditable ||
+      tag === 'input' ||
+      tag === 'textarea' ||
+      tag === 'select';
+    if (isEditable) return;
+    const role = (el.getAttribute && (el.getAttribute('role') || '')) || '';
+    const isButtonLike = tag === 'button' || role.toLowerCase() === 'button';
+    if (!isButtonLike) return;
+    if (typeof el.blur === 'function') el.blur();
+  } catch (_) {}
+})();
+''');
+    } catch (e, s) {
+      quietLogger.w(
+        'Failed to clear initial page focus',
+        error: e,
+        stackTrace: s,
+      );
+    }
+  }
+
+  bool _parseJsBool(dynamic value) {
+    if (value is bool) return value;
+    if (value is num) return value != 0;
+    final raw = _normalizeJsResult(value).trim().toLowerCase();
+    if (raw == 'true') return true;
+    if (raw == 'false') return false;
+    if (raw == '1') return true;
+    if (raw == '0') return false;
+    return false;
+  }
+
+  Future<bool> _isPageUserInteracted(TabData tab) async {
+    if (tab.hasUserInteractedWithPage) return true;
+    final controller = tab.webViewController;
+    if (controller == null || tab.isClosed) return false;
+    try {
+      final result = await controller.runJavaScriptReturningResult('''
+(() => {
+  try { return !!window.__browserUserInteracted; } catch (_) { return false; }
+})();
+''');
+      final interacted = _parseJsBool(result);
+      if (interacted) {
+        tab.hasUserInteractedWithPage = true;
+      }
+      return interacted;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<void> _installInitialFocusInterceptor(TabData tab) async {
+    if (widget.strictMode) return;
+    if (await _isPageUserInteracted(tab)) return;
+    final controller = tab.webViewController;
+    if (controller == null || tab.isClosed) return;
+    try {
+      await controller.runJavaScript('''
+(() => {
+  try {
+    const flag = '__browserInitialFocusInterceptorInstalled';
+    if (window[flag]) return;
+    window[flag] = true;
+
+    const interactFlag = '__browserUserInteracted';
+    if (window[interactFlag] == null) window[interactFlag] = false;
+
+    const isEditable = (el) => {
+      if (!el) return false;
+      const tag = (el.tagName || '').toLowerCase();
+      if (el.isContentEditable) return true;
+      return tag === 'input' || tag === 'textarea' || tag === 'select';
+    };
+
+    const isButtonLike = (el) => {
+      if (!el) return false;
+      const tag = (el.tagName || '').toLowerCase();
+      if (tag === 'button') return true;
+      if (tag === 'a' && el.getAttribute && el.getAttribute('href')) return true;
+      const role = (el.getAttribute && (el.getAttribute('role') || '')) || '';
+      return role.toLowerCase() === 'button';
+    };
+
+    const blurIfUnwanted = (el) => {
+      if (window[interactFlag]) return;
+      if (!el || el === document.body || el === document.documentElement) return;
+      if (isEditable(el)) return;
+      if (!isButtonLike(el)) return;
+      if (typeof el.blur === 'function') el.blur();
+    };
+
+    const onFocusIn = (e) => {
+      blurIfUnwanted(e && e.target ? e.target : document.activeElement);
+    };
+    document.addEventListener('focusin', onFocusIn, true);
+
+    const onPointerDown = () => {
+      window[interactFlag] = true;
+      document.removeEventListener('focusin', onFocusIn, true);
+      document.removeEventListener('pointerdown', onPointerDown, true);
+      document.removeEventListener('keydown', onKeyDown, true);
+    };
+
+    const onKeyDown = (e) => {
+      // If the user starts interacting with the page via keyboard navigation,
+      // stop suppressing focus immediately.
+      if (!e) return;
+      window[interactFlag] = true;
+      document.removeEventListener('focusin', onFocusIn, true);
+      document.removeEventListener('pointerdown', onPointerDown, true);
+      document.removeEventListener('keydown', onKeyDown, true);
+    };
+
+    document.addEventListener('pointerdown', onPointerDown, true);
+    document.addEventListener('keydown', onKeyDown, true);
+
+    // Best-effort immediate cleanup if something is already focused.
+    blurIfUnwanted(document.activeElement);
+
+    // Safety: remove suppression after a short window to avoid breaking
+    // legitimate keyboard-only flows.
+    const WINDOW_MS = 1500;
+    setTimeout(() => {
+      if (window[interactFlag]) return;
+      document.removeEventListener('focusin', onFocusIn, true);
+      document.removeEventListener('pointerdown', onPointerDown, true);
+      document.removeEventListener('keydown', onKeyDown, true);
+      window[interactFlag] = true;
+    }, WINDOW_MS);
+  } catch (_) {}
+})();
+''');
+    } catch (e, s) {
+      quietLogger.w(
+        'Failed to install initial focus interceptor',
+        error: e,
+        stackTrace: s,
+      );
+    }
+  }
+
+  Future<void> _ensurePageTapListenerInstalled(TabData tab) async {
+    if (widget.strictMode) return;
+    if (await _isPageUserInteracted(tab)) return;
+    final controller = tab.webViewController;
+    if (controller == null || tab.isClosed) return;
+    try {
+      await controller.runJavaScript('''
+(() => {
+  try {
+    if (window.pageTapListenerAdded) return;
+    const notifyTap = function() {
+      try { PageTapChannel.postMessage('tap'); } catch (_) {}
+      try { window.__browserUserInteracted = true; } catch (_) {}
+    };
+    window.addEventListener('pointerdown', notifyTap, true);
+    window.pageTapListenerAdded = true;
+  } catch (_) {}
+})();
+''');
+    } catch (_) {
+      // Best-effort only.
     }
   }
 
@@ -6207,6 +6388,7 @@ class _BrowserPageState extends State<BrowserPage>
       tab.webViewController!.addJavaScriptChannel('PageTapChannel',
           onMessageReceived: (JavaScriptMessage message) {
         if (!mounted || tab.isClosed) return;
+        tab.hasUserInteractedWithPage = true;
         if (tab.urlFocusNode.hasFocus) {
           tab.urlFocusNode.unfocus();
         }
@@ -6271,6 +6453,7 @@ class _BrowserPageState extends State<BrowserPage>
                 tab.urlController.text = tab.currentUrl;
                 tab.state = const BrowserState.loading();
                 tab.pageTitle = null;
+                tab.hasUserInteractedWithPage = false;
                 tab.detectedBrightness = null;
                 tab.detectedSeedColor = null;
                 tab.ambientSeedColor = null;
@@ -6287,6 +6470,9 @@ class _BrowserPageState extends State<BrowserPage>
               });
             }
             _syncPagePointerEvents(tab);
+            _ensurePageTapListenerInstalled(tab);
+            _installInitialFocusInterceptor(tab);
+            _clearUnwantedInitialPageFocus(tab);
           }
         },
         onPageFinished: (url) async {
@@ -6345,13 +6531,19 @@ class _BrowserPageState extends State<BrowserPage>
           unawaited(_updateTabTitle(tab));
           _updateThemeFromTab(tab);
           _updateAmbientFromTab(tab);
+          _installInitialFocusInterceptor(tab);
+          _clearUnwantedInitialPageFocus(tab);
           Future.delayed(const Duration(milliseconds: 400), () {
             if (!mounted) return;
+            _installInitialFocusInterceptor(tab);
+            _clearUnwantedInitialPageFocus(tab);
             _updateThemeFromTab(tab);
             _updateAmbientFromTab(tab);
           });
           Future.delayed(const Duration(milliseconds: 1200), () {
             if (!mounted) return;
+            _installInitialFocusInterceptor(tab);
+            _clearUnwantedInitialPageFocus(tab);
             _updateThemeFromTab(tab);
             _updateAmbientFromTab(tab);
           });
