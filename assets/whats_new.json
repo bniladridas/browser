@@ -128,5 +128,8 @@
   ],
   "1.15.15": [
     "checkout step to auto-label workflow."
+  ],
+  "1.16.0": [
+    "integrate nightly build workflow."
   ]
 }
