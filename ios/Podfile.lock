@@ -9,49 +9,49 @@ PODS:
     - Flutter
   - file_selector_ios (0.0.1):
     - Flutter
-  - Firebase/Auth (12.12.0):
+  - Firebase/Auth (12.9.0):
     - Firebase/CoreOnly
-    - FirebaseAuth (~> 12.12.0)
-  - Firebase/CoreOnly (12.12.0):
-    - FirebaseCore (~> 12.12.0)
-  - firebase_ai (3.11.0):
+    - FirebaseAuth (~> 12.9.0)
+  - Firebase/CoreOnly (12.9.0):
+    - FirebaseCore (~> 12.9.0)
+  - firebase_ai (3.10.0):
     - Flutter
-  - firebase_app_check (0.4.3):
-    - Firebase/CoreOnly (~> 12.12.0)
+  - firebase_app_check (0.4.2):
+    - Firebase/CoreOnly (~> 12.9.0)
     - firebase_core
-    - FirebaseAppCheck (~> 12.12.0)
+    - FirebaseAppCheck (~> 12.9.0)
     - Flutter
-  - firebase_auth (6.4.0):
-    - Firebase/Auth (= 12.12.0)
+  - firebase_auth (6.3.0):
+    - Firebase/Auth (= 12.9.0)
     - firebase_core
     - Flutter
-  - firebase_core (4.7.0):
-    - Firebase/CoreOnly (= 12.12.0)
+  - firebase_core (4.6.0):
+    - Firebase/CoreOnly (= 12.9.0)
     - Flutter
-  - FirebaseAppCheck (12.12.0):
+  - FirebaseAppCheck (12.9.0):
     - AppCheckCore (~> 11.0)
-    - FirebaseAppCheckInterop (~> 12.12.0)
-    - FirebaseCore (~> 12.12.0)
+    - FirebaseAppCheckInterop (~> 12.9.0)
+    - FirebaseCore (~> 12.9.0)
     - GoogleUtilities/Environment (~> 8.1)
     - GoogleUtilities/UserDefaults (~> 8.1)
-  - FirebaseAppCheckInterop (12.12.0)
-  - FirebaseAuth (12.12.0):
-    - FirebaseAppCheckInterop (~> 12.12.0)
-    - FirebaseAuthInterop (~> 12.12.0)
-    - FirebaseCore (~> 12.12.0)
-    - FirebaseCoreExtension (~> 12.12.0)
+  - FirebaseAppCheckInterop (12.9.0)
+  - FirebaseAuth (12.9.0):
+    - FirebaseAppCheckInterop (~> 12.9.0)
+    - FirebaseAuthInterop (~> 12.9.0)
+    - FirebaseCore (~> 12.9.0)
+    - FirebaseCoreExtension (~> 12.9.0)
     - GoogleUtilities/AppDelegateSwizzler (~> 8.1)
     - GoogleUtilities/Environment (~> 8.1)
     - GTMSessionFetcher/Core (< 6.0, >= 3.4)
     - RecaptchaInterop (~> 101.0)
-  - FirebaseAuthInterop (12.12.0)
-  - FirebaseCore (12.12.0):
-    - FirebaseCoreInternal (~> 12.12.0)
+  - FirebaseAuthInterop (12.9.0)
+  - FirebaseCore (12.9.0):
+    - FirebaseCoreInternal (~> 12.9.0)
     - GoogleUtilities/Environment (~> 8.1)
     - GoogleUtilities/Logger (~> 8.1)
-  - FirebaseCoreExtension (12.12.0):
-    - FirebaseCore (~> 12.12.0)
-  - FirebaseCoreInternal (12.12.0):
+  - FirebaseCoreExtension (12.9.0):
+    - FirebaseCore (~> 12.9.0)
+  - FirebaseCoreInternal (12.9.0):
     - "GoogleUtilities/NSData+zlib (~> 8.1)"
   - Flutter (1.0.0)
   - flutter_secure_storage_darwin (10.0.0):
@@ -170,18 +170,18 @@ SPEC CHECKSUMS:
   connectivity_plus: cb623214f4e1f6ef8fe7403d580fdad517d2f7dd
   device_info_plus: 21fcca2080fbcd348be798aa36c3e5ed849eefbe
   file_selector_ios: ec57ec07954363dd730b642e765e58f199bb621a
-  Firebase: aa154fee4e9b8eac17aa42344988865b3e857d33
-  firebase_ai: 89f83806ba41ef4cd18d0c57164d9a1b59238450
-  firebase_app_check: 5b83925ced1a26b3491a38a55858424e92c15c61
-  firebase_auth: b0aa0a5964e23fba1bf7f32603437edc33b889c4
-  firebase_core: 9156a152117c843440b0b990c785aa0259bc5447
-  FirebaseAppCheck: 0194af00329809d8ce918b5244edc18edbd5b4e0
-  FirebaseAppCheckInterop: c63ae0d003274f145174849c545ab861593beaf9
-  FirebaseAuth: bcfebbc0ca055a6335f2252a90e57363d7ea5e65
-  FirebaseAuthInterop: 917aa3a17ecf144d5f1823b51ef372da06909a4b
-  FirebaseCore: f28af0427998cd53f8d4826bce17260e33224053
-  FirebaseCoreExtension: ff6fd42eb5287e71d3e160450de6509733d9ead7
-  FirebaseCoreInternal: 7c12fc3011d889085e765e317d7b9fd1cef97af9
+  Firebase: 065f2bb395062046623036d8e6dc857bc2521d56
+  firebase_ai: db3e09570a9e9456d1c01c48c63fed46b770f511
+  firebase_app_check: 4d509b2df4dc9ad0aa7260a74443b4d32d852bff
+  firebase_auth: 323c64eedef33fc3fdf438d16c29d2624b2ce4f4
+  firebase_core: 8e6f58412ca227827c366b92e7cee047a2148c60
+  FirebaseAppCheck: 94dae4d9bb682bdef85a778b0c1024a4613f1e89
+  FirebaseAppCheckInterop: 4bade10286cc977e516f75d2d8312cbdfa534789
+  FirebaseAuth: 3a39f6436c21ebfd7919b698228b4f89ff94c23b
+  FirebaseAuthInterop: f8f6ff72dc24621906497fbe5cf3c42ee815e59c
+  FirebaseCore: 428912f751178b06bef0a1793effeb4a5e09a9b8
+  FirebaseCoreExtension: e911052d59cd0da237a45d706fc0f81654f035c1
+  FirebaseCoreInternal: b321eafae5362113bc182956fafc9922cfc77b72
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
   flutter_secure_storage_darwin: acdb3f316ed05a3e68f856e0353b133eec373a23
   GoogleUtilities: 00c88b9a86066ef77f0da2fab05f65d7768ed8e1
