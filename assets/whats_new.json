@@ -137,5 +137,8 @@
   ],
   "1.17.0": [
     "include auto-update service with github releases integration."
+  ],
+  "1.17.1": [
+    "redesign update dialog with improved layout and integrate kilocode plugin dependency."
   ]
 }
