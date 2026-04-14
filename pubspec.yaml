@@ -65,7 +65,7 @@ dependencies:
     path: ./pkg
   passkeys: ^2.17.4
   connectivity_plus: ^7.0.0
-
+  crypto: ^3.0.0
 
 dev_dependencies:
   flutter_test:
