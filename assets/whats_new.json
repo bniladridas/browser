@@ -134,5 +134,8 @@
   ],
   "1.16.1": [
     "prevent unwanted initial page focus on buttons."
+  ],
+  "1.17.0": [
+    "include auto-update service with github releases integration."
   ]
 }
