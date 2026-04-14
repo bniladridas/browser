@@ -394,18 +394,28 @@ class SettingsDialog extends HookWidget {
 
       final confirm = await showDialog<bool>(
         context: context,
-        builder: (context) => AlertDialog(
-          title: Text('Update Available: ${info.version}'),
-          content: Text(
-              'A new version is available$sizeText. Would you like to download and install it?'),
+        builder: (dialogContext) => AlertDialog(
+          alignment: Alignment.centerRight,
+          insetPadding: const EdgeInsets.fromLTRB(24, 24, 16, 24),
+          title: Text(
+            'Update to ${info.version}',
+            style: theme.textTheme.titleSmall?.copyWith(fontSize: 15),
+          ),
+          content: Text('New version available$sizeText. Install now?'),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Later'),
+              onPressed: () => Navigator.pop(dialogContext, false),
+              style: ButtonStyle(
+                overlayColor: WidgetStateProperty.all(Colors.transparent),
+              ),
+              child: const Text('Cancel'),
             ),
             FilledButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Download & Update'),
+              onPressed: () => Navigator.pop(dialogContext, true),
+              style: ButtonStyle(
+                overlayColor: WidgetStateProperty.all(Colors.transparent),
+              ),
+              child: const Text('Update'),
             ),
           ],
         ),
@@ -1239,46 +1249,22 @@ class SettingsDialog extends HookWidget {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  if (downloadProgress.value != null) ...[
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        'Downloading update: ${(downloadProgress.value! * 100).toStringAsFixed(0)}%',
-                        style:
-                            theme.textTheme.bodySmall?.copyWith(fontSize: 11),
-                      ),
+                  ListTile(
+                    title: Text(
+                      'Check for Updates',
+                      style: theme.textTheme.bodyMedium,
                     ),
-                    const SizedBox(height: 6),
-                    LinearProgressIndicator(
-                      value: downloadProgress.value,
-                      borderRadius: BorderRadius.circular(4),
+                    trailing: IconButton(
+                      icon: isCheckingUpdate.value
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.refresh),
+                      onPressed: isCheckingUpdate.value ? null : checkUpdate,
                     ),
-                  ] else ...[
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        style: OutlinedButton.styleFrom(
-                          visualDensity: VisualDensity.compact,
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                        ),
-                        onPressed: isCheckingUpdate.value ? null : checkUpdate,
-                        icon: isCheckingUpdate.value
-                            ? const SizedBox(
-                                width: 14,
-                                height: 14,
-                                child:
-                                    CircularProgressIndicator(strokeWidth: 2),
-                              )
-                            : const Icon(Icons.system_update_alt, size: 16),
-                        label: Text(
-                          isCheckingUpdate.value
-                              ? 'Checking...'
-                              : 'Check for Updates',
-                          style: const TextStyle(fontSize: 12),
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ],
               ),
             ),
