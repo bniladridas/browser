@@ -36,6 +36,7 @@ import 'clickable_icon.dart';
 import '../features/connectivity_service.dart';
 import '../features/password_autofill.dart';
 import '../features/login_detection.dart';
+import '../features/update_service.dart';
 import '../features/webauthn_script.dart';
 import '../features/webauthn_service.dart';
 import '../browser_state.dart';
@@ -381,6 +382,198 @@ class SettingsDialog extends HookWidget {
     final loadedFirebaseConfig =
         useRef<Map<String, String>>(<String, String>{});
     final lastSettingsProfileId = useRef<String?>(null);
+
+    final updateService = useMemoized(() => UpdateService());
+    final isCheckingUpdate = useState(false);
+    final updateInfo = useState<UpdateInfo?>(null);
+    final downloadProgress = useState<double?>(null);
+
+    Future<void> handleUpdate(UpdateInfo info) async {
+      final sizeMB = (info.size / (1024 * 1024)).round();
+      final sizeText = sizeMB > 0 ? ' (~${sizeMB}MB)' : '';
+
+      final confirm = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text('Update Available: ${info.version}'),
+          content: Text(
+              'A new version is available$sizeText. Would you like to download and install it?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Later'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Download & Update'),
+            ),
+          ],
+        ),
+      );
+
+      if (confirm == true) {
+        downloadProgress.value = 0.0;
+        final file = await updateService.downloadUpdate(
+          info.downloadUrl,
+          info.version,
+          (progress) => downloadProgress.value = progress,
+          info.checksum,
+        );
+        downloadProgress.value = null;
+
+        if (file != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Download complete. Installing...')),
+          );
+
+          if (Platform.isMacOS) {
+            try {
+              final appName = 'browser.app';
+              final appPath = '/Applications/$appName';
+
+              final mountResult = await Process.run(
+                  'hdiutil', ['attach', file.path, '-nobrowse']);
+              if (mountResult.exitCode != 0) {
+                throw Exception('Failed to mount DMG: ${mountResult.stderr}');
+              }
+
+              final mountOutput = mountResult.stdout.toString();
+              final volumeMatch =
+                  RegExp(r'/Volumes/(\S+)').firstMatch(mountOutput);
+              if (volumeMatch == null) {
+                await Process.run('hdiutil', ['detach', mountOutput.trim()]);
+                throw Exception('Could not find mounted volume');
+              }
+
+              final volumePath = volumeMatch.group(0)!;
+              final sourceApp = '$volumePath/$appName';
+
+              // Check if source app exists
+              if (!await File(sourceApp).exists()) {
+                await Process.run('hdiutil', ['detach', volumePath]);
+                throw Exception('App not found in DMG');
+              }
+
+              // Backup current app if exists
+              final backupPath = '$appPath.backup';
+              if (await Directory(appPath).exists()) {
+                await Process.run('mv', [appPath, backupPath]);
+              }
+
+              final cpResult =
+                  await Process.run('cp', ['-R', sourceApp, '/Applications/']);
+              if (cpResult.exitCode != 0) {
+                // Restore backup
+                if (await Directory(backupPath).exists()) {
+                  await Process.run('mv', [backupPath, appPath]);
+                }
+                await Process.run('hdiutil', ['detach', volumePath]);
+                throw Exception('Failed to copy app: ${cpResult.stderr}');
+              }
+
+              await Process.run('hdiutil', ['detach', volumePath]);
+
+              // Clean up backup
+              if (await Directory(backupPath).exists()) {
+                await Process.run('rm', ['-rf', backupPath]);
+              }
+
+              await Process.run('open', ['/Applications/$appName']);
+
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Update installed. Restarting...'),
+                  duration: Duration(seconds: 5),
+                ),
+              );
+
+              exit(0);
+            } catch (e) {
+              debugPrint('Installation failed: $e');
+              await Process.run('open', [file.path]);
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                        'Installation failed. Update downloaded to ${file.path}. Drag to Applications to install manually.'),
+                    duration: const Duration(seconds: 15),
+                  ),
+                );
+              }
+            }
+          } else if (Platform.isWindows) {
+            try {
+              await Process.run(file.path, []);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text(
+                      'Update installer launched. Follow the prompts to complete installation.'),
+                  duration: Duration(seconds: 10),
+                ),
+              );
+            } catch (e) {
+              debugPrint('Failed to launch installer: $e');
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                    content: Text(
+                        'Update downloaded to: ${file.path}. Run the installer manually.')),
+              );
+            }
+          } else if (Platform.isLinux) {
+            try {
+              await Process.run('xdg-open', [file.path]);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text(
+                      'Update package opened. Use your package manager to install it.'),
+                  duration: Duration(seconds: 10),
+                ),
+              );
+            } catch (e) {
+              debugPrint('Failed to open package: $e');
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                    content: Text(
+                        'Update downloaded to: ${file.path}. Install manually with your package manager.')),
+              );
+            }
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                  content: Text(
+                      'Update downloaded to: ${file.path}. Please install manually.')),
+            );
+          }
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Failed to download update')),
+          );
+        }
+      }
+    }
+
+    Future<void> checkUpdate() async {
+      isCheckingUpdate.value = true;
+      try {
+        final info = await updateService.checkForUpdates();
+        updateInfo.value = info;
+        if (info != null) {
+          await handleUpdate(info);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Browser is up to date')),
+          );
+        }
+      } catch (e) {
+        debugPrint('Update check failed: $e');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('Update check failed. Please try again later.')),
+        );
+      } finally {
+        isCheckingUpdate.value = false;
+      }
+    }
 
     useEffect(() {
       var cancelled = false;
@@ -1032,6 +1225,60 @@ class SettingsDialog extends HookWidget {
                       ],
                     ),
                   ),
+                  const SizedBox(height: 16),
+                  Divider(
+                    height: 1,
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.10),
+                  ),
+                  const SizedBox(height: 12),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Updates',
+                      style: theme.textTheme.titleSmall?.copyWith(fontSize: 12),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  if (downloadProgress.value != null) ...[
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'Downloading update: ${(downloadProgress.value! * 100).toStringAsFixed(0)}%',
+                        style:
+                            theme.textTheme.bodySmall?.copyWith(fontSize: 11),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    LinearProgressIndicator(
+                      value: downloadProgress.value,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ] else ...[
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          visualDensity: VisualDensity.compact,
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                        ),
+                        onPressed: isCheckingUpdate.value ? null : checkUpdate,
+                        icon: isCheckingUpdate.value
+                            ? const SizedBox(
+                                width: 14,
+                                height: 14,
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(Icons.system_update_alt, size: 16),
+                        label: Text(
+                          isCheckingUpdate.value
+                              ? 'Checking...'
+                              : 'Check for Updates',
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
