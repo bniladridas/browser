@@ -146,5 +146,8 @@
   ],
   "1.17.3": [
     "disable ambient animation and limit theme probe to prevent macOS hover flicker."
+  ],
+  "1.17.4": [
+    "bump Flutter version to 3.41.7 across workflows."
   ]
 }
