@@ -152,5 +152,8 @@
   ],
   "1.17.5": [
     "validate Google favicon URLs before rendering to prevent broken icons."
+  ],
+  "1.17.6": [
+    "improve volume path parsing to handle multiline mount output."
   ]
 }
