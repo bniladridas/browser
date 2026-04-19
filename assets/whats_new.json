@@ -158,5 +158,8 @@
   ],
   "1.18.0": [
     "include namespaced password storage with resilient secure/plaintext fallback."
+  ],
+  "1.18.1": [
+    "extend auto-label workflow to trigger on issue opens."
   ]
 }
