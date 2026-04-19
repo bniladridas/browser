@@ -143,5 +143,8 @@
   ],
   "1.17.2": [
     "implement iOS CocoaPods integration with Firebase and Flutter plugins."
+  ],
+  "1.17.3": [
+    "disable ambient animation and limit theme probe to prevent macOS hover flicker."
   ]
 }
