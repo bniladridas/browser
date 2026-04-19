@@ -149,5 +149,8 @@
   ],
   "1.17.4": [
     "bump Flutter version to 3.41.7 across workflows."
+  ],
+  "1.17.5": [
+    "validate Google favicon URLs before rendering to prevent broken icons."
   ]
 }
