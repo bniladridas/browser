@@ -4326,6 +4326,45 @@ class _BrowserPageState extends State<BrowserPage>
     );
   }
 
+  Widget faviconImage({
+    required String url,
+    required double width,
+    required double height,
+    required BoxFit fit,
+    required Widget fallback,
+  }) {
+    final isGoogleFavicon = url.contains('google.com/s2/favicons');
+    if (isGoogleFavicon) {
+      return FutureBuilder<bool>(
+        future: _faviconUrlReturns200(url),
+        builder: (context, snapshot) {
+          final isValid = snapshot.data ?? false;
+          if (!isValid) return fallback;
+          return ClipRRect(
+            borderRadius: BorderRadius.circular(3),
+            child: Image.network(
+              url,
+              width: width,
+              height: height,
+              fit: fit,
+              errorBuilder: (_, __, ___) => fallback,
+            ),
+          );
+        },
+      );
+    }
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(3),
+      child: Image.network(
+        url,
+        width: width,
+        height: height,
+        fit: fit,
+        errorBuilder: (_, __, ___) => fallback,
+      ),
+    );
+  }
+
   Widget _buildTabFavicon(TabData tab, ThemeData theme) {
     final fallback = Icon(
       Icons.public,
@@ -4357,26 +4396,23 @@ class _BrowserPageState extends State<BrowserPage>
 
     if (!_tabFaviconBadgeEnabled) {
       if (showFallback) return fallback;
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(3),
-        child: Image.network(
-          faviconUrl,
-          width: 15,
-          height: 15,
-          fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => fallback,
-        ),
+      return faviconImage(
+        url: faviconUrl,
+        width: 15,
+        height: 15,
+        fit: BoxFit.cover,
+        fallback: fallback,
       );
     }
 
     final content = showFallback
         ? fallback
-        : Image.network(
-            faviconUrl,
+        : faviconImage(
+            url: faviconUrl,
             width: 13,
             height: 13,
             fit: BoxFit.contain,
-            errorBuilder: (_, __, ___) => fallback,
+            fallback: fallback,
           );
 
     return SizedBox(
@@ -4430,6 +4466,19 @@ class _BrowserPageState extends State<BrowserPage>
       _faviconHostSafetyCache[host] = false;
     }
     return safe;
+  }
+
+  Future<bool> _faviconUrlReturns200(String url) async {
+    try {
+      final client = HttpClient();
+      client.autoUncompress = true;
+      final request = await client.headUrl(Uri.parse(url));
+      final response = await request.close();
+      await response.drain<void>();
+      return response.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
   }
 
   Future<bool> _isSafeAndRenderableFaviconUrl(String url) async {
@@ -4529,15 +4578,29 @@ class _BrowserPageState extends State<BrowserPage>
         resolvedFavicon != null && resolvedFavicon.isNotEmpty
             ? await _isSafeFaviconUrl(resolvedFavicon)
             : false;
+    final faviconReturns200 = resolvedFavicon != null &&
+        resolvedFavicon.isNotEmpty &&
+        resolvedFavicon.contains('google.com/s2/favicons')
+        ? await _faviconUrlReturns200(resolvedFavicon)
+        : true;
     if (resolvedFavicon != null &&
         resolvedFavicon.isNotEmpty &&
         isResolvedFaviconSafe &&
+        faviconReturns200 &&
         host != null &&
         host.isNotEmpty) {
       _faviconCacheByHost[host] = resolvedFavicon;
     }
+    final useResolvedFavicon = resolvedFavicon != null &&
+        resolvedFavicon.isNotEmpty &&
+        isResolvedFaviconSafe &&
+        faviconReturns200;
+    if (!useResolvedFavicon && host != null && host.isNotEmpty) {
+      _faviconHostSafetyCache[host] = false;
+    }
     if (resolvedFavicon == null || resolvedFavicon.isEmpty) return;
     if (resolvedFavicon == tab.faviconUrl || !mounted || tab.isClosed) return;
+    if (!useResolvedFavicon) return;
     setState(() {
       tab.faviconUrl = resolvedFavicon;
     });
