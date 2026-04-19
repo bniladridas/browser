@@ -155,5 +155,8 @@
   ],
   "1.17.6": [
     "improve volume path parsing to handle multiline mount output."
+  ],
+  "1.18.0": [
+    "include namespaced password storage with resilient secure/plaintext fallback."
   ]
 }
