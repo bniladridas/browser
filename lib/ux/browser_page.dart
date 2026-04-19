@@ -449,10 +449,11 @@ class SettingsDialog extends HookWidget {
 
               final mountOutput = mountResult.stdout.toString();
               final volumeLine = mountOutput.split('\n').firstWhere(
-                (line) => line.contains('/Volumes/'),
-                orElse: () => '',
-              );
-              final volumePathMatch = RegExp(r'(/Volumes/[^\r\n]*)').firstMatch(volumeLine);
+                    (line) => line.contains('/Volumes/'),
+                    orElse: () => '',
+                  );
+              final volumePathMatch =
+                  RegExp(r'(/Volumes/[^\r\n]*)').firstMatch(volumeLine);
               final volumePath = volumePathMatch?.group(1)?.trim() ?? '';
               if (volumePath.isEmpty) {
                 await Process.run('hdiutil', ['detach', mountOutput.trim()]);
@@ -2140,7 +2141,9 @@ class _BrowserPageState extends State<BrowserPage>
   bool _isOnline = true;
   final ConnectivityService _connectivityService = ConnectivityService();
   final PasswordStorageRepository _passwordRepository =
-      PasswordStorageRepository();
+      PasswordStorageRepository(
+    namespaceProvider: () => profileManager.activeProfileId ?? 'default',
+  );
   StreamSubscription<bool>? _connectivitySubscription;
   late AnimationController _refreshIconController;
   AnimationController? _ambientController;
@@ -3575,13 +3578,30 @@ class _BrowserPageState extends State<BrowserPage>
 
     switch (action) {
       case SavePasswordAction.save:
-        final repository = PasswordStorageRepository();
-        final credential = PasswordCredential.create(
-          origin: promptData.origin,
-          username: promptData.username,
-          password: promptData.password,
-        );
-        await repository.saveCredential(credential);
+        try {
+          final repository = PasswordStorageRepository(
+            namespaceProvider: () =>
+                profileManager.activeProfileId ?? 'default',
+          );
+          final credential = PasswordCredential.create(
+            origin: promptData.origin,
+            username: promptData.username,
+            password: promptData.password,
+          );
+          await repository.saveCredential(credential);
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Password saved')),
+          );
+        } catch (e, s) {
+          logger.e('Failed to save password', error: e, stackTrace: s);
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Password could not be saved on this build'),
+            ),
+          );
+        }
         break;
       case SavePasswordAction.neverForSite:
         await policy.setNeverSave(promptData.origin);
@@ -3608,7 +3628,11 @@ class _BrowserPageState extends State<BrowserPage>
       final actualUrl = await tab.webViewController!.currentUrl();
       if (actualUrl == null) return;
 
-      final autofillService = PasswordAutofillService();
+      final autofillService = PasswordAutofillService(
+        repository: PasswordStorageRepository(
+          namespaceProvider: () => profileManager.activeProfileId ?? 'default',
+        ),
+      );
       final matches = await autofillService.getMatchingCredentials(actualUrl);
 
       if (matches.isEmpty) return;
@@ -4581,8 +4605,8 @@ class _BrowserPageState extends State<BrowserPage>
             ? await _isSafeFaviconUrl(resolvedFavicon)
             : false;
     final faviconReturns200 = resolvedFavicon != null &&
-        resolvedFavicon.isNotEmpty &&
-        resolvedFavicon.contains('google.com/s2/favicons')
+            resolvedFavicon.isNotEmpty &&
+            resolvedFavicon.contains('google.com/s2/favicons')
         ? await _faviconUrlReturns200(resolvedFavicon)
         : true;
     if (resolvedFavicon != null &&
