@@ -10,6 +10,8 @@ name: Auto Label PRs
 on:
   pull_request:
     types: [opened, synchronize]
+  issues:
+    types: [opened]
 
 jobs:
   label:
@@ -17,6 +19,7 @@ jobs:
     if: github.repository_owner == 'bniladridas'
     permissions:
       pull-requests: write
+      issues: write
     steps:
       - uses: actions/checkout@v4
       - uses: libnudget/auto-label@v1
