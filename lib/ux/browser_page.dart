@@ -2364,16 +2364,21 @@ class _BrowserPageState extends State<BrowserPage>
 
   bool get _ambientActive => widget.ambientToolbarEnabled;
 
+  // void _syncAmbientAnimation() {
+  //   // Disabled - causes hover flicker on macOS
+  //   if (_ambientActive) {
+  //     _ambientController ??= AnimationController(
+  //       vsync: this,
+  //       duration: const Duration(seconds: 14),
+  //     )..repeat();
+  //     return;
+  //   }
+  //   _ambientController?.dispose();
+  //   _ambientController = null;
+  // }
+
   void _syncAmbientAnimation() {
-    if (_ambientActive) {
-      _ambientController ??= AnimationController(
-        vsync: this,
-        duration: const Duration(seconds: 14),
-      )..repeat();
-      return;
-    }
-    _ambientController?.dispose();
-    _ambientController = null;
+    // Disabled - causes hover flicker on macOS
   }
 
   @override
@@ -3096,13 +3101,12 @@ class _BrowserPageState extends State<BrowserPage>
       }
       return;
     }
-    final now = DateTime.now();
-    final last = tab.lastAmbientProbeAt;
-    if (last != null &&
-        now.difference(last) < const Duration(milliseconds: 900)) {
+    // Run theme probe only once per page, not repeatedly
+    // This prevents hover flicker on macOS while still detecting page color
+    if (tab.lastAmbientProbeAt != null) {
       return;
     }
-    tab.lastAmbientProbeAt = now;
+    tab.lastAmbientProbeAt = DateTime.now();
 
     final controller = tab.webViewController;
     if (controller == null) return;
