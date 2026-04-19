@@ -10,6 +10,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '../features/password_storage.dart';
 import '../logging/logger.dart';
+import '../main.dart' show profileManager;
 
 class PasswordVaultScreen extends StatefulWidget {
   const PasswordVaultScreen({
@@ -35,7 +36,10 @@ class _PasswordVaultScreenState extends State<PasswordVaultScreen> {
   @override
   void initState() {
     super.initState();
-    _repository = widget._repository ?? PasswordStorageRepository();
+    _repository = widget._repository ??
+        PasswordStorageRepository(
+          namespaceProvider: () => profileManager.activeProfileId ?? 'default',
+        );
     _loadCredentials();
   }
 
@@ -164,6 +168,13 @@ class _PasswordVaultScreenState extends State<PasswordVaultScreen> {
       leading: IconButton(
         icon: const Icon(Icons.arrow_back_ios_new, size: 20),
         visualDensity: VisualDensity.compact,
+        style: ButtonStyle(
+          overlayColor: WidgetStateProperty.resolveWith<Color?>(
+            (states) => states.contains(WidgetState.hovered)
+                ? Colors.transparent
+                : null,
+          ),
+        ),
         onPressed: () => Navigator.of(context).maybePop(),
       ),
       titleSpacing: isMacDesktop ? 0 : null,
@@ -175,8 +186,14 @@ class _PasswordVaultScreenState extends State<PasswordVaultScreen> {
         if (_credentials.isNotEmpty)
           IconButton(
             icon: const Icon(Icons.delete_sweep, size: 20),
-            tooltip: 'Delete All',
             visualDensity: VisualDensity.compact,
+            style: ButtonStyle(
+              overlayColor: WidgetStateProperty.resolveWith<Color?>(
+                (states) => states.contains(WidgetState.hovered)
+                    ? Colors.transparent
+                    : null,
+              ),
+            ),
             onPressed: _deleteAll,
           ),
       ],
@@ -269,8 +286,8 @@ class _PasswordVaultScreenState extends State<PasswordVaultScreen> {
                                 'Password',
                               ),
                             );
-                        },
-                      ),
+                          },
+                        ),
             ),
           ],
         ),
@@ -326,6 +343,8 @@ class _PasswordTileState extends State<_PasswordTile> {
           vertical: _kTileVerticalPadding,
         ),
         childrenPadding: EdgeInsets.zero,
+        shape: RoundedRectangleBorder(side: BorderSide.none),
+        collapsedShape: RoundedRectangleBorder(side: BorderSide.none),
         title: Text(
           widget.credential.origin,
           style: theme.textTheme.bodyMedium?.copyWith(
@@ -360,7 +379,6 @@ class _PasswordTileState extends State<_PasswordTile> {
                     ),
                     IconButton(
                       icon: const Icon(Icons.copy, size: _kIconButtonSize),
-                      tooltip: 'Copy username',
                       visualDensity: VisualDensity.compact,
                       onPressed: widget.onCopyUsername,
                     ),
@@ -381,14 +399,12 @@ class _PasswordTileState extends State<_PasswordTile> {
                         _showPassword ? Icons.visibility_off : Icons.visibility,
                         size: _kIconButtonSize,
                       ),
-                      tooltip: _showPassword ? 'Hide' : 'Show',
                       visualDensity: VisualDensity.compact,
                       onPressed: () =>
                           setState(() => _showPassword = !_showPassword),
                     ),
                     IconButton(
                       icon: const Icon(Icons.copy, size: _kIconButtonSize),
-                      tooltip: 'Copy password',
                       visualDensity: VisualDensity.compact,
                       onPressed: widget.onCopyPassword,
                     ),
