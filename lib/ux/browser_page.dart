@@ -448,14 +448,16 @@ class SettingsDialog extends HookWidget {
               }
 
               final mountOutput = mountResult.stdout.toString();
-              final volumeMatch =
-                  RegExp(r'/Volumes/(\S+)').firstMatch(mountOutput);
-              if (volumeMatch == null) {
+              final volumeLine = mountOutput.split('\n').firstWhere(
+                (line) => line.contains('/Volumes/'),
+                orElse: () => '',
+              );
+              final volumePathMatch = RegExp(r'(/Volumes/[^\r\n]*)').firstMatch(volumeLine);
+              final volumePath = volumePathMatch?.group(1)?.trim() ?? '';
+              if (volumePath.isEmpty) {
                 await Process.run('hdiutil', ['detach', mountOutput.trim()]);
                 throw Exception('Could not find mounted volume');
               }
-
-              final volumePath = volumeMatch.group(0)!;
               final sourceApp = '$volumePath/$appName';
 
               // Check if source app exists
