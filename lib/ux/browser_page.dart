@@ -452,8 +452,8 @@ class SettingsDialog extends HookWidget {
                 (line) => line.contains('/Volumes/'),
                 orElse: () => '',
               );
-              final volumePathMatch = RegExp(r'(/Volumes/.+?)(?:\s|$)').firstMatch(volumeLine);
-              final volumePath = volumePathMatch?.group(1) ?? '';
+              final volumePathMatch = RegExp(r'(/Volumes/[^\r\n]*)').firstMatch(volumeLine);
+              final volumePath = volumePathMatch?.group(1)?.trim() ?? '';
               if (volumePath.isEmpty) {
                 await Process.run('hdiutil', ['detach', mountOutput.trim()]);
                 throw Exception('Could not find mounted volume');
