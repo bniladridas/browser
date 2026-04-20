@@ -473,8 +473,8 @@ class SettingsDialog extends HookWidget {
                 await Process.run('mv', [appPath, backupPath]);
               }
 
-              final cpResult =
-                  await Process.run('cp', ['-R', sourceApp, '/Applications/']);
+              final cpResult = await Process.run(
+                  'ditto', ['-rsrc', sourceApp, '/Applications/']);
               if (cpResult.exitCode != 0) {
                 // Restore backup
                 if (await Directory(backupPath).exists()) {
