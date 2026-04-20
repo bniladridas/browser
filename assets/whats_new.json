@@ -167,5 +167,8 @@
   ],
   "1.18.3": [
     "include cross-platform fullscreen support for web content via JS bridge and Android custom widget."
+  ],
+  "1.19.0": [
+    "extend auto-label workflow to trigger on issue reopens."
   ]
 }
