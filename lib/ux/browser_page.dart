@@ -20,6 +20,7 @@ import 'dart:io';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 import 'package:webview_flutter/webview_flutter.dart';
+import 'package:webview_flutter_android/webview_flutter_android.dart';
 import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
 import 'package:http/http.dart' as http;
 import 'package:file_selector/file_selector.dart';
@@ -1836,6 +1837,8 @@ class TabData {
   String? faviconUrl;
   String? forwardUrl; // URL to go forward to when on home page
   bool hideStaleWebViewUntilPageFinish = false;
+  bool pageRequestedWindowFullscreen = false;
+  bool windowWasFullscreenBeforePageRequest = false;
 
   TabData(this.currentUrl, {String? displayUrl})
       : urlController = TextEditingController(text: displayUrl ?? currentUrl),
@@ -2236,6 +2239,8 @@ class _BrowserPageState extends State<BrowserPage>
   bool _urlAutocompleteOpen = false;
   bool _modalInteractionBlockOpen = false;
   bool _quickUrlPromptOpen = false;
+  Widget? _androidFullscreenWidget;
+  VoidCallback? _hideAndroidFullscreenWidget;
   bool _windowButtonsSyncRetryQueued = false;
   Timer? _windowButtonsSyncRetryTimer;
   final Map<String, String> _faviconCacheByHost = {};
@@ -2479,8 +2484,22 @@ class _BrowserPageState extends State<BrowserPage>
         // Only quick URL prompt should allow Esc to dismiss the route.
         return !_quickUrlPromptOpen;
       }
+      if (_androidFullscreenWidget != null) {
+        final hideWidget = _hideAndroidFullscreenWidget;
+        setState(() {
+          _androidFullscreenWidget = null;
+          _hideAndroidFullscreenWidget = null;
+        });
+        hideWidget?.call();
+        return true;
+      }
+      if (activeTab.pageRequestedWindowFullscreen) {
+        unawaited(_exitPageFullscreen(activeTab));
+        unawaited(_setPageRequestedWindowFullscreen(activeTab, false));
+        return true;
+      }
       // Exit fullscreen on Esc
-      _exitFullscreenIfNeeded();
+      unawaited(_exitFullscreenIfNeeded());
       return false;
     }
 
@@ -2517,6 +2536,170 @@ class _BrowserPageState extends State<BrowserPage>
     if (isFullscreen) {
       await windowManager.setFullScreen(false);
     }
+  }
+
+  Future<void> _setPageRequestedWindowFullscreen(
+    TabData tab,
+    bool enabled,
+  ) async {
+    if (!_isDesktopPlatform) return;
+    final isFullscreen = await windowManager.isFullScreen();
+    if (enabled) {
+      if (tab.pageRequestedWindowFullscreen) {
+        return;
+      }
+      tab.windowWasFullscreenBeforePageRequest = isFullscreen;
+      tab.pageRequestedWindowFullscreen = true;
+      if (!isFullscreen) {
+        await windowManager.setFullScreen(true);
+      }
+      return;
+    }
+    final shouldExitFullscreen = tab.pageRequestedWindowFullscreen;
+    final shouldRestoreWindowedState =
+        !tab.windowWasFullscreenBeforePageRequest;
+    tab.pageRequestedWindowFullscreen = false;
+    tab.windowWasFullscreenBeforePageRequest = false;
+    if (shouldExitFullscreen && shouldRestoreWindowedState && isFullscreen) {
+      await windowManager.setFullScreen(false);
+    }
+  }
+
+  Future<void> _handlePageFullscreenMessage(
+    TabData tab,
+    String message,
+  ) async {
+    if (!mounted || tab.isClosed) {
+      return;
+    }
+    final normalized = message.trim().toLowerCase();
+    if (normalized == 'enter') {
+      if (!identical(tab, activeTab)) {
+        return;
+      }
+      await _setPageRequestedWindowFullscreen(tab, true);
+    } else if (normalized == 'exit') {
+      await _setPageRequestedWindowFullscreen(tab, false);
+    }
+  }
+
+  Future<void> _exitPageFullscreen(TabData tab) async {
+    final controller = tab.webViewController;
+    if (controller == null) return;
+    try {
+      await controller.runJavaScript(r'''
+        (function() {
+          const exit =
+            document.exitFullscreen ||
+            document.webkitExitFullscreen ||
+            document.mozCancelFullScreen ||
+            document.msExitFullscreen;
+          if (exit) {
+            exit.call(document);
+          }
+          const videos = document.querySelectorAll('video');
+          for (const video of videos) {
+            if (video.webkitDisplayingFullscreen && video.webkitExitFullscreen) {
+              video.webkitExitFullscreen();
+            }
+          }
+        })();
+      ''');
+    } catch (e) {
+      logger.w('Failed to exit page fullscreen: $e');
+    }
+  }
+
+  Future<void> _installFullscreenBridge(TabData tab) async {
+    final controller = tab.webViewController;
+    if (controller == null) return;
+    await controller.runJavaScript(r'''
+      (function() {
+        if (window.__browserFullscreenBridgeInstalled) {
+          return;
+        }
+        window.__browserFullscreenBridgeInstalled = true;
+
+        function notifyFullscreenState(isFullscreen) {
+          try {
+            FullscreenChannel.postMessage(isFullscreen ? 'enter' : 'exit');
+          } catch (_) {}
+        }
+
+        function syncDocumentFullscreenState() {
+          const activeElement =
+            document.fullscreenElement ||
+            document.webkitFullscreenElement ||
+            document.mozFullScreenElement ||
+            document.msFullscreenElement;
+          notifyFullscreenState(!!activeElement);
+        }
+
+        function bindVideoElement(video) {
+          if (!video || video.__browserFullscreenVideoBound) {
+            return;
+          }
+          video.__browserFullscreenVideoBound = true;
+          video.addEventListener('webkitbeginfullscreen', function() {
+            notifyFullscreenState(true);
+          });
+          video.addEventListener('webkitendfullscreen', function() {
+            notifyFullscreenState(false);
+          });
+        }
+
+        function bindExistingVideos() {
+          const videos = document.querySelectorAll('video');
+          for (const video of videos) {
+            bindVideoElement(video);
+          }
+        }
+
+        document.addEventListener('fullscreenchange', syncDocumentFullscreenState, true);
+        document.addEventListener('webkitfullscreenchange', syncDocumentFullscreenState, true);
+        document.addEventListener('mozfullscreenchange', syncDocumentFullscreenState, true);
+        document.addEventListener('MSFullscreenChange', syncDocumentFullscreenState, true);
+
+        const observer = new MutationObserver(bindExistingVideos);
+        observer.observe(document.documentElement || document.body, {
+          childList: true,
+          subtree: true,
+        });
+
+        bindExistingVideos();
+        syncDocumentFullscreenState();
+      })();
+    ''');
+  }
+
+  Future<void> _configurePlatformSpecificWebView(TabData tab) async {
+    final controller = tab.webViewController;
+    if (controller == null) return;
+
+    if (controller.platform is AndroidWebViewController) {
+      final androidController = controller.platform as AndroidWebViewController;
+      await androidController.setCustomWidgetCallbacks(
+        onShowCustomWidget: (Widget widget, VoidCallback onHidden) {
+          if (!mounted) {
+            onHidden();
+            return;
+          }
+          setState(() {
+            _androidFullscreenWidget = widget;
+            _hideAndroidFullscreenWidget = onHidden;
+          });
+        },
+        onHideCustomWidget: () {
+          if (!mounted) return;
+          setState(() {
+            _androidFullscreenWidget = null;
+            _hideAndroidFullscreenWidget = null;
+          });
+        },
+      );
+    }
+
+    await _installFullscreenBridge(tab);
   }
 
   bool get _isDesktopPlatform =>
@@ -3480,7 +3663,17 @@ class _BrowserPageState extends State<BrowserPage>
   }
 
   void _onTabChanged() {
+    final oldIndex = previousTabIndex;
     _removeUrlAutocompleteOverlay();
+    if (oldIndex != tabController.index &&
+        oldIndex >= 0 &&
+        oldIndex < tabs.length) {
+      final previousTab = tabs[oldIndex];
+      if (previousTab.pageRequestedWindowFullscreen) {
+        unawaited(_exitPageFullscreen(previousTab));
+        unawaited(_setPageRequestedWindowFullscreen(previousTab, false));
+      }
+    }
     previousTabIndex = tabController.index;
     _syncPointerEventsForAllTabs();
     _applyThemeForTab(tabs[tabController.index]);
@@ -4165,12 +4358,17 @@ class _BrowserPageState extends State<BrowserPage>
 
   void _closeTab(int index) {
     if (tabs.length > 1) {
+      final closingTab = tabs[index];
+      if (closingTab.pageRequestedWindowFullscreen) {
+        unawaited(_exitPageFullscreen(closingTab));
+        unawaited(_setPageRequestedWindowFullscreen(closingTab, false));
+      }
       setState(() {
-        tabs[index].isClosed = true;
-        tabs[index].urlController.dispose();
-        tabs[index].urlFocusNode.dispose();
-        tabs[index].torrySearchController.dispose();
-        tabs[index].torrySearchFocusNode.dispose();
+        closingTab.isClosed = true;
+        closingTab.urlController.dispose();
+        closingTab.urlFocusNode.dispose();
+        closingTab.torrySearchController.dispose();
+        closingTab.torrySearchFocusNode.dispose();
         tabs.removeAt(index);
 
         // Clear cache and cookies for private browsing
@@ -4692,6 +4890,7 @@ class _BrowserPageState extends State<BrowserPage>
   void dispose() {
     HardwareKeyboard.instance.removeHandler(_handleKeyEvent);
     _connectivitySubscription?.cancel();
+    _hideAndroidFullscreenWidget?.call();
     _refreshIconController.dispose();
     _ambientController?.dispose();
     _removeUrlAutocompleteOverlay(updatePointerEvents: false);
@@ -6651,7 +6850,17 @@ class _BrowserPageState extends State<BrowserPage>
 
     if (tab.webViewController == null) {
       final shouldHookPermissions = defaultTargetPlatform != TargetPlatform.iOS;
-      tab.webViewController = WebViewController(
+      PlatformWebViewControllerCreationParams params =
+          const PlatformWebViewControllerCreationParams();
+      if (WebViewPlatform.instance is WebKitWebViewPlatform) {
+        params = WebKitWebViewControllerCreationParams
+            .fromPlatformWebViewControllerCreationParams(
+          params,
+          allowsInlineMediaPlayback: true,
+        );
+      }
+      tab.webViewController = WebViewController.fromPlatformCreationParams(
+        params,
         onPermissionRequest: shouldHookPermissions
             ? (request) {
                 unawaited(_handlePermissionRequest(tab, request));
@@ -6722,6 +6931,10 @@ class _BrowserPageState extends State<BrowserPage>
           _setUrlAutocompleteOpen(false);
         }
       });
+      tab.webViewController!.addJavaScriptChannel('FullscreenChannel',
+          onMessageReceived: (JavaScriptMessage message) {
+        unawaited(_handlePageFullscreenMessage(tab, message.message));
+      });
       tab.webViewController!.addJavaScriptChannel('LoginDetector',
           onMessageReceived: (JavaScriptMessage message) async {
         final prefs = await SharedPreferences.getInstance();
@@ -6771,6 +6984,9 @@ class _BrowserPageState extends State<BrowserPage>
           }
         },
         onPageStarted: (url) async {
+          if (identical(tab, activeTab)) {
+            unawaited(_setPageRequestedWindowFullscreen(tab, false));
+          }
           if (!tab.isClosed) {
             final actualUrl = await tab.webViewController?.currentUrl() ?? url;
             if (mounted) {
@@ -6843,6 +7059,7 @@ class _BrowserPageState extends State<BrowserPage>
               window.pageTapListenerAdded = true;
             }
           ''');
+            unawaited(_installFullscreenBridge(tab));
             // Inject login detection script
             tab.webViewController!.runJavaScript(loginDetectionScript);
             // Inject WebAuthn script
@@ -6910,7 +7127,11 @@ class _BrowserPageState extends State<BrowserPage>
         },
       ));
       _syncPagePointerEvents(tab);
-      _loadInitialRequestForTab(tab);
+      unawaited(() async {
+        await _configurePlatformSpecificWebView(tab);
+        if (!mounted || tab.isClosed) return;
+        await _loadInitialRequestForTab(tab);
+      }());
     }
 
     try {
@@ -6946,6 +7167,8 @@ class _BrowserPageState extends State<BrowserPage>
                   onAction: (action) => _handlePasswordPromptAction(action),
                 ),
               ),
+            if (_androidFullscreenWidget != null)
+              Positioned.fill(child: _androidFullscreenWidget!),
           ],
         ),
       );
