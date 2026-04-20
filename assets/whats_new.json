@@ -161,5 +161,8 @@
   ],
   "1.18.1": [
     "extend auto-label workflow to trigger on issue opens."
+  ],
+  "1.18.2": [
+    "use ditto instead of cp -R for app installation."
   ]
 }
