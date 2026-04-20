@@ -164,5 +164,8 @@
   ],
   "1.18.2": [
     "use ditto instead of cp -R for app installation."
+  ],
+  "1.18.3": [
+    "include cross-platform fullscreen support for web content via JS bridge and Android custom widget."
   ]
 }
