@@ -24,5 +24,3 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: libnudget/auto-label@v1
-        env:
-          GH_TOKEN: ${{ secrets.REACTIONS_TOKEN }}
