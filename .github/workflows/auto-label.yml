@@ -18,6 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     if: github.repository_owner == 'bniladridas'
     permissions:
+      contents: read
       pull-requests: write
       issues: write
     steps:
