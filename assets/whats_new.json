@@ -170,5 +170,8 @@
   ],
   "1.19.0": [
     "extend auto-label workflow to trigger on issue reopens."
+  ],
+  "1.19.1": [
+    "include contents: read permission to auto-label workflow."
   ]
 }
