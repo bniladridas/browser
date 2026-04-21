@@ -352,6 +352,10 @@ class SettingsDialog extends HookWidget {
     final theme = Theme.of(context);
     const compactDensity = VisualDensity(horizontal: -2, vertical: -2);
 
+    final refreshIconController = useAnimationController(
+      duration: const Duration(milliseconds: 1000),
+    );
+
     final homepage = useState<String?>(null);
     final hideAppBar = useState(false);
     final useModernUserAgent = useState(false);
@@ -386,7 +390,8 @@ class SettingsDialog extends HookWidget {
 
     final updateService = useMemoized(() => UpdateService());
     final isCheckingUpdate = useState(false);
-    final updateInfo = useState<UpdateInfo?>(null);
+    final localUpdateInfo = useState<UpdateInfo?>(null);
+    final effectiveUpdateInfo = localUpdateInfo.value;
     final downloadProgress = useState<double?>(null);
 
     Future<void> handleUpdate(UpdateInfo info) async {
@@ -567,10 +572,11 @@ class SettingsDialog extends HookWidget {
     }
 
     Future<void> checkUpdate() async {
+      refreshIconController.forward(from: 0.0);
       isCheckingUpdate.value = true;
       try {
         final info = await updateService.checkForUpdates();
-        updateInfo.value = info;
+        localUpdateInfo.value = info;
         if (info != null) {
           await handleUpdate(info);
         } else {
@@ -1255,19 +1261,32 @@ class SettingsDialog extends HookWidget {
                   const SizedBox(height: 8),
                   ListTile(
                     title: Text(
-                      'Check for Updates',
+                      effectiveUpdateInfo != null
+                          ? 'v${effectiveUpdateInfo.version}'
+                          : 'Check for Updates',
                       style: theme.textTheme.bodyMedium,
                     ),
-                    trailing: IconButton(
-                      icon: isCheckingUpdate.value
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.refresh),
-                      onPressed: isCheckingUpdate.value ? null : checkUpdate,
-                    ),
+                    trailing: effectiveUpdateInfo != null
+                        ? Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.primaryContainer,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              'Update',
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: theme.colorScheme.onPrimaryContainer,
+                              ),
+                            ),
+                          )
+                        : RotationTransition(
+                            turns: refreshIconController,
+                            child: IconButton(
+                              icon: const Icon(Icons.refresh),
+                              onPressed: isCheckingUpdate.value ? null : checkUpdate,
+                            ),
+                          ),
                   ),
                 ],
               ),
