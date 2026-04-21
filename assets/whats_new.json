@@ -188,5 +188,8 @@
   ],
   "1.22.0": [
     "include mute toggle and media detection for active browser tab."
+  ],
+  "1.22.1": [
+    "replace polling media detection with JS bridge-driven playback state and mute sync."
   ]
 }
