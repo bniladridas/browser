@@ -185,5 +185,8 @@
   ],
   "1.21.0": [
     "include animated refresh icon and update badge to settings update checker."
+  ],
+  "1.22.0": [
+    "include mute toggle and media detection for active browser tab."
   ]
 }
