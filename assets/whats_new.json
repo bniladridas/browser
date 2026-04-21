@@ -182,5 +182,8 @@
   ],
   "1.20.2": [
     "remove contents: read permission from auto-label workflow."
+  ],
+  "1.21.0": [
+    "include animated refresh icon and update badge to settings update checker."
   ]
 }
