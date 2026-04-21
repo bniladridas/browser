@@ -1858,6 +1858,8 @@ class TabData {
   bool hideStaleWebViewUntilPageFinish = false;
   bool pageRequestedWindowFullscreen = false;
   bool windowWasFullscreenBeforePageRequest = false;
+  bool isMuted = false;
+  bool hasMediaPlaying = false;
 
   TabData(this.currentUrl, {String? displayUrl})
       : urlController = TextEditingController(text: displayUrl ?? currentUrl),
@@ -4382,6 +4384,7 @@ class _BrowserPageState extends State<BrowserPage>
         unawaited(_exitPageFullscreen(closingTab));
         unawaited(_setPageRequestedWindowFullscreen(closingTab, false));
       }
+      closingTab.webViewController?.loadRequest(Uri.parse('about:blank'));
       setState(() {
         closingTab.isClosed = true;
         closingTab.urlController.dispose();
@@ -5291,6 +5294,48 @@ class _BrowserPageState extends State<BrowserPage>
             error: e, stackTrace: s);
       }
     }
+  }
+
+  Future<void> _toggleMute() async {
+    activeTab.isMuted = !activeTab.isMuted;
+    final muted = activeTab.isMuted;
+    if (activeTab.webViewController != null) {
+      await activeTab.webViewController!.runJavaScript(
+        'document.querySelectorAll("video, audio").forEach(el => el.muted = $muted);',
+      );
+    }
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _checkForMedia(TabData tab) async {
+    if (tab.webViewController == null) return;
+    try {
+      await tab.webViewController!.runJavaScript('''
+        (function() {
+          const media = document.querySelectorAll('video, audio');
+          if (media.length > 0) {
+            window.flutterHasMedia = true;
+            media.forEach(function(m) {
+              m.addEventListener('play', function() { window.flutterMediaPlaying = true; });
+              m.addEventListener('pause', function() { window.flutterMediaPlaying = false; });
+              m.addEventListener('ended', function() { window.flutterMediaPlaying = false; });
+            });
+          }
+        })();
+      ''');
+      Timer(const Duration(seconds: 3), () {
+        _updateMediaState(tab);
+      });
+    } catch (_) {}
+  }
+
+  Future<void> _updateMediaState(TabData tab) async {
+    if (tab.webViewController == null || tab.hasMediaPlaying) return;
+    try {
+      await tab.webViewController!.runJavaScript('window.flutterHasMedia === true');
+      tab.hasMediaPlaying = true;
+      if (mounted) setState(() {});
+    } catch (_) {}
   }
 
   void _showBookmarks() async {
@@ -7015,6 +7060,8 @@ class _BrowserPageState extends State<BrowserPage>
                 tab.state = const BrowserState.loading();
                 tab.pageTitle = null;
                 tab.hasUserInteractedWithPage = false;
+                tab.hasMediaPlaying = false;
+                tab.isMuted = false;
                 tab.detectedBrightness = null;
                 tab.detectedSeedColor = null;
                 tab.ambientSeedColor = null;
@@ -7039,6 +7086,7 @@ class _BrowserPageState extends State<BrowserPage>
         onPageFinished: (url) async {
           final actualUrl = await tab.webViewController?.currentUrl() ?? url;
           tab.hideStaleWebViewUntilPageFinish = false;
+          _checkForMedia(tab);
           if (mounted) {
             setState(() {
               if (tab.state is! BrowserError) {
@@ -7627,6 +7675,23 @@ class _BrowserPageState extends State<BrowserPage>
                         ),
                       ),
                     ),
+                    if (activeTab.hasMediaPlaying)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: MouseRegion(
+                          cursor: SystemMouseCursors.click,
+                          child: GestureDetector(
+                            onTap: _toggleMute,
+                            child: Icon(
+                              activeTab.isMuted ? Icons.volume_off : Icons.volume_up,
+                              color: activeTab.isMuted
+                                  ? toolbarForeground.withValues(alpha: 0.5)
+                                  : toolbarForeground,
+                              size: 18,
+                            ),
+                          ),
+                        ),
+                      ),
                   ],
                 ),
               ),
