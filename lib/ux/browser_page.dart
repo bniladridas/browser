@@ -2291,11 +2291,13 @@ class _BrowserPageState extends State<BrowserPage>
   StreamSubscription<bool>? _connectivitySubscription;
   late AnimationController _refreshIconController;
   AnimationController? _ambientController;
-  final LayerLink _urlAutocompleteLink = LayerLink();
   BuildContext? _urlAutocompleteTargetContext;
   OverlayEntry? _urlAutocompleteOverlayEntry;
   List<String> _urlAutocompleteOptions = const <String>[];
   double? _urlAutocompleteTargetWidth;
+  double _urlAutocompleteOverlayLeft = 0;
+  double _urlAutocompleteOverlayTop = 0;
+  double _urlAutocompleteOverlayBottom = 0;
   bool _urlAutocompleteOverlayUpdateQueued = false;
   int _lastUrlAutocompleteOverlayPointerDownMs = 0;
   Future<void> _historySaveQueue = Future<void>.value();
@@ -2999,6 +3001,11 @@ class _BrowserPageState extends State<BrowserPage>
           final showAbove = spaceBelow < _urlAutocompleteOverlayFlipThreshold &&
               spaceAbove > spaceBelow;
           _urlAutocompleteShowAbove = showAbove;
+          _urlAutocompleteOverlayLeft = dx;
+          _urlAutocompleteOverlayTop =
+              dy + targetBox.size.height + _urlAutocompleteOverlayOffset;
+          _urlAutocompleteOverlayBottom =
+              overlayBox.size.height - dy + _urlAutocompleteOverlayOffset;
           _urlAutocompleteOverlayMaxWidth =
               (overlayBox.size.width - dx - minMargin).clamp(
                   _urlAutocompleteOverlayMinWidth,
@@ -3140,18 +3147,14 @@ class _BrowserPageState extends State<BrowserPage>
                     _removeUrlAutocompleteOverlay();
                   },
                 ),
-                CompositedTransformFollower(
-                  link: _urlAutocompleteLink,
-                  showWhenUnlinked: false,
-                  targetAnchor: _urlAutocompleteShowAbove
-                      ? Alignment.topLeft
-                      : Alignment.bottomLeft,
-                  followerAnchor: _urlAutocompleteShowAbove
-                      ? Alignment.bottomLeft
-                      : Alignment.topLeft,
-                  offset: _urlAutocompleteShowAbove
-                      ? const Offset(0, -_urlAutocompleteOverlayOffset)
-                      : const Offset(0, _urlAutocompleteOverlayOffset),
+                Positioned(
+                  left: _urlAutocompleteOverlayLeft,
+                  top: _urlAutocompleteShowAbove
+                      ? null
+                      : _urlAutocompleteOverlayTop,
+                  bottom: _urlAutocompleteShowAbove
+                      ? _urlAutocompleteOverlayBottom
+                      : null,
                   child: Listener(
                     behavior: HitTestBehavior.opaque,
                     onPointerDown: (_) {
@@ -7693,73 +7696,69 @@ class _BrowserPageState extends State<BrowserPage>
                                   )
                                 : KeyedSubtree(
                                     key: const ValueKey('url_field'),
-                                    child: CompositedTransformTarget(
-                                      link: _urlAutocompleteLink,
-                                      child: Builder(
-                                        builder: (context) {
-                                          _urlAutocompleteTargetContext =
-                                              context;
-                                          return TextField(
-                                            key: const Key('browser.url_field'),
-                                            controller: activeTab.urlController,
-                                            focusNode: activeTab.urlFocusNode,
-                                            onChanged: (_) =>
-                                                _updateUrlAutocompleteOverlay(
-                                              activeTab,
-                                            ),
-                                            style: TextStyle(
-                                              color: toolbarForeground,
+                                    child: Builder(
+                                      builder: (context) {
+                                        _urlAutocompleteTargetContext = context;
+                                        return TextField(
+                                          key: const Key('browser.url_field'),
+                                          controller: activeTab.urlController,
+                                          focusNode: activeTab.urlFocusNode,
+                                          onChanged: (_) =>
+                                              _updateUrlAutocompleteOverlay(
+                                            activeTab,
+                                          ),
+                                          style: TextStyle(
+                                            color: toolbarForeground,
+                                            fontSize: 13,
+                                          ),
+                                          decoration: InputDecoration(
+                                            hintText: 'Search or enter URL',
+                                            hintStyle: TextStyle(
+                                              color: toolbarForeground
+                                                  .withValues(alpha: 0.72),
                                               fontSize: 13,
                                             ),
-                                            decoration: InputDecoration(
-                                              hintText: 'Search or enter URL',
-                                              hintStyle: TextStyle(
-                                                color: toolbarForeground
-                                                    .withValues(alpha: 0.72),
-                                                fontSize: 13,
-                                              ),
-                                              border: InputBorder.none,
-                                              contentPadding:
-                                                  const EdgeInsets.symmetric(
-                                                vertical: 10,
-                                              ),
+                                            border: InputBorder.none,
+                                            contentPadding:
+                                                const EdgeInsets.symmetric(
+                                              vertical: 10,
                                             ),
-                                            onTap: () {
-                                              _cancelAddressBarAutoHide();
-                                              _setActiveTabUrlObscured(false);
-                                              if (widget
-                                                      .aiSearchSuggestionsEnabled &&
-                                                  activeTab.urlController.text
-                                                      .trim()
-                                                      .isEmpty) {
-                                                _showAiSearchSuggestionsSheet();
-                                              } else {
-                                                _updateUrlAutocompleteOverlay(
-                                                  activeTab,
-                                                );
-                                              }
-                                            },
-                                            onSubmitted: (value) {
-                                              _removeUrlAutocompleteOverlay();
-                                              activeTab.urlFocusNode.unfocus();
-                                              final decision =
-                                                  resolveUrlSubmission(
-                                                submittedValue: value,
-                                                aiSearchSuggestionsEnabled: widget
-                                                    .aiSearchSuggestionsEnabled,
+                                          ),
+                                          onTap: () {
+                                            _cancelAddressBarAutoHide();
+                                            _setActiveTabUrlObscured(false);
+                                            if (widget
+                                                    .aiSearchSuggestionsEnabled &&
+                                                activeTab.urlController.text
+                                                    .trim()
+                                                    .isEmpty) {
+                                              _showAiSearchSuggestionsSheet();
+                                            } else {
+                                              _updateUrlAutocompleteOverlay(
+                                                activeTab,
                                               );
-                                              if (decision
-                                                  .shouldShowAiSuggestions) {
-                                                _showAiSearchSuggestionsSheet();
-                                              }
-                                              if (decision.shouldLoadUrl) {
-                                                _loadUrl(
-                                                    decision.normalizedInput);
-                                              }
-                                            },
-                                          );
-                                        },
-                                      ),
+                                            }
+                                          },
+                                          onSubmitted: (value) {
+                                            _removeUrlAutocompleteOverlay();
+                                            activeTab.urlFocusNode.unfocus();
+                                            final decision =
+                                                resolveUrlSubmission(
+                                              submittedValue: value,
+                                              aiSearchSuggestionsEnabled: widget
+                                                  .aiSearchSuggestionsEnabled,
+                                            );
+                                            if (decision
+                                                .shouldShowAiSuggestions) {
+                                              _showAiSearchSuggestionsSheet();
+                                            }
+                                            if (decision.shouldLoadUrl) {
+                                              _loadUrl(
+                                                  decision.normalizedInput);
+                                            }
+                                          },
+                                        );
+                                      },
                                     ),
                                   ),
                           ),
