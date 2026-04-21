@@ -200,5 +200,8 @@
   ],
   "1.24.0": [
     "enable app-sandbox entitlement for debug, profile, and release builds."
+  ],
+  "1.25.0": [
+    "enable user-selected file read-write entitlement for debug, profile, and release builds."
   ]
 }
