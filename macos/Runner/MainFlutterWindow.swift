@@ -1,7 +1,7 @@
 import Cocoa
 import FlutterMacOS
 
-class MainFlutterWindow: NSWindow {
+class MainFlutterWindow: NSWindow, NSWindowDelegate {
   override func awakeFromNib() {
     let flutterViewController = FlutterViewController()
     let windowFrame = self.frame
@@ -11,6 +11,9 @@ class MainFlutterWindow: NSWindow {
     RegisterGeneratedPlugins(registry: flutterViewController)
 
     super.awakeFromNib()
+
+    BrowserMenuBarController.shared.install(reason: "window awakeFromNib")
+    delegate = self
 
     // Hide window initially
     self.alphaValue = 0
@@ -22,5 +25,10 @@ class MainFlutterWindow: NSWindow {
         self.animator().alphaValue = 1.0
       }, completionHandler: nil)
     }
+  }
+
+  func windowShouldClose(_ sender: NSWindow) -> Bool {
+    orderOut(nil)
+    return false
   }
 }
