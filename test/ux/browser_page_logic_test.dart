@@ -117,6 +117,41 @@ void main() {
     });
   });
 
+  group('media playback bridge', () {
+    test('parses playback state messages', () {
+      final state = parseMediaPlaybackStateMessage(
+        '{"type":"playback","hasPlayingMedia":true}',
+      );
+
+      expect(state, isNotNull);
+      expect(state!.hasPlayingMedia, isTrue);
+    });
+
+    test('ignores invalid playback messages', () {
+      expect(parseMediaPlaybackStateMessage('not-json'), isNull);
+      expect(
+        parseMediaPlaybackStateMessage(
+            '{"type":"other","hasPlayingMedia":true}'),
+        isNull,
+      );
+      expect(
+        parseMediaPlaybackStateMessage(
+            '{"type":"playback","hasPlayingMedia":"yes"}'),
+        isNull,
+      );
+    });
+
+    test('builds bridge script with mute preference', () {
+      final mutedScript = buildMediaBridgeScript(muted: true);
+      final unmutedScript = buildMediaBridgeScript(muted: false);
+
+      expect(mutedScript, contains('const desiredMuted = true;'));
+      expect(unmutedScript, contains('const desiredMuted = false;'));
+      expect(mutedScript, contains('MediaStateChannel.postMessage'));
+      expect(mutedScript, contains('MutationObserver'));
+    });
+  });
+
   group('Theme probe parsing', () {
     test('parses hsl colors', () {
       final color = parseThemeCssColor('hsl(210 100% 50%)');

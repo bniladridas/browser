@@ -141,6 +141,124 @@ UrlSubmissionDecision resolveUrlSubmission({
   );
 }
 
+class MediaPlaybackState {
+  const MediaPlaybackState({required this.hasPlayingMedia});
+
+  final bool hasPlayingMedia;
+}
+
+@visibleForTesting
+MediaPlaybackState? parseMediaPlaybackStateMessage(String message) {
+  try {
+    final decoded = jsonDecode(message);
+    if (decoded is! Map<String, dynamic>) return null;
+    if (decoded['type'] != 'playback') return null;
+    final hasPlayingMedia = decoded['hasPlayingMedia'];
+    if (hasPlayingMedia is! bool) return null;
+    return MediaPlaybackState(hasPlayingMedia: hasPlayingMedia);
+  } catch (_) {
+    return null;
+  }
+}
+
+@visibleForTesting
+String buildMediaBridgeScript({required bool muted}) {
+  final mutedLiteral = muted ? 'true' : 'false';
+  return '''
+    (function() {
+      const desiredMuted = $mutedLiteral;
+      window.__browserMutedPreference = desiredMuted;
+      if (window.__browserMuteEnforcerInterval &&
+          window.__browserMutedPreference !== true) {
+        clearInterval(window.__browserMuteEnforcerInterval);
+        window.__browserMuteEnforcerInterval = null;
+      }
+
+      const getMediaElements = function(root) {
+        if (!root) return [];
+        if (root.matches && root.matches('video, audio')) {
+          return [root];
+        }
+        if (!root.querySelectorAll) return [];
+        return Array.from(root.querySelectorAll('video, audio'));
+      };
+
+      const applyMutePreference = function(media) {
+        if (!media) return;
+        const shouldMute = window.__browserMutedPreference === true;
+        media.muted = shouldMute;
+        if ('defaultMuted' in media) {
+          media.defaultMuted = shouldMute;
+        }
+      };
+
+      const applyMutePreferenceToAll = function(root) {
+        getMediaElements(root).forEach(applyMutePreference);
+      };
+
+      const reportPlaybackState = function() {
+        const mediaElements = getMediaElements(document);
+        const hasPlayingMedia = mediaElements.some(function(media) {
+          return !media.paused && !media.ended && media.currentSrc !== '';
+        });
+        try {
+          MediaStateChannel.postMessage(JSON.stringify({
+            type: 'playback',
+            hasPlayingMedia: hasPlayingMedia
+          }));
+        } catch (_) {}
+      };
+
+      const attachMedia = function(media) {
+        if (!media || media.__browserMediaBridgeAttached) return;
+        media.__browserMediaBridgeAttached = true;
+        applyMutePreference(media);
+        ['play', 'playing', 'pause', 'ended', 'emptied', 'loadstart', 'loadedmetadata', 'volumechange'].forEach(function(eventName) {
+          media.addEventListener(eventName, function() {
+            applyMutePreference(media);
+            reportPlaybackState();
+          });
+        });
+      };
+
+      const attachAllMedia = function(root) {
+        getMediaElements(root).forEach(attachMedia);
+      };
+
+      if (!window.__browserMediaBridgeObserver) {
+        window.__browserMediaBridgeObserver = new MutationObserver(function(mutations) {
+          mutations.forEach(function(mutation) {
+            mutation.addedNodes.forEach(function(node) {
+              attachAllMedia(node);
+            });
+            if (mutation.type === 'attributes') {
+              attachAllMedia(mutation.target);
+              applyMutePreferenceToAll(mutation.target);
+            }
+          });
+          reportPlaybackState();
+        });
+        window.__browserMediaBridgeObserver.observe(document.documentElement || document, {
+          attributes: true,
+          attributeFilter: ['src'],
+          childList: true,
+          subtree: true
+        });
+      }
+
+      attachAllMedia(document);
+      applyMutePreferenceToAll(document);
+      if (window.__browserMutedPreference === true && !window.__browserMuteEnforcerInterval) {
+        window.__browserMuteEnforcerInterval = setInterval(function() {
+          applyMutePreferenceToAll(document);
+          reportPlaybackState();
+        }, 250);
+      }
+      reportPlaybackState();
+    })();
+  ''';
+}
+
 class FaviconUrlPolicy {
   static String normalizeJsResult(dynamic result) {
     if (result == null) return '';
@@ -1268,7 +1386,8 @@ class SettingsDialog extends HookWidget {
                     ),
                     trailing: effectiveUpdateInfo != null
                         ? Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
                               color: theme.colorScheme.primaryContainer,
                               borderRadius: BorderRadius.circular(4),
@@ -1284,7 +1403,8 @@ class SettingsDialog extends HookWidget {
                             turns: refreshIconController,
                             child: IconButton(
                               icon: const Icon(Icons.refresh),
-                              onPressed: isCheckingUpdate.value ? null : checkUpdate,
+                              onPressed:
+                                  isCheckingUpdate.value ? null : checkUpdate,
                             ),
                           ),
                   ),
@@ -5298,43 +5418,16 @@ class _BrowserPageState extends State<BrowserPage>
 
   Future<void> _toggleMute() async {
     activeTab.isMuted = !activeTab.isMuted;
-    final muted = activeTab.isMuted;
-    if (activeTab.webViewController != null) {
-      await activeTab.webViewController!.runJavaScript(
-        'document.querySelectorAll("video, audio").forEach(el => el.muted = $muted);',
-      );
-    }
+    await _syncTabMediaState(activeTab);
     if (mounted) setState(() {});
   }
 
-  Future<void> _checkForMedia(TabData tab) async {
+  Future<void> _syncTabMediaState(TabData tab) async {
     if (tab.webViewController == null) return;
     try {
-      await tab.webViewController!.runJavaScript('''
-        (function() {
-          const media = document.querySelectorAll('video, audio');
-          if (media.length > 0) {
-            window.flutterHasMedia = true;
-            media.forEach(function(m) {
-              m.addEventListener('play', function() { window.flutterMediaPlaying = true; });
-              m.addEventListener('pause', function() { window.flutterMediaPlaying = false; });
-              m.addEventListener('ended', function() { window.flutterMediaPlaying = false; });
-            });
-          }
-        })();
-      ''');
-      Timer(const Duration(seconds: 3), () {
-        _updateMediaState(tab);
-      });
-    } catch (_) {}
-  }
-
-  Future<void> _updateMediaState(TabData tab) async {
-    if (tab.webViewController == null || tab.hasMediaPlaying) return;
-    try {
-      await tab.webViewController!.runJavaScript('window.flutterHasMedia === true');
-      tab.hasMediaPlaying = true;
-      if (mounted) setState(() {});
+      await tab.webViewController!.runJavaScript(
+        buildMediaBridgeScript(muted: tab.isMuted),
+      );
     } catch (_) {}
   }
 
@@ -6981,6 +7074,7 @@ class _BrowserPageState extends State<BrowserPage>
           });
         }
         unawaited(_updateTabTitle(tab, hintedTitle: title));
+        unawaited(_syncTabMediaState(tab));
         _updateThemeFromTab(tab);
         _updateAmbientFromTab(tab);
       });
@@ -7038,6 +7132,19 @@ class _BrowserPageState extends State<BrowserPage>
           onMessageReceived: (JavaScriptMessage message) async {
         _handleWebAuthnMessage(tab, message.message);
       });
+      tab.webViewController!.addJavaScriptChannel('MediaStateChannel',
+          onMessageReceived: (JavaScriptMessage message) {
+        final playbackState = parseMediaPlaybackStateMessage(message.message);
+        if (playbackState == null || !mounted || tab.isClosed) {
+          return;
+        }
+        if (tab.hasMediaPlaying == playbackState.hasPlayingMedia) {
+          return;
+        }
+        setState(() {
+          tab.hasMediaPlaying = playbackState.hasPlayingMedia;
+        });
+      });
       tab.webViewController!.setNavigationDelegate(NavigationDelegate(
         onUrlChange: (change) {
           if (!tab.isClosed && change.url != null && mounted) {
@@ -7046,6 +7153,7 @@ class _BrowserPageState extends State<BrowserPage>
               tab.urlController.text = change.url!;
             });
           }
+          unawaited(_syncTabMediaState(tab));
         },
         onPageStarted: (url) async {
           if (identical(tab, activeTab)) {
@@ -7086,7 +7194,7 @@ class _BrowserPageState extends State<BrowserPage>
         onPageFinished: (url) async {
           final actualUrl = await tab.webViewController?.currentUrl() ?? url;
           tab.hideStaleWebViewUntilPageFinish = false;
-          _checkForMedia(tab);
+          unawaited(_syncTabMediaState(tab));
           if (mounted) {
             setState(() {
               if (tab.state is! BrowserError) {
@@ -7683,7 +7791,9 @@ class _BrowserPageState extends State<BrowserPage>
                           child: GestureDetector(
                             onTap: _toggleMute,
                             child: Icon(
-                              activeTab.isMuted ? Icons.volume_off : Icons.volume_up,
+                              activeTab.isMuted
+                                  ? Icons.volume_off
+                                  : Icons.volume_up,
                               color: activeTab.isMuted
                                   ? toolbarForeground.withValues(alpha: 0.5)
                                   : toolbarForeground,
