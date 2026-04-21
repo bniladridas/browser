@@ -194,5 +194,8 @@
   ],
   "1.22.2": [
     "replace CompositedTransformFollower with Positioned for URL autocomplete overlay placement."
+  ],
+  "1.23.0": [
+    "include macOS menu bar status item with show/hide/quit controls and background window support."
   ]
 }
