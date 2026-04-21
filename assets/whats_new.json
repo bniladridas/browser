@@ -191,5 +191,8 @@
   ],
   "1.22.1": [
     "replace polling media detection with JS bridge-driven playback state and mute sync."
+  ],
+  "1.22.2": [
+    "replace CompositedTransformFollower with Positioned for URL autocomplete overlay placement."
   ]
 }
