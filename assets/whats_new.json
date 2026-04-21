@@ -197,5 +197,8 @@
   ],
   "1.23.0": [
     "include macOS menu bar status item with show/hide/quit controls and background window support."
+  ],
+  "1.24.0": [
+    "enable app-sandbox entitlement for debug, profile, and release builds."
   ]
 }
