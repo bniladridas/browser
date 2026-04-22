@@ -92,11 +92,9 @@ final class BrowserMenuBarController: NSObject {
   }
 
   private func makeStatusItemImage() -> NSImage? {
-    guard let image = NSApp.applicationIconImage.copy() as? NSImage else {
-      return nil
-    }
-    image.isTemplate = false
-    image.size = NSSize(width: 18, height: 18)
+    let image = NSImage(named: "MenuBarIcon")
+    image?.isTemplate = true
+    image?.size = NSSize(width: 18, height: 18)
     return image
   }
 
