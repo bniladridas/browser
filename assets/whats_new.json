@@ -203,5 +203,8 @@
   ],
   "1.25.0": [
     "enable user-selected file read-write entitlement for debug, profile, and release builds."
+  ],
+  "1.26.0": [
+    "replace app icon with dedicated template image for menu bar status item."
   ]
 }
