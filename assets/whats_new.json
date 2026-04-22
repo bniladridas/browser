@@ -212,5 +212,8 @@
   ],
   "1.26.2": [
     "strip excess entitlements and rename custom module from browser to Runner."
+  ],
+  "1.26.3": [
+    "include help button to settings dialog linking to features page."
   ]
 }
