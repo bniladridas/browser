@@ -206,5 +206,8 @@
   ],
   "1.26.0": [
     "replace app icon with dedicated template image for menu bar status item."
+  ],
+  "1.26.1": [
+    "resolve navigation URL from pending state to prevent stale address bar during cross-site transitions."
   ]
 }
