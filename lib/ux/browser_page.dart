@@ -141,6 +141,57 @@ UrlSubmissionDecision resolveUrlSubmission({
   );
 }
 
+@visibleForTesting
+String resolveNavigationEventUrl({
+  required String eventUrl,
+  required String? controllerUrl,
+  String? pendingUrl,
+  String? previousUrl,
+}) {
+  final normalizedEventUrl = eventUrl.trim();
+  final normalizedControllerUrl = controllerUrl?.trim();
+  final normalizedPendingUrl = pendingUrl?.trim();
+
+  String candidate = '';
+  if (normalizedEventUrl.isNotEmpty && normalizedEventUrl != 'about:blank') {
+    candidate = normalizedEventUrl;
+  } else if (normalizedControllerUrl != null &&
+      normalizedControllerUrl.isNotEmpty) {
+    candidate = normalizedControllerUrl;
+  }
+
+  if (normalizedPendingUrl != null && normalizedPendingUrl.isNotEmpty) {
+    if (candidate.isEmpty) {
+      return normalizedPendingUrl;
+    }
+    if (_urlsShareSite(candidate, previousUrl)) {
+      return normalizedPendingUrl;
+    }
+  }
+
+  if (candidate.isNotEmpty) {
+    return candidate;
+  }
+  return normalizedPendingUrl ?? normalizedEventUrl;
+}
+
+String? _siteKeyForUrl(String? rawUrl) {
+  if (rawUrl == null) return null;
+  final normalized = rawUrl.trim();
+  if (normalized.isEmpty) return null;
+  final uri = Uri.tryParse(normalized);
+  final host = uri?.host.toLowerCase() ?? '';
+  if (host.isEmpty) return normalized;
+  return host.startsWith('www.') ? host.substring(4) : host;
+}
+
+bool _urlsShareSite(String? firstUrl, String? secondUrl) {
+  final firstKey = _siteKeyForUrl(firstUrl);
+  final secondKey = _siteKeyForUrl(secondUrl);
+  if (firstKey == null || secondKey == null) return false;
+  return firstKey == secondKey;
+}
+
 class MediaPlaybackState {
   const MediaPlaybackState({required this.hasPlayingMedia});
 
@@ -1974,6 +2025,8 @@ class TabData {
   DateTime? lastAmbientProbeAt;
   SavePasswordPromptData? pendingPasswordPrompt;
   String? faviconUrl;
+  String? pendingNavigationUrl;
+  String? pendingNavigationSourceUrl;
   String? forwardUrl; // URL to go forward to when on home page
   bool hideStaleWebViewUntilPageFinish = false;
   bool pageRequestedWindowFullscreen = false;
@@ -3248,6 +3301,12 @@ class _BrowserPageState extends State<BrowserPage>
         oldWidget.hideAppBar != widget.hideAppBar) {
       _syncAmbientAnimation();
     }
+    if (oldWidget.ambientToolbarEnabled != widget.ambientToolbarEnabled) {
+      _resetAmbientProbeState();
+      if (widget.ambientToolbarEnabled) {
+        _updateAmbientFromTab(activeTab);
+      }
+    }
     if (oldWidget.pageFontFamily != widget.pageFontFamily) {
       _pageFontFamily = widget.pageFontFamily;
       _applyFontOverrideToAllTabs();
@@ -3364,6 +3423,10 @@ class _BrowserPageState extends State<BrowserPage>
     return e.code == 'MissingPluginException';
   }
 
+  bool _isLiveTab(TabData tab) {
+    return mounted && !tab.isClosed && tabs.contains(tab);
+  }
+
   void _applyThemeForTab(TabData tab) {
     if (widget.themeMode != AppThemeMode.adjust) return;
     if (tab.currentUrl == defaultHomepageUrl || tab.state is BrowserError) {
@@ -3449,13 +3512,33 @@ class _BrowserPageState extends State<BrowserPage>
       final probe = _parseThemeProbe(result);
       final decision = probe == null ? null : resolveThemeProbeDecision(probe);
       tab.ambientSeedColor = decision?.seedColor;
+      if (tab.ambientSeedColor == null) {
+        // Allow the delayed retries after navigation to probe again once the
+        // destination page has finished painting real content.
+        tab.lastAmbientProbeAt = null;
+      }
       if (mounted &&
           identical(tab, activeTab) &&
           previousSeed != tab.ambientSeedColor) {
         setState(() {});
       }
     } catch (_) {
-      // Best-effort only.
+      // Best-effort only. Clear the probe marker so later retries can still run.
+      tab.lastAmbientProbeAt = null;
+    }
+  }
+
+  void _resetAmbientProbeState() {
+    var shouldRebuild = false;
+    for (final tab in tabs) {
+      if (tab.ambientSeedColor != null || tab.lastAmbientProbeAt != null) {
+        shouldRebuild = true;
+      }
+      tab.ambientSeedColor = null;
+      tab.lastAmbientProbeAt = null;
+    }
+    if (shouldRebuild && mounted) {
+      setState(() {});
     }
   }
 
@@ -3489,6 +3572,7 @@ class _BrowserPageState extends State<BrowserPage>
   }
   style.textContent =
     'html, body, body * { font-family: ' + fontFamily + ' !important; }';
+  return true;
 })();
 ''');
     } catch (e, s) {
@@ -3515,11 +3599,11 @@ class _BrowserPageState extends State<BrowserPage>
       tag === 'textarea' ||
       tag === 'select';
     if (isEditable) return;
-    const role = (el.getAttribute && (el.getAttribute('role') || '')) || '';
-    const isButtonLike = tag === 'button' || role.toLowerCase() === 'button';
-    if (!isButtonLike) return;
     if (typeof el.blur === 'function') el.blur();
-  } catch (_) {}
+    return true;
+  } catch (_) {
+    return false;
+  }
 })();
 ''');
     } catch (e, s) {
@@ -3572,7 +3656,7 @@ class _BrowserPageState extends State<BrowserPage>
 (() => {
   try {
     const flag = '__browserInitialFocusInterceptorInstalled';
-    if (window[flag]) return;
+    if (window[flag]) return true;
     window[flag] = true;
 
     const interactFlag = '__browserUserInteracted';
@@ -3585,20 +3669,33 @@ class _BrowserPageState extends State<BrowserPage>
       return tag === 'input' || tag === 'textarea' || tag === 'select';
     };
 
-    const isButtonLike = (el) => {
-      if (!el) return false;
-      const tag = (el.tagName || '').toLowerCase();
-      if (tag === 'button') return true;
-      if (tag === 'a' && el.getAttribute && el.getAttribute('href')) return true;
-      const role = (el.getAttribute && (el.getAttribute('role') || '')) || '';
-      return role.toLowerCase() === 'button';
+    const styleId = '__browser-initial-focus-style';
+    const ensureSuppressionStyle = () => {
+      let style = document.getElementById(styleId);
+      if (style) return style;
+      style = document.createElement('style');
+      style.id = styleId;
+      style.textContent = `
+*:focus:not(input):not(textarea):not(select):not([contenteditable="true"]),
+*:focus-visible:not(input):not(textarea):not(select):not([contenteditable="true"]) {
+  outline: none !important;
+  box-shadow: none !important;
+}`;
+      (document.head || document.documentElement).appendChild(style);
+      return style;
     };
+
+    const removeSuppressionStyle = () => {
+      const style = document.getElementById(styleId);
+      if (style) style.remove();
+    };
+
+    ensureSuppressionStyle();
 
     const blurIfUnwanted = (el) => {
       if (window[interactFlag]) return;
       if (!el || el === document.body || el === document.documentElement) return;
       if (isEditable(el)) return;
-      if (!isButtonLike(el)) return;
       if (typeof el.blur === 'function') el.blur();
     };
 
@@ -3609,6 +3706,7 @@ class _BrowserPageState extends State<BrowserPage>
 
     const onPointerDown = () => {
       window[interactFlag] = true;
+      removeSuppressionStyle();
       document.removeEventListener('focusin', onFocusIn, true);
       document.removeEventListener('pointerdown', onPointerDown, true);
       document.removeEventListener('keydown', onKeyDown, true);
@@ -3619,6 +3717,7 @@ class _BrowserPageState extends State<BrowserPage>
       // stop suppressing focus immediately.
       if (!e) return;
       window[interactFlag] = true;
+      removeSuppressionStyle();
       document.removeEventListener('focusin', onFocusIn, true);
       document.removeEventListener('pointerdown', onPointerDown, true);
       document.removeEventListener('keydown', onKeyDown, true);
@@ -3635,12 +3734,16 @@ class _BrowserPageState extends State<BrowserPage>
     const WINDOW_MS = 1500;
     setTimeout(() => {
       if (window[interactFlag]) return;
+      removeSuppressionStyle();
       document.removeEventListener('focusin', onFocusIn, true);
       document.removeEventListener('pointerdown', onPointerDown, true);
       document.removeEventListener('keydown', onKeyDown, true);
       window[interactFlag] = true;
     }, WINDOW_MS);
-  } catch (_) {}
+    return true;
+  } catch (_) {
+    return false;
+  }
 })();
 ''');
     } catch (e, s) {
@@ -3661,14 +3764,17 @@ class _BrowserPageState extends State<BrowserPage>
       await controller.runJavaScript('''
 (() => {
   try {
-    if (window.pageTapListenerAdded) return;
+    if (window.pageTapListenerAdded) return true;
     const notifyTap = function() {
       try { PageTapChannel.postMessage('tap'); } catch (_) {}
       try { window.__browserUserInteracted = true; } catch (_) {}
     };
     window.addEventListener('pointerdown', notifyTap, true);
     window.pageTapListenerAdded = true;
-  } catch (_) {}
+    return true;
+  } catch (_) {
+    return false;
+  }
 })();
 ''');
     } catch (_) {
@@ -3821,6 +3927,7 @@ class _BrowserPageState extends State<BrowserPage>
     previousTabIndex = tabController.index;
     _syncPointerEventsForAllTabs();
     _applyThemeForTab(tabs[tabController.index]);
+    _updateAmbientFromTab(tabs[tabController.index]);
     _setActiveTabUrlObscured(false);
     _maybeScheduleAddressBarAutoHide(activeTab, revealImmediately: true);
     if (mounted) {
@@ -6677,6 +6784,8 @@ class _BrowserPageState extends State<BrowserPage>
           setState(() {
             activeTab.currentUrl = url;
             activeTab.pageTitle = null;
+            activeTab.pendingNavigationUrl = null;
+            activeTab.pendingNavigationSourceUrl = null;
             activeTab.urlController.text = _displayUrl(url);
             activeTab.faviconUrl = _defaultFaviconUrlFor(url);
             activeTab.webViewController = null;
@@ -6695,6 +6804,8 @@ class _BrowserPageState extends State<BrowserPage>
       logger.w('Invalid or unsafe URL: $processedUrl');
       if (mounted) {
         setState(() {
+          activeTab.pendingNavigationUrl = null;
+          activeTab.pendingNavigationSourceUrl = null;
           activeTab.currentUrl = url;
           activeTab.urlController.text = url;
           activeTab.state =
@@ -6703,8 +6814,12 @@ class _BrowserPageState extends State<BrowserPage>
       }
       return;
     }
+    final previousUrl = activeTab.currentUrl;
+    activeTab.pendingNavigationUrl = processedUrl;
+    activeTab.pendingNavigationSourceUrl = previousUrl;
     activeTab.currentUrl = processedUrl;
     activeTab.urlController.text = _displayUrl(processedUrl);
+    activeTab.faviconUrl = _defaultFaviconUrlFor(processedUrl);
     activeTab.hideStaleWebViewUntilPageFinish = wasOnHome;
     if (activeTab.webViewController == null && mounted) {
       setState(() {});
@@ -7150,67 +7265,90 @@ class _BrowserPageState extends State<BrowserPage>
       });
       tab.webViewController!.setNavigationDelegate(NavigationDelegate(
         onUrlChange: (change) {
-          if (!tab.isClosed && change.url != null && mounted) {
+          if (_isLiveTab(tab) && change.url != null) {
+            final actualUrl = resolveNavigationEventUrl(
+              eventUrl: change.url!,
+              controllerUrl: null,
+              pendingUrl: tab.pendingNavigationUrl,
+              previousUrl: tab.pendingNavigationSourceUrl,
+            );
             setState(() {
-              tab.currentUrl = change.url!;
-              tab.urlController.text = change.url!;
+              tab.currentUrl = actualUrl;
+              tab.urlController.text = actualUrl;
+              if (_urlsShareSite(actualUrl, tab.pendingNavigationUrl)) {
+                tab.pendingNavigationUrl = null;
+                tab.pendingNavigationSourceUrl = null;
+              }
             });
           }
           unawaited(_syncTabMediaState(tab));
         },
         onPageStarted: (url) async {
-          if (identical(tab, activeTab)) {
+          if (_isLiveTab(tab) && identical(tab, activeTab)) {
             unawaited(_setPageRequestedWindowFullscreen(tab, false));
           }
-          if (!tab.isClosed) {
-            final actualUrl = await tab.webViewController?.currentUrl() ?? url;
-            if (mounted) {
-              setState(() {
-                tab.currentUrl = actualUrl;
-                tab.urlController.text = tab.currentUrl;
-                tab.state = const BrowserState.loading();
-                tab.pageTitle = null;
-                tab.hasUserInteractedWithPage = false;
-                tab.hasMediaPlaying = false;
-                tab.isMuted = false;
-                tab.detectedBrightness = null;
-                tab.detectedSeedColor = null;
-                tab.ambientSeedColor = null;
-                tab.lastAmbientProbeAt = null;
-                final host = _hostFromUrl(actualUrl);
-                final nextFavicon = host != null
-                    ? (_faviconCacheByHost[host] ??
-                        _defaultFaviconUrlFor(actualUrl))
-                    : _defaultFaviconUrlFor(actualUrl);
-                if (nextFavicon != null && nextFavicon.isNotEmpty) {
-                  tab.faviconUrl = nextFavicon;
-                }
-                _recordHistory(tab, tab.currentUrl);
-              });
+          if (!_isLiveTab(tab)) return;
+          final controllerUrl = await tab.webViewController?.currentUrl();
+          if (!_isLiveTab(tab)) return;
+          final actualUrl = resolveNavigationEventUrl(
+            eventUrl: url,
+            controllerUrl: controllerUrl,
+            pendingUrl: tab.pendingNavigationUrl,
+            previousUrl: tab.pendingNavigationSourceUrl,
+          );
+          setState(() {
+            tab.currentUrl = actualUrl;
+            tab.urlController.text = tab.currentUrl;
+            tab.state = const BrowserState.loading();
+            tab.pageTitle = null;
+            tab.hasUserInteractedWithPage = false;
+            tab.hasMediaPlaying = false;
+            tab.isMuted = false;
+            tab.detectedBrightness = null;
+            tab.detectedSeedColor = null;
+            tab.ambientSeedColor = null;
+            tab.lastAmbientProbeAt = null;
+            final host = _hostFromUrl(actualUrl);
+            final nextFavicon = host != null
+                ? (_faviconCacheByHost[host] ?? _defaultFaviconUrlFor(actualUrl))
+                : _defaultFaviconUrlFor(actualUrl);
+            if (nextFavicon != null && nextFavicon.isNotEmpty) {
+              tab.faviconUrl = nextFavicon;
             }
-            _syncPagePointerEvents(tab);
-            _ensurePageTapListenerInstalled(tab);
-            _installInitialFocusInterceptor(tab);
-            _clearUnwantedInitialPageFocus(tab);
-          }
+            _recordHistory(tab, tab.currentUrl);
+          });
+          _syncPagePointerEvents(tab);
+          _ensurePageTapListenerInstalled(tab);
+          _installInitialFocusInterceptor(tab);
+          _clearUnwantedInitialPageFocus(tab);
         },
         onPageFinished: (url) async {
-          final actualUrl = await tab.webViewController?.currentUrl() ?? url;
+          if (!_isLiveTab(tab)) return;
+          final controllerUrl = await tab.webViewController?.currentUrl();
+          if (!_isLiveTab(tab)) return;
+          final actualUrl = resolveNavigationEventUrl(
+            eventUrl: url,
+            controllerUrl: controllerUrl,
+            pendingUrl: tab.pendingNavigationUrl,
+            previousUrl: tab.pendingNavigationSourceUrl,
+          );
           tab.hideStaleWebViewUntilPageFinish = false;
           unawaited(_syncTabMediaState(tab));
-          if (mounted) {
-            setState(() {
-              if (tab.state is! BrowserError) {
-                tab.state = BrowserState.success(actualUrl);
-              }
-            });
-          }
-          if (identical(tab, activeTab)) {
+          setState(() {
+            tab.currentUrl = actualUrl;
+            tab.urlController.text = actualUrl;
+            tab.pendingNavigationUrl = null;
+            tab.pendingNavigationSourceUrl = null;
+            if (tab.state is! BrowserError) {
+              tab.state = BrowserState.success(actualUrl);
+            }
+          });
+          if (_isLiveTab(tab) && identical(tab, activeTab)) {
             _setActiveTabUrlObscured(false);
             _maybeScheduleAddressBarAutoHide(tab, revealImmediately: true);
           }
           // Add listeners for SPA navigations: popstate, pushState, replaceState
-          if (tab.webViewController != null) {
+          if (_isLiveTab(tab) && tab.webViewController != null) {
             tab.webViewController!.runJavaScript('''
             if (!window.historyListenerAdded) {
               window.addEventListener('popstate', function(event) {
@@ -7255,14 +7393,14 @@ class _BrowserPageState extends State<BrowserPage>
           _installInitialFocusInterceptor(tab);
           _clearUnwantedInitialPageFocus(tab);
           Future.delayed(const Duration(milliseconds: 400), () {
-            if (!mounted) return;
+            if (!_isLiveTab(tab)) return;
             _installInitialFocusInterceptor(tab);
             _clearUnwantedInitialPageFocus(tab);
             _updateThemeFromTab(tab);
             _updateAmbientFromTab(tab);
           });
           Future.delayed(const Duration(milliseconds: 1200), () {
-            if (!mounted) return;
+            if (!_isLiveTab(tab)) return;
             _installInitialFocusInterceptor(tab);
             _clearUnwantedInitialPageFocus(tab);
             _updateThemeFromTab(tab);
