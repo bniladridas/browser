@@ -490,6 +490,7 @@ class SettingsDialog extends HookWidget {
     this.advancedCacheEnabled = false,
     this.ambientToolbarEnabled = false,
     this.autoHideAddressBarEnabled = false,
+    this.onOpenHelp,
   });
 
   final void Function()? onSettingsChanged;
@@ -502,6 +503,7 @@ class SettingsDialog extends HookWidget {
   final bool advancedCacheEnabled;
   final bool ambientToolbarEnabled;
   final bool autoHideAddressBarEnabled;
+  final void Function()? onOpenHelp;
 
   String _themeLabel(AppThemeMode mode) {
     switch (mode) {
@@ -932,8 +934,7 @@ class SettingsDialog extends HookWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 16),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: DecoratedBox(
@@ -981,10 +982,6 @@ class SettingsDialog extends HookWidget {
                     ),
                   ),
                   const SizedBox(height: 10),
-                  Divider(
-                    height: 1,
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.10),
-                  ),
                   MouseRegion(
                     cursor: SystemMouseCursors.click,
                     child: SwitchListTile(
@@ -1134,14 +1131,7 @@ class SettingsDialog extends HookWidget {
                       hoverColor: Colors.transparent,
                     ),
                   ),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      'Theme',
-                      style: theme.textTheme.bodyMedium?.copyWith(fontSize: 12),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 10),
                   Wrap(
                     spacing: 6,
                     runSpacing: 6,
@@ -1172,7 +1162,7 @@ class SettingsDialog extends HookWidget {
                       );
                     }).toList(),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 10),
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(
@@ -1414,25 +1404,12 @@ class SettingsDialog extends HookWidget {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  Divider(
-                    height: 1,
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.10),
-                  ),
-                  const SizedBox(height: 12),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      'Updates',
-                      style: theme.textTheme.titleSmall?.copyWith(fontSize: 12),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 10),
                   ListTile(
                     title: Text(
                       effectiveUpdateInfo != null
                           ? 'v${effectiveUpdateInfo.version}'
-                          : 'Check for Updates',
+                          : 'Updates',
                       style: theme.textTheme.bodyMedium,
                     ),
                     trailing: effectiveUpdateInfo != null
@@ -1458,6 +1435,28 @@ class SettingsDialog extends HookWidget {
                                   isCheckingUpdate.value ? null : checkUpdate,
                             ),
                           ),
+                  ),
+                  const SizedBox(height: 10),
+                  MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: GestureDetector(
+                      onTap: () {
+                        Navigator.of(context).pop(false);
+                        onOpenHelp?.call();
+                      },
+                      child: Column(
+                        children: [
+                          Image.asset(
+                            'assets/icons/menu_bar_icon.png',
+                            width: 24,
+                            height: 24,
+                            errorBuilder: (context, error, stackTrace) =>
+                                const Icon(Icons.menu, size: 24),
+                          ),
+                          const SizedBox(height: 4),
+                        ],
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -1630,9 +1629,11 @@ class SettingsDialog extends HookWidget {
                                         ?.copyWith(fontSize: 12),
                                   ),
                                 ),
-                              ],
-                            ),
-                          ],
+],
+                      ),
+                      const SizedBox(height: 4),
+                      const SizedBox.shrink(),
+                    ],
                         ),
                         actions: [
                           TextButton(
@@ -4685,7 +4686,7 @@ class _BrowserPageState extends State<BrowserPage>
   String _tabTitleForDisplay(TabData tab) {
     final normalized = _normalizeTabTitle(tab.pageTitle);
     if (normalized.isNotEmpty) return normalized;
-    if (tab.currentUrl == defaultHomepageUrl) return 'Home';
+    if (tab.currentUrl == defaultHomepageUrl) return '';
     return _tabFallbackTitleFromUrl(tab.currentUrl);
   }
 
@@ -5837,6 +5838,7 @@ class _BrowserPageState extends State<BrowserPage>
                 aiAvailable: widget.aiAvailable,
                 ambientToolbarEnabled: widget.ambientToolbarEnabled,
                 autoHideAddressBarEnabled: widget.autoHideAddressBarEnabled,
+                onOpenHelp: () => _loadUrl('https://bniladridas.github.io/browser/features.html'),
               ),
             ),
           );

@@ -124,6 +124,7 @@ flutter:
   # see https://flutter.dev/to/font-from-package
   assets:
     - assets/ad_blockers.json
+    - assets/icons/menu_bar_icon.png
     - assets/legacy_layout_fix.js
     - assets/whats_new.json
     - assets/whats_new_template.txt
