@@ -44,6 +44,41 @@ void main() {
     });
   });
 
+  group('resolveNavigationEventUrl', () {
+    test('prefers navigation event URL over stale controller URL', () {
+      final resolved = resolveNavigationEventUrl(
+        eventUrl: 'https://www.apple.com/',
+        controllerUrl: 'https://about.gitlab.com/',
+        pendingUrl: 'https://www.apple.com/',
+        previousUrl: 'https://about.gitlab.com/',
+      );
+
+      expect(resolved, 'https://www.apple.com/');
+    });
+
+    test('falls back to controller URL when event URL is about:blank', () {
+      final resolved = resolveNavigationEventUrl(
+        eventUrl: 'about:blank',
+        controllerUrl: 'https://www.apple.com/',
+        pendingUrl: 'https://www.apple.com/',
+        previousUrl: 'https://about.gitlab.com/',
+      );
+
+      expect(resolved, 'https://www.apple.com/');
+    });
+
+    test('prefers pending URL when callback still reports previous site', () {
+      final resolved = resolveNavigationEventUrl(
+        eventUrl: 'https://about.gitlab.com/',
+        controllerUrl: null,
+        pendingUrl: 'https://apple.com/',
+        previousUrl: 'https://about.gitlab.com/',
+      );
+
+      expect(resolved, 'https://apple.com/');
+    });
+  });
+
   group('FaviconUrlPolicy', () {
     test('parses escaped JS string favicon result', () {
       final resolved = FaviconUrlPolicy.resolveFaviconFromJsResult(
