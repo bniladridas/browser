@@ -215,5 +215,8 @@
   ],
   "1.26.3": [
     "include help button to settings dialog linking to features page."
+  ],
+  "1.26.4": [
+    "include GitLab back fallback to handle broken history navigation from about.gitlab.com."
   ]
 }
