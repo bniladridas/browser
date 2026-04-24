@@ -79,6 +79,45 @@ void main() {
     });
   });
 
+  group('gitlab back fallback', () {
+    test('trims current url from history before fallback', () {
+      final trimmed = trimCurrentUrlFromHistory(
+        const [
+          'https://about.gitlab.com/',
+          'https://github.com/bniladridas/browser',
+          'https://github.com/bniladridas/browser',
+        ],
+        currentUrl: 'https://github.com/bniladridas/browser',
+      );
+
+      expect(trimmed, const ['https://about.gitlab.com/']);
+    });
+
+    test('uses manual fallback when previous distinct entry is gitlab', () {
+      final shouldFallback = shouldUseGitLabBackFallback(
+        currentUrl: 'https://github.com/bniladridas/browser',
+        history: const [
+          'https://about.gitlab.com/',
+          'https://github.com/bniladridas/browser',
+        ],
+      );
+
+      expect(shouldFallback, isTrue);
+    });
+
+    test('does not use fallback for non-gitlab previous entry', () {
+      final shouldFallback = shouldUseGitLabBackFallback(
+        currentUrl: 'https://github.com/bniladridas/browser',
+        history: const [
+          'https://www.apple.com/',
+          'https://github.com/bniladridas/browser',
+        ],
+      );
+
+      expect(shouldFallback, isFalse);
+    });
+  });
+
   group('FaviconUrlPolicy', () {
     test('parses escaped JS string favicon result', () {
       final resolved = FaviconUrlPolicy.resolveFaviconFromJsResult(
