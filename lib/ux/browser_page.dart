@@ -192,6 +192,50 @@ bool _urlsShareSite(String? firstUrl, String? secondUrl) {
   return firstKey == secondKey;
 }
 
+@visibleForTesting
+List<String> trimCurrentUrlFromHistory(List<String> history,
+    {required String currentUrl}) {
+  final normalizedCurrent = currentUrl.trim();
+  final trimmed = List<String>.from(history);
+  while (trimmed.isNotEmpty) {
+    final candidate = trimmed.last.trim();
+    if (candidate.isEmpty || candidate == normalizedCurrent) {
+      trimmed.removeLast();
+      continue;
+    }
+    break;
+  }
+  return trimmed;
+}
+
+@visibleForTesting
+bool shouldUseGitLabBackFallback({
+  required String currentUrl,
+  required List<String> history,
+}) {
+  if (history.isEmpty) return false;
+
+  final normalizedCurrent = currentUrl.trim();
+  String? previousDistinctUrl;
+
+  for (var i = history.length - 1; i >= 0; i--) {
+    final candidate = history[i].trim();
+    if (candidate.isEmpty || candidate == normalizedCurrent) continue;
+    previousDistinctUrl = candidate;
+    break;
+  }
+
+  if (previousDistinctUrl == null) return false;
+  final previousUri = Uri.tryParse(previousDistinctUrl);
+  if (previousUri == null) return false;
+
+  final isGitLabAbout = previousUri.scheme == 'https' &&
+      previousUri.host.toLowerCase() == 'about.gitlab.com';
+  if (!isGitLabAbout) return false;
+
+  return !_urlsShareSite(currentUrl, previousDistinctUrl);
+}
+
 class MediaPlaybackState {
   const MediaPlaybackState({required this.hasPlayingMedia});
 
@@ -1629,11 +1673,11 @@ class SettingsDialog extends HookWidget {
                                         ?.copyWith(fontSize: 12),
                                   ),
                                 ),
-],
-                      ),
-                      const SizedBox(height: 4),
-                      const SizedBox.shrink(),
-                    ],
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            const SizedBox.shrink(),
+                          ],
                         ),
                         actions: [
                           TextButton(
@@ -5444,6 +5488,24 @@ class _BrowserPageState extends State<BrowserPage>
 
   Future<void> _goBack() async {
     try {
+      if (shouldUseGitLabBackFallback(
+        currentUrl: activeTab.currentUrl,
+        history: activeTab.history,
+      )) {
+        final trimmedHistory = trimCurrentUrlFromHistory(
+          activeTab.history,
+          currentUrl: activeTab.currentUrl,
+        );
+        final previousUrl =
+            trimmedHistory.reversed.map((entry) => entry.trim()).firstWhere(
+                  (entry) => entry.isNotEmpty,
+                );
+        activeTab.history
+          ..clear()
+          ..addAll(trimmedHistory);
+        await _loadUrl(previousUrl);
+        return;
+      }
       if (await activeTab.webViewController?.canGoBack() ?? false) {
         await activeTab.webViewController?.goBack();
         activeTab.forwardUrl =
@@ -5838,7 +5900,8 @@ class _BrowserPageState extends State<BrowserPage>
                 aiAvailable: widget.aiAvailable,
                 ambientToolbarEnabled: widget.ambientToolbarEnabled,
                 autoHideAddressBarEnabled: widget.autoHideAddressBarEnabled,
-                onOpenHelp: () => _loadUrl('https://bniladridas.github.io/browser/features.html'),
+                onOpenHelp: () => _loadUrl(
+                    'https://bniladridas.github.io/browser/features.html'),
               ),
             ),
           );
@@ -7312,7 +7375,8 @@ class _BrowserPageState extends State<BrowserPage>
             tab.lastAmbientProbeAt = null;
             final host = _hostFromUrl(actualUrl);
             final nextFavicon = host != null
-                ? (_faviconCacheByHost[host] ?? _defaultFaviconUrlFor(actualUrl))
+                ? (_faviconCacheByHost[host] ??
+                    _defaultFaviconUrlFor(actualUrl))
                 : _defaultFaviconUrlFor(actualUrl);
             if (nextFavicon != null && nextFavicon.isNotEmpty) {
               tab.faviconUrl = nextFavicon;
