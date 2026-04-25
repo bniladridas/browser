@@ -2068,6 +2068,7 @@ class TabData {
   Color? detectedSeedColor;
   Color? ambientSeedColor;
   DateTime? lastAmbientProbeAt;
+  double scrollOffset = 0;
   SavePasswordPromptData? pendingPasswordPrompt;
   String? faviconUrl;
   String? pendingNavigationUrl;
@@ -7315,6 +7316,16 @@ class _BrowserPageState extends State<BrowserPage>
           onMessageReceived: (JavaScriptMessage message) async {
         _handleWebAuthnMessage(tab, message.message);
       });
+      tab.webViewController!.addJavaScriptChannel('ScrollOffsetChannel',
+          onMessageReceived: (JavaScriptMessage message) {
+        if (!mounted || tab.isClosed) return;
+        final offset = double.tryParse(message.message) ?? 0;
+        if (tab.scrollOffset != offset) {
+          setState(() {
+            tab.scrollOffset = offset;
+          });
+        }
+      });
       tab.webViewController!.addJavaScriptChannel('MediaStateChannel',
           onMessageReceived: (JavaScriptMessage message) {
         final playbackState = parseMediaPlaybackStateMessage(message.message);
@@ -7439,6 +7450,18 @@ class _BrowserPageState extends State<BrowserPage>
               };
               window.addEventListener('pointerdown', notifyTap, true);
               window.pageTapListenerAdded = true;
+            }
+            if (!window.scrollOffsetListenerAdded) {
+              let lastScrollOffset = 0;
+              const notifyScroll = function() {
+                const offset = window.pageYOffset || document.documentElement.scrollTop || 0;
+                if (Math.abs(offset - lastScrollOffset) > 5) {
+                  lastScrollOffset = offset;
+                  try { ScrollOffsetChannel.postMessage(String(offset)); } catch (_) {}
+                }
+              };
+              window.addEventListener('scroll', notifyScroll, { passive: true });
+              window.scrollOffsetListenerAdded = true;
             }
           ''');
             unawaited(_installFullscreenBridge(tab));
@@ -7760,11 +7783,14 @@ class _BrowserPageState extends State<BrowserPage>
     final double topToolbarInset =
         (isMacDesktop && !widget.hideAppBar) ? _kMacOsTopToolbarInset : 0.0;
     final useAmbient = _ambientActive;
+    final scrollOffset = activeTab.scrollOffset;
+    final hasScrolled = scrollOffset > 50;
+    final scrollProgress = hasScrolled ? ((scrollOffset - 50) / 100).clamp(0.0, 1.0) : 0.0;
     final toolbarPillColor = useAmbient
-        ? theme.colorScheme.surfaceContainerHigh.withValues(alpha: 0.65)
+        ? theme.colorScheme.surfaceContainerHigh.withValues(alpha: 0.65 + (scrollProgress * 0.35))
         : theme.colorScheme.surfaceContainerHigh;
     final addressPillColor = useAmbient
-        ? theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.65)
+        ? theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.65 + (scrollProgress * 0.35))
         : theme.colorScheme.surfaceContainerHighest;
     final toolbarForeground = useAmbient
         ? theme.colorScheme.onSurface.withValues(alpha: 0.90)
@@ -7783,7 +7809,21 @@ class _BrowserPageState extends State<BrowserPage>
                 : theme.appBarTheme.backgroundColor,
             elevation: 0,
             scrolledUnderElevation: 0,
-            flexibleSpace: null,
+            flexibleSpace: useAmbient && hasScrolled
+                ? Container(
+                    decoration: BoxDecoration(
+                      boxShadow: [
+                        BoxShadow(
+                          color: theme.colorScheme.secondary.withValues(
+                            alpha: 0.25 * scrollProgress,
+                          ),
+                          blurRadius: 30,
+                          spreadRadius: -10,
+                        ),
+                      ],
+                    ),
+                  )
+                : null,
             actions: [
               Container(
                 margin: const EdgeInsets.symmetric(horizontal: 2),
