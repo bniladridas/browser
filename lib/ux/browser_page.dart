@@ -7262,6 +7262,42 @@ class _BrowserPageState extends State<BrowserPage>
         _updateThemeFromTab(tab);
         _updateAmbientFromTab(tab);
       });
+      tab.webViewController!.addJavaScriptChannel('TitleChangeChannel',
+          onMessageReceived: (JavaScriptMessage message) {
+        final payload = message.message;
+        String? title;
+        String? url;
+        try {
+          final decoded = jsonDecode(payload);
+          if (decoded is Map) {
+            final decodedTitle = decoded['title'];
+            if (decodedTitle is String && decodedTitle.trim().isNotEmpty) {
+              title = decodedTitle;
+            }
+            final decodedUrl = decoded['url'];
+            if (decodedUrl is String && decodedUrl.trim().isNotEmpty) {
+              url = decodedUrl;
+            }
+          }
+        } catch (_) {
+          title = payload;
+        }
+        if (url != null && !_isValidHistoryUrl(url)) {
+          logger.w(
+            'Blocked invalid URL from TitleChangeChannel: ${_sanitizeUrlForLog(url)}',
+          );
+          return;
+        }
+        final normalizedTitle = _normalizeTabTitle(title);
+        if (normalizedTitle.isEmpty || tab.isClosed || !mounted) return;
+        setState(() {
+          if (url != null && tab.currentUrl != url) {
+            tab.currentUrl = url;
+            tab.urlController.text = url;
+          }
+          tab.pageTitle = normalizedTitle;
+        });
+      });
       tab.webViewController!.addJavaScriptChannel('PageTapChannel',
           onMessageReceived: (JavaScriptMessage message) {
         if (!mounted || tab.isClosed) return;
@@ -7428,20 +7464,50 @@ class _BrowserPageState extends State<BrowserPage>
           if (_isLiveTab(tab) && tab.webViewController != null) {
             tab.webViewController!.runJavaScript('''
             if (!window.historyListenerAdded) {
+              const postHistoryUpdate = function() {
+                HistoryChannel.postMessage(JSON.stringify({
+                  url: window.location.href,
+                  title: document.title || ''
+                }));
+              };
+              const postTitleUpdate = function() {
+                TitleChangeChannel.postMessage(JSON.stringify({
+                  url: window.location.href,
+                  title: document.title || ''
+                }));
+              };
+              const scheduleHistoryUpdate = function() {
+                postHistoryUpdate();
+                setTimeout(postTitleUpdate, 0);
+                requestAnimationFrame(postTitleUpdate);
+                setTimeout(postTitleUpdate, 150);
+              };
               window.addEventListener('popstate', function(event) {
-                HistoryChannel.postMessage(JSON.stringify({ url: window.location.href, title: document.title || '' }));
+                scheduleHistoryUpdate();
               });
               // Override pushState and replaceState to capture programmatic changes
               window.originalPushState = window.history.pushState;
               window.history.pushState = function(state, title, url) {
                 window.originalPushState.call(this, state, title, url);
-                HistoryChannel.postMessage(JSON.stringify({ url: window.location.href, title: document.title || '' }));
+                scheduleHistoryUpdate();
               };
               window.originalReplaceState = window.history.replaceState;
               window.history.replaceState = function(state, title, url) {
                 window.originalReplaceState.call(this, state, title, url);
-                HistoryChannel.postMessage(JSON.stringify({ url: window.location.href, title: document.title || '' }));
+                scheduleHistoryUpdate();
               };
+              const titleTarget = document.querySelector('title') || document.head;
+              if (titleTarget && !window.titleObserverAdded) {
+                new MutationObserver(function() {
+                  postTitleUpdate();
+                }).observe(titleTarget, {
+                  childList: true,
+                  subtree: true,
+                  characterData: true,
+                });
+                window.titleObserverAdded = true;
+              }
+              postTitleUpdate();
               window.historyListenerAdded = true;
             }
             if (!window.pageTapListenerAdded) {
@@ -7785,12 +7851,15 @@ class _BrowserPageState extends State<BrowserPage>
     final useAmbient = _ambientActive;
     final scrollOffset = activeTab.scrollOffset;
     final hasScrolled = scrollOffset > 50;
-    final scrollProgress = hasScrolled ? ((scrollOffset - 50) / 100).clamp(0.0, 1.0) : 0.0;
+    final scrollProgress =
+        hasScrolled ? ((scrollOffset - 50) / 100).clamp(0.0, 1.0) : 0.0;
     final toolbarPillColor = useAmbient
-        ? theme.colorScheme.surfaceContainerHigh.withValues(alpha: 0.65 + (scrollProgress * 0.35))
+        ? theme.colorScheme.surfaceContainerHigh
+            .withValues(alpha: 0.65 + (scrollProgress * 0.35))
         : theme.colorScheme.surfaceContainerHigh;
     final addressPillColor = useAmbient
-        ? theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.65 + (scrollProgress * 0.35))
+        ? theme.colorScheme.surfaceContainerHighest
+            .withValues(alpha: 0.65 + (scrollProgress * 0.35))
         : theme.colorScheme.surfaceContainerHighest;
     final toolbarForeground = useAmbient
         ? theme.colorScheme.onSurface.withValues(alpha: 0.90)
