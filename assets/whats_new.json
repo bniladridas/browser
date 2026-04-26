@@ -221,5 +221,8 @@
   ],
   "1.27.0": [
     "increase ambient toolbar opacity and include glow shadow on scroll."
+  ],
+  "1.27.1": [
+    "include TitleChangeChannel and MutationObserver to capture dynamic page title updates."
   ]
 }
