@@ -224,5 +224,8 @@
   ],
   "1.27.1": [
     "include TitleChangeChannel and MutationObserver to capture dynamic page title updates."
+  ],
+  "1.28.0": [
+    "redesign AI chat as ambient-aware floating panel with bubble layout, starter prompts, and animated transitions."
   ]
 }
