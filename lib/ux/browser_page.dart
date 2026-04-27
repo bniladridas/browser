@@ -6416,10 +6416,52 @@ class _BrowserPageState extends State<BrowserPage>
       debugPrint('Error fetching page info: $e');
     }
     await _showWithModalInteractionBlock<void>(
-      () => showDialog(
+      () => showGeneralDialog<void>(
         context: context,
-        builder: (context) =>
-            AiChatWidget(pageTitle: pageTitle, pageUrl: pageUrl),
+        barrierDismissible: true,
+        barrierLabel: 'AI Chat',
+        barrierColor: _ambientActive
+            ? Theme.of(context).colorScheme.surface.withValues(alpha: 0.16)
+            : Colors.black54,
+        transitionDuration: const Duration(milliseconds: 200),
+        transitionBuilder: (context, animation, secondaryAnimation, child) {
+          final curved = CurvedAnimation(
+            parent: animation,
+            curve: Curves.easeOutCubic,
+            reverseCurve: Curves.easeInCubic,
+          );
+          return FadeTransition(
+            opacity: curved,
+            child: SlideTransition(
+              position: Tween<Offset>(
+                begin: const Offset(0, 0.035),
+                end: Offset.zero,
+              ).animate(curved),
+              child: ScaleTransition(
+                scale: Tween<double>(begin: 0.975, end: 1.0).animate(curved),
+                child: child,
+              ),
+            ),
+          );
+        },
+        pageBuilder: (context, animation, secondaryAnimation) {
+          final topOffset = widget.hideAppBar ? 18.0 : 78.0;
+          return SafeArea(
+            child: Align(
+              alignment: Alignment.topRight,
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(12, topOffset, 24, 12),
+                child: AiChatWidget(
+                  pageTitle: pageTitle,
+                  pageUrl: pageUrl,
+                  ambientEnabled: _ambientActive,
+                  accentColor:
+                      activeTab.ambientSeedColor ?? activeTab.detectedSeedColor,
+                ),
+              ),
+            ),
+          );
+        },
       ),
     );
   }
