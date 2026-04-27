@@ -2918,6 +2918,99 @@ class _BrowserPageState extends State<BrowserPage>
     final controller = tab.webViewController;
     if (controller == null) return;
 
+    await controller.setOnJavaScriptAlertDialog((request) async {
+      if (!mounted || tab.isClosed) return;
+      await _showWithModalInteractionBlock<void>(
+        () => showDialog<void>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title:
+                Text(_javaScriptDialogTitle(request.url, fallback: 'Message')),
+            content: Text(request.message),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        ),
+      );
+    });
+
+    await controller.setOnJavaScriptConfirmDialog((request) async {
+      if (!mounted || tab.isClosed) return false;
+      final confirmed = await _showWithModalInteractionBlock<bool>(
+        () => showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title:
+                Text(_javaScriptDialogTitle(request.url, fallback: 'Confirm')),
+            content: Text(request.message),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(true),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        ),
+      );
+      return confirmed ?? false;
+    });
+
+    await controller.setOnJavaScriptTextInputDialog((request) async {
+      if (!mounted || tab.isClosed) return request.defaultText ?? '';
+      final textController =
+          TextEditingController(text: request.defaultText ?? '');
+      try {
+        final response = await _showWithModalInteractionBlock<String>(
+          () => showDialog<String>(
+            context: context,
+            builder: (dialogContext) => AlertDialog(
+              title:
+                  Text(_javaScriptDialogTitle(request.url, fallback: 'Input')),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (request.message.trim().isNotEmpty) ...[
+                    Text(request.message),
+                    const SizedBox(height: 12),
+                  ],
+                  TextField(
+                    controller: textController,
+                    autofocus: true,
+                    onSubmitted: (value) {
+                      Navigator.of(dialogContext).pop(value);
+                    },
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(null),
+                  child: const Text('Cancel'),
+                ),
+                TextButton(
+                  onPressed: () =>
+                      Navigator.of(dialogContext).pop(textController.text),
+                  child: const Text('OK'),
+                ),
+              ],
+            ),
+          ),
+        );
+        return response ?? '';
+      } finally {
+        textController.dispose();
+      }
+    });
+
     if (controller.platform is AndroidWebViewController) {
       final androidController = controller.platform as AndroidWebViewController;
       await androidController.setCustomWidgetCallbacks(
@@ -2942,6 +3035,15 @@ class _BrowserPageState extends State<BrowserPage>
     }
 
     await _installFullscreenBridge(tab);
+  }
+
+  String _javaScriptDialogTitle(String sourceUrl, {required String fallback}) {
+    final host = Uri.tryParse(sourceUrl)?.host.trim();
+    if (host == null || host.isEmpty) {
+      return fallback;
+    }
+    final compactHost = host.startsWith('www.') ? host.substring(4) : host;
+    return '$compactHost says';
   }
 
   bool get _isDesktopPlatform =>
