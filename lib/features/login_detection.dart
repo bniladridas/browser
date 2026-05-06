@@ -26,7 +26,7 @@ class LoginCredentials {
 
 const String loginDetectionScript = '''
 (function() {
-  if (window.loginDetectorInstalled) return;
+  if (window.loginDetectorInstalled) return true;
   window.loginDetectorInstalled = true;
 
   function detectPasswordFields() {
@@ -57,5 +57,6 @@ const String loginDetectionScript = '''
 
   const observer = new MutationObserver(detectPasswordFields);
   observer.observe(document.body, { childList: true, subtree: true });
+  return true;
 })();
 ''';

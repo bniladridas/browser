@@ -32,7 +32,7 @@ const String webAuthnScript = '''
     if (window.WebAuthnChannel) {
       window.WebAuthnChannel.postMessage('WebAuthn not supported');
     }
-    return;
+    return true;
   }
 
   if (window.WebAuthnChannel) {
@@ -149,5 +149,6 @@ const String webAuthnScript = '''
   if (window.WebAuthnChannel) {
     window.WebAuthnChannel.postMessage('WebAuthn interceptors installed');
   }
+  return true;
 })();
 ''';
