@@ -230,5 +230,8 @@
   ],
   "1.28.1": [
     "implement native JavaScript alert, confirm, and prompt dialog handlers with host-aware titles."
+  ],
+  "1.28.2": [
+    "remove stale WebKit workaround and restore home back behavior."
   ]
 }
