@@ -79,42 +79,35 @@ void main() {
     });
   });
 
-  group('gitlab back fallback', () {
-    test('trims current url from history before fallback', () {
-      final trimmed = trimCurrentUrlFromHistory(
-        const [
-          'https://about.gitlab.com/',
-          'https://github.com/bniladridas/browser',
-          'https://github.com/bniladridas/browser',
-        ],
-        currentUrl: 'https://github.com/bniladridas/browser',
+  group('shouldReturnHomeOnBack', () {
+    test('returns true for the first site family launched from home', () {
+      final shouldReturnHome = shouldReturnHomeOnBack(
+        currentUrl: 'https://gitlab.com/groups/project/-/issues',
+        homeUrl: 'about:browser-home',
+        homeLaunchedSiteFamily: 'gitlab.com',
       );
 
-      expect(trimmed, const ['https://about.gitlab.com/']);
+      expect(shouldReturnHome, isTrue);
     });
 
-    test('uses manual fallback when previous distinct entry is gitlab', () {
-      final shouldFallback = shouldUseGitLabBackFallback(
-        currentUrl: 'https://github.com/bniladridas/browser',
-        history: const [
-          'https://about.gitlab.com/',
-          'https://github.com/bniladridas/browser',
-        ],
+    test('returns false for a different site family', () {
+      final shouldReturnHome = shouldReturnHomeOnBack(
+        currentUrl: 'https://www.apple.com/',
+        homeUrl: 'about:browser-home',
+        homeLaunchedSiteFamily: 'gitlab.com',
       );
 
-      expect(shouldFallback, isTrue);
+      expect(shouldReturnHome, isFalse);
     });
 
-    test('does not use fallback for non-gitlab previous entry', () {
-      final shouldFallback = shouldUseGitLabBackFallback(
-        currentUrl: 'https://github.com/bniladridas/browser',
-        history: const [
-          'https://www.apple.com/',
-          'https://github.com/bniladridas/browser',
-        ],
+    test('returns false when home is not the internal browser home', () {
+      final shouldReturnHome = shouldReturnHomeOnBack(
+        currentUrl: 'https://gitlab.com/',
+        homeUrl: 'https://example.com/',
+        homeLaunchedSiteFamily: 'gitlab.com',
       );
 
-      expect(shouldFallback, isFalse);
+      expect(shouldReturnHome, isFalse);
     });
   });
 

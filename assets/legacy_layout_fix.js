@@ -1,7 +1,7 @@
 (() => {
   const flag = '__browserLegacyLayoutFixInstalled';
   if (window[flag]) {
-    return;
+    return true;
   }
   window[flag] = true;
 
@@ -124,4 +124,5 @@
   const LATE_FIX_DELAY_MS = 1200;
   setTimeout(scheduleFix, INITIAL_FIX_DELAY_MS);
   setTimeout(scheduleFix, LATE_FIX_DELAY_MS);
+  return true;
 })();

@@ -192,48 +192,32 @@ bool _urlsShareSite(String? firstUrl, String? secondUrl) {
   return firstKey == secondKey;
 }
 
-@visibleForTesting
-List<String> trimCurrentUrlFromHistory(List<String> history,
-    {required String currentUrl}) {
-  final normalizedCurrent = currentUrl.trim();
-  final trimmed = List<String>.from(history);
-  while (trimmed.isNotEmpty) {
-    final candidate = trimmed.last.trim();
-    if (candidate.isEmpty || candidate == normalizedCurrent) {
-      trimmed.removeLast();
-      continue;
-    }
-    break;
-  }
-  return trimmed;
+String? _siteFamilyKeyForUrl(String? rawUrl) {
+  final siteKey = _siteKeyForUrl(rawUrl);
+  if (siteKey == null || siteKey.isEmpty) return null;
+  if (!siteKey.contains('.')) return siteKey;
+  final parts = siteKey.split('.');
+  if (parts.length < 2) return siteKey;
+  return '${parts[parts.length - 2]}.${parts[parts.length - 1]}';
 }
 
 @visibleForTesting
-bool shouldUseGitLabBackFallback({
+bool shouldReturnHomeOnBack({
   required String currentUrl,
-  required List<String> history,
+  required String homeUrl,
+  required String? homeLaunchedSiteFamily,
 }) {
-  if (history.isEmpty) return false;
-
-  final normalizedCurrent = currentUrl.trim();
-  String? previousDistinctUrl;
-
-  for (var i = history.length - 1; i >= 0; i--) {
-    final candidate = history[i].trim();
-    if (candidate.isEmpty || candidate == normalizedCurrent) continue;
-    previousDistinctUrl = candidate;
-    break;
+  if (homeUrl.trim() != defaultHomepageUrl) {
+    return false;
   }
-
-  if (previousDistinctUrl == null) return false;
-  final previousUri = Uri.tryParse(previousDistinctUrl);
-  if (previousUri == null) return false;
-
-  final isGitLabAbout = previousUri.scheme == 'https' &&
-      previousUri.host.toLowerCase() == 'about.gitlab.com';
-  if (!isGitLabAbout) return false;
-
-  return !_urlsShareSite(currentUrl, previousDistinctUrl);
+  final normalizedCurrent = currentUrl.trim();
+  if (normalizedCurrent.isEmpty || normalizedCurrent == defaultHomepageUrl) {
+    return false;
+  }
+  if (homeLaunchedSiteFamily == null || homeLaunchedSiteFamily.isEmpty) {
+    return false;
+  }
+  return _siteFamilyKeyForUrl(normalizedCurrent) == homeLaunchedSiteFamily;
 }
 
 class MediaPlaybackState {
@@ -350,6 +334,7 @@ String buildMediaBridgeScript({required bool muted}) {
         }, 250);
       }
       reportPlaybackState();
+      return true;
     })();
   ''';
 }
@@ -2074,6 +2059,7 @@ class TabData {
   String? pendingNavigationUrl;
   String? pendingNavigationSourceUrl;
   String? forwardUrl; // URL to go forward to when on home page
+  String? homeLaunchedSiteFamily;
   bool hideStaleWebViewUntilPageFinish = false;
   bool pageRequestedWindowFullscreen = false;
   bool windowWasFullscreenBeforePageRequest = false;
@@ -2459,14 +2445,20 @@ class _BrowserPageState extends State<BrowserPage>
       style.textContent = 'html, body, body * { pointer-events: none !important; }';
       document.documentElement.appendChild(style);
     }
-  } catch (_) {}
+    return true;
+  } catch (_) {
+    return false;
+  }
 })();
 ''';
   static const String _restorePagePointerEventsScript = '''
 (() => {
   try {
     document.getElementById('__browserPointerBlockerStyle')?.remove();
-  } catch (_) {}
+    return true;
+  } catch (_) {
+    return false;
+  }
 })();
 ''';
   AiService? _aiService;
@@ -2845,6 +2837,7 @@ class _BrowserPageState extends State<BrowserPage>
               video.webkitExitFullscreen();
             }
           }
+          return true;
         })();
       ''');
     } catch (e) {
@@ -2858,7 +2851,7 @@ class _BrowserPageState extends State<BrowserPage>
     await controller.runJavaScript(r'''
       (function() {
         if (window.__browserFullscreenBridgeInstalled) {
-          return;
+          return true;
         }
         window.__browserFullscreenBridgeInstalled = true;
 
@@ -2910,6 +2903,7 @@ class _BrowserPageState extends State<BrowserPage>
 
         bindExistingVideos();
         syncDocumentFullscreenState();
+        return true;
       })();
     ''');
   }
@@ -3703,6 +3697,7 @@ class _BrowserPageState extends State<BrowserPage>
   if (style) {
     style.remove();
   }
+  return true;
 })();
 ''');
         return;
@@ -3738,15 +3733,17 @@ class _BrowserPageState extends State<BrowserPage>
 (() => {
   try {
     const el = document.activeElement;
-    if (!el || el === document.body || el === document.documentElement) return;
+    if (!el || el === document.body || el === document.documentElement) {
+      return true;
+    }
     const tag = (el.tagName || '').toLowerCase();
-    if (!tag) return;
+    if (!tag) return true;
     const isEditable =
       el.isContentEditable ||
       tag === 'input' ||
       tag === 'textarea' ||
       tag === 'select';
-    if (isEditable) return;
+    if (isEditable) return true;
     if (typeof el.blur === 'function') el.blur();
     return true;
   } catch (_) {
@@ -4275,6 +4272,7 @@ class _BrowserPageState extends State<BrowserPage>
           if (window.resolveWebAuthnRequest) {
             window.resolveWebAuthnRequest($requestId, false, $errorMsg);
           }
+          true;
         ''');
       }
     }
@@ -4352,6 +4350,7 @@ class _BrowserPageState extends State<BrowserPage>
           if (window.resolveWebAuthnRequest) {
             window.resolveWebAuthnRequest($requestId, true, $jsResponse);
           }
+          true;
         ''');
       } else {
         await _rejectWebAuthnRequest(
@@ -4448,6 +4447,7 @@ class _BrowserPageState extends State<BrowserPage>
           if (window.resolveWebAuthnRequest) {
             window.resolveWebAuthnRequest($requestId, true, $jsResponse);
           }
+          true;
         ''');
       } else {
         await _rejectWebAuthnRequest(
@@ -4468,6 +4468,7 @@ class _BrowserPageState extends State<BrowserPage>
       if (window.resolveWebAuthnRequest) {
         window.resolveWebAuthnRequest($requestId, false, $errorMsg);
       }
+      true;
     ''');
   }
 
@@ -5591,25 +5592,35 @@ class _BrowserPageState extends State<BrowserPage>
 
   Future<void> _goBack() async {
     try {
-      if (shouldUseGitLabBackFallback(
+      final shouldReturnHome = shouldReturnHomeOnBack(
         currentUrl: activeTab.currentUrl,
-        history: activeTab.history,
-      )) {
-        final trimmedHistory = trimCurrentUrlFromHistory(
-          activeTab.history,
-          currentUrl: activeTab.currentUrl,
-        );
-        final previousUrl =
-            trimmedHistory.reversed.map((entry) => entry.trim()).firstWhere(
-                  (entry) => entry.isNotEmpty,
-                );
-        activeTab.history
-          ..clear()
-          ..addAll(trimmedHistory);
-        await _loadUrl(previousUrl);
+        homeUrl: widget.initialUrl,
+        homeLaunchedSiteFamily: activeTab.homeLaunchedSiteFamily,
+      );
+      final canGoBack = await activeTab.webViewController?.canGoBack() ?? false;
+      if (shouldReturnHome) {
+        if (mounted) {
+          setState(() {
+            activeTab.forwardUrl = activeTab.currentUrl;
+            activeTab.homeLaunchedSiteFamily = null;
+            activeTab.currentUrl = widget.initialUrl;
+            activeTab.pageTitle = null;
+            final homeDisplayUrl = _displayUrl(widget.initialUrl);
+            activeTab.urlController.value = TextEditingValue(
+              text: homeDisplayUrl,
+              selection: TextSelection.collapsed(
+                offset: homeDisplayUrl.length,
+              ),
+            );
+            activeTab.faviconUrl = _defaultFaviconUrlFor(widget.initialUrl);
+            activeTab.webViewController = null;
+            activeTab.hideStaleWebViewUntilPageFinish = false;
+            activeTab.state = BrowserState.success(widget.initialUrl);
+          });
+        }
         return;
       }
-      if (await activeTab.webViewController?.canGoBack() ?? false) {
+      if (canGoBack) {
         await activeTab.webViewController?.goBack();
         activeTab.forwardUrl =
             null; // Clear forward URL when using WebView history
@@ -5869,8 +5880,9 @@ class _BrowserPageState extends State<BrowserPage>
       await cookieManager.clearCookies();
       for (final tab in tabs) {
         await tab.webViewController?.clearCache();
-        await tab.webViewController
-            ?.runJavaScript('localStorage.clear(); sessionStorage.clear();');
+        await tab.webViewController?.runJavaScript(
+          'localStorage.clear(); sessionStorage.clear(); true;',
+        );
       }
       _navigationCacheIndex.clear();
       final prefs = await SharedPreferences.getInstance();
@@ -6992,6 +7004,7 @@ class _BrowserPageState extends State<BrowserPage>
       if (url == 'about:browser-home') {
         if (mounted) {
           setState(() {
+            activeTab.homeLaunchedSiteFamily = null;
             activeTab.currentUrl = url;
             activeTab.pageTitle = null;
             activeTab.pendingNavigationUrl = null;
@@ -7025,6 +7038,9 @@ class _BrowserPageState extends State<BrowserPage>
       return;
     }
     final previousUrl = activeTab.currentUrl;
+    if (wasOnHome) {
+      activeTab.homeLaunchedSiteFamily = _siteFamilyKeyForUrl(processedUrl);
+    }
     activeTab.pendingNavigationUrl = processedUrl;
     activeTab.pendingNavigationSourceUrl = previousUrl;
     activeTab.currentUrl = processedUrl;
@@ -7362,6 +7378,7 @@ class _BrowserPageState extends State<BrowserPage>
       // Partial workaround for SPA history: listen for popstate events via JS.
       tab.webViewController!.addJavaScriptChannel('HistoryChannel',
           onMessageReceived: (JavaScriptMessage message) {
+        if (tab.webViewController == null) return;
         final payload = message.message;
         var url = payload;
         String? title;
@@ -7408,6 +7425,7 @@ class _BrowserPageState extends State<BrowserPage>
       });
       tab.webViewController!.addJavaScriptChannel('TitleChangeChannel',
           onMessageReceived: (JavaScriptMessage message) {
+        if (tab.webViewController == null) return;
         final payload = message.message;
         String? title;
         String? url;
@@ -7521,6 +7539,7 @@ class _BrowserPageState extends State<BrowserPage>
       });
       tab.webViewController!.setNavigationDelegate(NavigationDelegate(
         onUrlChange: (change) {
+          if (tab.webViewController == null) return;
           if (_isLiveTab(tab) && change.url != null) {
             final actualUrl = resolveNavigationEventUrl(
               eventUrl: change.url!,
@@ -7540,6 +7559,7 @@ class _BrowserPageState extends State<BrowserPage>
           unawaited(_syncTabMediaState(tab));
         },
         onPageStarted: (url) async {
+          if (tab.webViewController == null) return;
           if (_isLiveTab(tab) && identical(tab, activeTab)) {
             unawaited(_setPageRequestedWindowFullscreen(tab, false));
           }
@@ -7580,6 +7600,7 @@ class _BrowserPageState extends State<BrowserPage>
           _clearUnwantedInitialPageFocus(tab);
         },
         onPageFinished: (url) async {
+          if (tab.webViewController == null) return;
           if (!_isLiveTab(tab)) return;
           final controllerUrl = await tab.webViewController?.currentUrl();
           if (!_isLiveTab(tab)) return;
@@ -7673,6 +7694,7 @@ class _BrowserPageState extends State<BrowserPage>
               window.addEventListener('scroll', notifyScroll, { passive: true });
               window.scrollOffsetListenerAdded = true;
             }
+            true;
           ''');
             unawaited(_installFullscreenBridge(tab));
             // Inject login detection script
