@@ -22,6 +22,7 @@ import 'logging/logger.dart';
 import 'features/theme_utils.dart';
 import 'features/profile_manager.dart';
 import 'ux/browser_page.dart';
+import 'ux/splash_screen.dart';
 import 'package:pkg/ai_service.dart';
 import 'constants.dart';
 
@@ -34,10 +35,12 @@ bool _isDuplicateKeyDownAssertion(FlutterErrorDetails details) {
 
 class MyApp extends StatefulWidget {
   const MyApp(
-      {super.key, required this.aiAvailable, this.enableGitFetch = false});
+      {super.key,
+      required this.aiAvailable,
+      this.splashDuration = const Duration(milliseconds: 1200)});
 
   final bool aiAvailable;
-  final bool enableGitFetch;
+  final Duration splashDuration;
 
   @override
   State<MyApp> createState() => _MyAppState();
@@ -55,7 +58,6 @@ class _MyAppState extends State<MyApp> {
   String homepage = defaultHomepageUrl;
   bool hideAppBar = false;
   bool useModernUserAgent = false;
-  bool enableGitFetch = false;
   bool privateBrowsing = false;
   bool adBlocking = false;
   bool strictMode = false;
@@ -66,22 +68,72 @@ class _MyAppState extends State<MyApp> {
   bool urlAutocompleteSuggestionRemovalEnabled = false;
   bool autoHideAddressBarEnabled = false;
   bool _didCheckWhatsNew = false;
+  bool _showSplash = true;
+  bool _didScheduleWhatsNew = false;
+  bool _didRestoreWindowAfterSplash = false;
+  Timer? _splashTimer;
   final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
   @override
   void initState() {
     super.initState();
+    _showSplash = widget.splashDuration > Duration.zero;
     _loadSettings();
     _lastSettingsProfileId = profileManager.activeProfileId;
     profileManager.addListener(_handleProfileManagerChange);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _maybeShowWhatsNew();
-    });
+    if (_showSplash) {
+      _splashTimer = Timer(widget.splashDuration, _hideSplash);
+    } else {
+      unawaited(_restoreWindowAfterSplash());
+    }
   }
 
   @override
   void dispose() {
+    _splashTimer?.cancel();
     profileManager.removeListener(_handleProfileManagerChange);
     super.dispose();
+  }
+
+  void _hideSplash() {
+    if (!mounted) return;
+    setState(() {
+      _showSplash = false;
+    });
+    unawaited(_restoreWindowAfterSplash());
+  }
+
+  Future<void> _restoreWindowAfterSplash() async {
+    if (_didRestoreWindowAfterSplash ||
+        isIntegrationTest ||
+        defaultTargetPlatform != TargetPlatform.macOS) {
+      _scheduleWhatsNewCheck();
+      return;
+    }
+    _didRestoreWindowAfterSplash = true;
+    try {
+      await Future<void>.delayed(const Duration(milliseconds: 260));
+      if (!mounted) return;
+      await windowManager.setTitleBarStyle(
+        TitleBarStyle.hidden,
+        windowButtonVisibility: !hideAppBar,
+      );
+      await windowManager.setMinimumSize(const Size(820, 560));
+      await windowManager.setSize(const Size(1120, 760));
+      await windowManager.center();
+    } catch (e) {
+      logger.w('Failed to restore window size after splash: $e');
+    } finally {
+      markWindowChromeReady();
+      _scheduleWhatsNewCheck();
+    }
+  }
+
+  void _scheduleWhatsNewCheck() {
+    if (_didScheduleWhatsNew) return;
+    _didScheduleWhatsNew = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _maybeShowWhatsNew();
+    });
   }
 
   void _handleProfileManagerChange() {
@@ -206,8 +258,6 @@ class _MyAppState extends State<MyApp> {
       final resolvedHideAppBar = readBool(hideAppBarKey, defaultValue: false);
       final resolvedUseModernUserAgent =
           readBool(useModernUserAgentKey, defaultValue: false);
-      final resolvedEnableGitFetch =
-          readBool(enableGitFetchKey, defaultValue: false);
       final resolvedPrivateBrowsing =
           readBool(privateBrowsingKey, defaultValue: false);
       final resolvedAdBlocking = readBool(adBlockingKey, defaultValue: false);
@@ -230,7 +280,6 @@ class _MyAppState extends State<MyApp> {
         homepage = resolvedHomepage;
         hideAppBar = resolvedHideAppBar;
         useModernUserAgent = resolvedUseModernUserAgent;
-        enableGitFetch = resolvedEnableGitFetch;
         privateBrowsing = resolvedPrivateBrowsing;
         adBlocking = resolvedAdBlocking;
         strictMode = resolvedStrictMode;
@@ -329,30 +378,35 @@ class _MyAppState extends State<MyApp> {
           useAdjustedTheme: useAdjustedTheme,
         ),
         themeMode: resolvedThemeMode,
-        home: BrowserPage(
-          initialUrl: homepage,
-          hideAppBar: hideAppBar,
-          useModernUserAgent: useModernUserAgent,
-          enableGitFetch: widget.enableGitFetch || enableGitFetch,
-          aiAvailable: widget.aiAvailable,
-          privateBrowsing: privateBrowsing,
-          adBlocking: adBlocking,
-          strictMode: strictMode,
-          pageFontFamily: pageFontFamily,
-          aiSearchSuggestionsEnabled: aiSearchSuggestionsEnabled,
-          advancedCacheEnabled: advancedCacheEnabled,
-          ambientToolbarEnabled: ambientToolbarEnabled,
-          autoHideAddressBarEnabled: autoHideAddressBarEnabled,
-          urlAutocompleteSuggestionRemovalEnabled:
-              urlAutocompleteSuggestionRemovalEnabled,
-          themeMode: effectiveThemeMode,
-          onPageThemeChanged: _setAdjustedThemeMode,
-          onSettingsChanged: _loadSettings,
-          onThemePreviewChanged: _setPreviewThemeMode,
-          onThemePreviewReset: _clearPreviewThemeMode,
-          onShowWhatsNew: () async {
-            await _showWhatsNewDialog(ignoreSeenVersion: true);
-          },
+        home: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 240),
+          child: _showSplash
+              ? const SplashScreen(key: ValueKey('splash'))
+              : BrowserPage(
+                  key: const ValueKey('browser'),
+                  initialUrl: homepage,
+                  hideAppBar: hideAppBar,
+                  useModernUserAgent: useModernUserAgent,
+                  aiAvailable: widget.aiAvailable,
+                  privateBrowsing: privateBrowsing,
+                  adBlocking: adBlocking,
+                  strictMode: strictMode,
+                  pageFontFamily: pageFontFamily,
+                  aiSearchSuggestionsEnabled: aiSearchSuggestionsEnabled,
+                  advancedCacheEnabled: advancedCacheEnabled,
+                  ambientToolbarEnabled: ambientToolbarEnabled,
+                  autoHideAddressBarEnabled: autoHideAddressBarEnabled,
+                  urlAutocompleteSuggestionRemovalEnabled:
+                      urlAutocompleteSuggestionRemovalEnabled,
+                  themeMode: effectiveThemeMode,
+                  onPageThemeChanged: _setAdjustedThemeMode,
+                  onSettingsChanged: _loadSettings,
+                  onThemePreviewChanged: _setPreviewThemeMode,
+                  onThemePreviewReset: _clearPreviewThemeMode,
+                  onShowWhatsNew: () async {
+                    await _showWhatsNewDialog(ignoreSeenVersion: true);
+                  },
+                ),
         ),
       ),
     );
@@ -500,11 +554,13 @@ void main() async {
         try {
           await windowManager.waitUntilReadyToShow(
             const WindowOptions(
+              size: Size(640, 360),
+              center: true,
               titleBarStyle: TitleBarStyle.hidden,
-              windowButtonVisibility: true,
+              windowButtonVisibility: false,
             ),
             () {
-              markWindowChromeReady();
+              unawaited(windowManager.setOpacity(1));
               windowManager.show();
               windowManager.focus();
             },

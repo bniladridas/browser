@@ -1,5 +1,5 @@
----
 # SPDX-License-Identifier: MIT
+---
 #
 # Copyright 2026 bniladridas. All rights reserved.
 # Use of this source code is governed by a MIT license that can be
@@ -19,11 +19,13 @@ jobs:
   nightly:
     uses: libnudget/nightly/.github/workflows/nightly.yml@main
     with:
-      flutter-version: '3.41.7'
+      flutter-version: '3.44.0'
       tag-prefix: 'desktop/nightly-'
       app-name: 'browser'
       base-branch: 'main'
     secrets:
+      github-app-id: ${{ secrets.BROWSER_APP_ID }}
+      github-app-private-key: ${{ secrets.BROWSER_APP_PRIVATE_KEY }}
       macos-code-sign-identity: ${{ secrets.MACOS_CODE_SIGN_IDENTITY }}
       macos-certificate: ${{ secrets.MACOS_CERTIFICATE }}
       macos-certificate-password: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}

@@ -40,6 +40,7 @@ final class BrowserMenuBarController: NSObject {
   static let shared = BrowserMenuBarController()
 
   private var statusItem: NSStatusItem?
+  private var windowVisibilityItem: NSMenuItem?
   private var creationAttempts = 0
 
   func install(reason: String) {
@@ -71,16 +72,40 @@ final class BrowserMenuBarController: NSObject {
     }
 
     let menu = NSMenu()
-    menu.addItem(
-      withTitle: "Show browser",
-      action: #selector(showMainWindow(_:)),
+    menu.delegate = self
+    let appInfoItem = NSMenuItem(
+      title: "Browser",
+      action: nil,
       keyEquivalent: ""
     )
-    menu.addItem(
-      withTitle: "Hide browser",
-      action: #selector(hideMainWindow(_:)),
+    appInfoItem.isEnabled = false
+    menu.addItem(appInfoItem)
+    let versionItem = NSMenuItem(
+      title: appVersionLabel(),
+      action: nil,
       keyEquivalent: ""
     )
+    versionItem.isEnabled = false
+    menu.addItem(versionItem)
+    menu.addItem(NSMenuItem.separator())
+    deviceInfoLabels().forEach { label in
+      let item = NSMenuItem(
+        title: label,
+        action: nil,
+        keyEquivalent: ""
+      )
+      item.isEnabled = false
+      menu.addItem(item)
+    }
+    menu.addItem(NSMenuItem.separator())
+    let visibilityItem = NSMenuItem(
+      title: windowVisibilityTitle(),
+      action: #selector(toggleMainWindow(_:)),
+      keyEquivalent: ""
+    )
+    visibilityItem.target = self
+    windowVisibilityItem = visibilityItem
+    menu.addItem(visibilityItem)
     menu.addItem(NSMenuItem.separator())
     menu.addItem(
       withTitle: "Quit",
@@ -89,6 +114,117 @@ final class BrowserMenuBarController: NSObject {
     )
     menu.items.forEach { $0.target = self }
     item.menu = menu
+  }
+
+  private func appVersionLabel() -> String {
+    let info = Bundle.main.infoDictionary
+    let version = info?["CFBundleShortVersionString"] as? String
+    let build = info?["CFBundleVersion"] as? String
+
+    switch (version?.isEmpty == false ? version : nil, build?.isEmpty == false ? build : nil) {
+    case let (.some(version), .some(build)):
+      return "Version \(version) (\(build))"
+    case let (.some(version), nil):
+      return "Version \(version)"
+    default:
+      return "Version unavailable"
+    }
+  }
+
+  private func isMainWindowVisible() -> Bool {
+    guard let window = mainFlutterWindow() else { return false }
+    return window.isVisible && !window.isMiniaturized
+  }
+
+  private func windowVisibilityTitle() -> String {
+    isMainWindowVisible() ? "Hide" : "Show"
+  }
+
+  private func deviceInfoLabels() -> [String] {
+    var labels = ["Mac"]
+    if let chip = chipName() {
+      labels.append("Chip \(chip)")
+    }
+    labels.append(memoryLabel())
+    labels.append(macOSVersionLabel())
+    return labels
+  }
+
+  private func chipName() -> String? {
+    var size = 0
+    guard sysctlbyname("machdep.cpu.brand_string", nil, &size, nil, 0) == 0,
+          size > 0
+    else {
+      return nil
+    }
+
+    var buffer = [CChar](repeating: 0, count: size)
+    guard sysctlbyname("machdep.cpu.brand_string", &buffer, &size, nil, 0) == 0
+    else {
+      return nil
+    }
+
+    let value = String(cString: buffer)
+      .replacingOccurrences(of: "Apple ", with: "")
+      .trimmingCharacters(in: .whitespacesAndNewlines)
+    return value.isEmpty ? nil : value
+  }
+
+  private func memoryLabel() -> String {
+    let bytes = ProcessInfo.processInfo.physicalMemory
+    let gib = Double(bytes) / 1_073_741_824
+    return "Memory \(Int(gib.rounded())) GB"
+  }
+
+  private func macOSVersionLabel() -> String {
+    let version = ProcessInfo.processInfo.operatingSystemVersion
+    let releaseName = macOSReleaseName(for: version.majorVersion)
+    var label = releaseName.map { "macOS \($0) " } ?? "macOS "
+    label += "\(version.majorVersion).\(version.minorVersion)"
+    if version.patchVersion > 0 {
+      label += ".\(version.patchVersion)"
+    }
+    if let build = osBuildVersion() {
+      label += " (\(build))"
+    }
+    return label
+  }
+
+  private func osBuildVersion() -> String? {
+    var size = 0
+    guard sysctlbyname("kern.osversion", nil, &size, nil, 0) == 0,
+          size > 0
+    else {
+      return nil
+    }
+
+    var buffer = [CChar](repeating: 0, count: size)
+    guard sysctlbyname("kern.osversion", &buffer, &size, nil, 0) == 0
+    else {
+      return nil
+    }
+
+    let value = String(cString: buffer).trimmingCharacters(in: .whitespacesAndNewlines)
+    return value.isEmpty ? nil : value
+  }
+
+  private func macOSReleaseName(for majorVersion: Int) -> String? {
+    switch majorVersion {
+    case 26:
+      return "Tahoe"
+    case 15:
+      return "Sequoia"
+    case 14:
+      return "Sonoma"
+    case 13:
+      return "Ventura"
+    case 12:
+      return "Monterey"
+    case 11:
+      return "Big Sur"
+    default:
+      return nil
+    }
   }
 
   private func makeStatusItemImage() -> NSImage? {
@@ -118,6 +254,14 @@ final class BrowserMenuBarController: NSObject {
     mainFlutterWindow()?.orderOut(nil)
   }
 
+  @objc func toggleMainWindow(_ sender: Any?) {
+    if isMainWindowVisible() {
+      hideMainWindow(sender)
+    } else {
+      showMainWindow(sender)
+    }
+  }
+
   @objc func quitApplication(_ sender: Any?) {
     NSApp.terminate(nil)
   }
@@ -132,6 +276,12 @@ final class BrowserMenuBarController: NSObject {
     } else {
       showMainWindow(nil)
     }
+  }
+}
+
+extension BrowserMenuBarController: NSMenuDelegate {
+  func menuWillOpen(_ menu: NSMenu) {
+    windowVisibilityItem?.title = windowVisibilityTitle()
   }
 }
 

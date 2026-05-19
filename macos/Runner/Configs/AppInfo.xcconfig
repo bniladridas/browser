@@ -5,7 +5,7 @@
 // 'flutter create' template.
 
 // The application's name. By default this is also the title of the Flutter window.
-PRODUCT_NAME = browser
+PRODUCT_NAME = Browser
 
 // The application's bundle identifier
 // Override APP_BUNDLE_ID in CI for release builds.

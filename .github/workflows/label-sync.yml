@@ -1,5 +1,5 @@
----
 # SPDX-License-Identifier: MIT
+---
 #
 # Copyright 2026 bniladridas. All rights reserved.
 # Use of this source code is governed by a MIT license that can be
@@ -20,13 +20,23 @@ jobs:
     runs-on: ubuntu-latest
     if: github.repository_owner == 'bniladridas'
     permissions:
-      issues: write
+      contents: read
     steps:
       - uses: actions/checkout@v4
+
+      - id: app-token
+        name: Create Browser app token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.BROWSER_APP_ID }}
+          private-key: ${{ secrets.BROWSER_APP_PRIVATE_KEY }}
+          permission-issues: write
+          permission-contents: read
+
       - name: Sync repository labels
         uses: crazy-max/ghaction-github-labeler@v5
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ steps.app-token.outputs.token }}
           yaml-file: .github/labels.yml
           dry-run: false
           skip-delete: false

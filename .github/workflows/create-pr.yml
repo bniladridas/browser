@@ -35,9 +35,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - id: app-token
+        name: Create Browser app token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.BROWSER_APP_ID }}
+          private-key: ${{ secrets.BROWSER_APP_PRIVATE_KEY }}
+          permission-pull-requests: write
+          permission-contents: read
+
       - name: Create PR
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           set -euo pipefail
           head="${{ inputs.head }}"

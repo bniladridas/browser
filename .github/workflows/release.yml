@@ -1,5 +1,5 @@
----
 # SPDX-License-Identifier: MIT
+---
 #
 # Copyright 2026 bniladridas. All rights reserved.
 # Use of this source code is governed by a MIT license that can be
@@ -18,7 +18,7 @@ on:
         required: true
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build-and-release:
@@ -28,23 +28,32 @@ jobs:
       MACOS_CODE_SIGN_IDENTITY: ${{ secrets.MACOS_CODE_SIGN_IDENTITY }}
 
     steps:
+      - id: app-token
+        name: Create Browser app token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.BROWSER_APP_ID }}
+          private-key: ${{ secrets.BROWSER_APP_PRIVATE_KEY }}
+          permission-contents: write
+
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           ref: ${{ github.event.inputs.tag || github.ref }}
           fetch-tags: true
+          token: ${{ steps.app-token.outputs.token }}
 
       - uses: ./.github/actions/setup-flutter
         with:
-          flutter-version: '3.41.7'
+          flutter-version: '3.44.0'
 
       - run: flutter pub get
       - name: Create .env file
         run: |
           {
-            echo "FIREBASE_API_KEY=dummy_api_key"
-            echo "FIREBASE_APP_ID=dummy_app_id"
-            echo "FIREBASE_MESSAGING_SENDER_ID=dummy_sender_id"
+            echo "FIREBASE_API_KEY=AIzaSy000000000000000000000000000000000"
+            echo "FIREBASE_APP_ID=1:1234567890:ios:0123456789abcdef012345"
+            echo "FIREBASE_MESSAGING_SENDER_ID=1234567890"
             echo "FIREBASE_PROJECT_ID=dummy_project_id"
             echo "FIREBASE_STORAGE_BUCKET=dummy_bucket"
           } > .env
@@ -59,10 +68,10 @@ jobs:
           <dict>
             <key>CLIENT_ID</key><string>dummy</string>
             <key>REVERSED_CLIENT_ID</key><string>com.google.ReverseClientId</string>
-            <key>API_KEY</key><string>dummy</string>
+            <key>API_KEY</key><string>AIzaSy000000000000000000000000000000000</string>
             <key>GCM_SENDER_ID</key><string>123456789</string>
             <key>PLIST_VERSION</key><string>1</string>
-            <key>BUNDLE_ID</key><string>com.example.browser</string>
+            <key>BUNDLE_ID</key><string>com.bniladridas.browser</string>
             <key>PROJECT_ID</key><string>dummy-project</string>
             <key>STORAGE_BUCKET</key><string>dummy-project.appspot.com</string>
             <key>IS_ADS_ENABLED</key><false/>
@@ -70,7 +79,7 @@ jobs:
             <key>IS_APPINVITE_ENABLED</key><true/>
             <key>IS_GCM_ENABLED</key><true/>
             <key>IS_SIGNIN_ENABLED</key><true/>
-            <key>GOOGLE_APP_ID</key><string>1:123456789:ios:abcdef</string>
+            <key>GOOGLE_APP_ID</key><string>1:1234567890:ios:0123456789abcdef012345</string>
           </dict>
           </plist>
           EOF
@@ -153,6 +162,7 @@ jobs:
           files: build/macos/Build/Products/Release/browser.dmg
           generate_release_notes: false
           tag_name: ${{ steps.validate-tag.outputs.tag }}
+          token: ${{ steps.app-token.outputs.token }}
         continue-on-error: true
 
       - name: Verify upload

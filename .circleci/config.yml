@@ -4,6 +4,7 @@
 # Use of this source code is governed by a MIT license
 # found in the LICENSE file.
 
+---
 version: 2.1
 
 executors:

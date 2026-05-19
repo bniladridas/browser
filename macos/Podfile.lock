@@ -1,212 +1,40 @@
 PODS:
-  - AppCheckCore (11.2.0):
-    - GoogleUtilities/Environment (~> 8.0)
-    - GoogleUtilities/UserDefaults (~> 8.0)
-    - PromisesObjC (~> 2.4)
-  - connectivity_plus (0.0.1):
-    - FlutterMacOS
-  - desktop_drop (0.0.1):
-    - FlutterMacOS
-  - device_info_plus (0.0.1):
-    - FlutterMacOS
-  - file_selector_macos (0.0.1):
-    - FlutterMacOS
-  - Firebase/AppCheck (12.9.0):
-    - Firebase/CoreOnly
-    - FirebaseAppCheck (~> 12.9.0)
-  - Firebase/Auth (12.9.0):
-    - Firebase/CoreOnly
-    - FirebaseAuth (~> 12.9.0)
-  - Firebase/CoreOnly (12.9.0):
-    - FirebaseCore (~> 12.9.0)
   - firebase_ai (3.10.0):
     - FlutterMacOS
-  - firebase_app_check (0.4.2):
-    - Firebase/AppCheck (~> 12.9.0)
-    - Firebase/CoreOnly (~> 12.9.0)
-    - firebase_core
-    - FlutterMacOS
-  - firebase_auth (6.3.0):
-    - Firebase/Auth (~> 12.9.0)
-    - Firebase/CoreOnly (~> 12.9.0)
-    - firebase_core
-    - FlutterMacOS
-  - firebase_core (4.6.0):
-    - Firebase/CoreOnly (~> 12.9.0)
-    - FlutterMacOS
-  - FirebaseAppCheck (12.9.0):
-    - AppCheckCore (~> 11.0)
-    - FirebaseAppCheckInterop (~> 12.9.0)
-    - FirebaseCore (~> 12.9.0)
-    - GoogleUtilities/Environment (~> 8.1)
-    - GoogleUtilities/UserDefaults (~> 8.1)
-  - FirebaseAppCheckInterop (12.9.0)
-  - FirebaseAuth (12.9.0):
-    - FirebaseAppCheckInterop (~> 12.9.0)
-    - FirebaseAuthInterop (~> 12.9.0)
-    - FirebaseCore (~> 12.9.0)
-    - FirebaseCoreExtension (~> 12.9.0)
-    - GoogleUtilities/AppDelegateSwizzler (~> 8.1)
-    - GoogleUtilities/Environment (~> 8.1)
-    - GTMSessionFetcher/Core (< 6.0, >= 3.4)
-    - RecaptchaInterop (~> 101.0)
-  - FirebaseAuthInterop (12.9.0)
-  - FirebaseCore (12.9.0):
-    - FirebaseCoreInternal (~> 12.9.0)
-    - GoogleUtilities/Environment (~> 8.1)
-    - GoogleUtilities/Logger (~> 8.1)
-  - FirebaseCoreExtension (12.9.0):
-    - FirebaseCore (~> 12.9.0)
-  - FirebaseCoreInternal (12.9.0):
-    - "GoogleUtilities/NSData+zlib (~> 8.1)"
-  - flutter_secure_storage_darwin (10.0.0):
-    - Flutter
-    - FlutterMacOS
   - FlutterMacOS (1.0.0)
-  - GoogleUtilities/AppDelegateSwizzler (8.1.0):
-    - GoogleUtilities/Environment
-    - GoogleUtilities/Logger
-    - GoogleUtilities/Network
-    - GoogleUtilities/Privacy
-  - GoogleUtilities/Environment (8.1.0):
-    - GoogleUtilities/Privacy
-  - GoogleUtilities/Logger (8.1.0):
-    - GoogleUtilities/Environment
-    - GoogleUtilities/Privacy
-  - GoogleUtilities/Network (8.1.0):
-    - GoogleUtilities/Logger
-    - "GoogleUtilities/NSData+zlib"
-    - GoogleUtilities/Privacy
-    - GoogleUtilities/Reachability
-  - "GoogleUtilities/NSData+zlib (8.1.0)":
-    - GoogleUtilities/Privacy
-  - GoogleUtilities/Privacy (8.1.0)
-  - GoogleUtilities/Reachability (8.1.0):
-    - GoogleUtilities/Logger
-    - GoogleUtilities/Privacy
-  - GoogleUtilities/UserDefaults (8.1.0):
-    - GoogleUtilities/Logger
-    - GoogleUtilities/Privacy
-  - GTMSessionFetcher/Core (5.1.0)
-  - package_info_plus (0.0.1):
-    - FlutterMacOS
   - passkeys_darwin (0.0.1):
     - Flutter
     - FlutterMacOS
-  - PromisesObjC (2.4.0)
   - screen_retriever_macos (0.0.1):
-    - FlutterMacOS
-  - shared_preferences_foundation (0.0.1):
-    - Flutter
     - FlutterMacOS
   - ua_client_hints (1.7.0):
     - FlutterMacOS
-  - webview_flutter_wkwebview (0.0.1):
-    - Flutter
-    - FlutterMacOS
-  - window_manager (0.5.0):
-    - FlutterMacOS
 
 DEPENDENCIES:
-  - connectivity_plus (from `Flutter/ephemeral/.symlinks/plugins/connectivity_plus/macos`)
-  - desktop_drop (from `Flutter/ephemeral/.symlinks/plugins/desktop_drop/macos`)
-  - device_info_plus (from `Flutter/ephemeral/.symlinks/plugins/device_info_plus/macos`)
-  - file_selector_macos (from `Flutter/ephemeral/.symlinks/plugins/file_selector_macos/macos`)
   - firebase_ai (from `Flutter/ephemeral/.symlinks/plugins/firebase_ai/macos`)
-  - firebase_app_check (from `Flutter/ephemeral/.symlinks/plugins/firebase_app_check/macos`)
-  - firebase_auth (from `Flutter/ephemeral/.symlinks/plugins/firebase_auth/macos`)
-  - firebase_core (from `Flutter/ephemeral/.symlinks/plugins/firebase_core/macos`)
-  - flutter_secure_storage_darwin (from `Flutter/ephemeral/.symlinks/plugins/flutter_secure_storage_darwin/darwin`)
   - FlutterMacOS (from `Flutter/ephemeral`)
-  - package_info_plus (from `Flutter/ephemeral/.symlinks/plugins/package_info_plus/macos`)
   - passkeys_darwin (from `Flutter/ephemeral/.symlinks/plugins/passkeys_darwin/darwin`)
   - screen_retriever_macos (from `Flutter/ephemeral/.symlinks/plugins/screen_retriever_macos/macos`)
-  - shared_preferences_foundation (from `Flutter/ephemeral/.symlinks/plugins/shared_preferences_foundation/darwin`)
   - ua_client_hints (from `Flutter/ephemeral/.symlinks/plugins/ua_client_hints/macos`)
-  - webview_flutter_wkwebview (from `Flutter/ephemeral/.symlinks/plugins/webview_flutter_wkwebview/darwin`)
-  - window_manager (from `Flutter/ephemeral/.symlinks/plugins/window_manager/macos`)
-
-SPEC REPOS:
-  trunk:
-    - AppCheckCore
-    - Firebase
-    - FirebaseAppCheck
-    - FirebaseAppCheckInterop
-    - FirebaseAuth
-    - FirebaseAuthInterop
-    - FirebaseCore
-    - FirebaseCoreExtension
-    - FirebaseCoreInternal
-    - GoogleUtilities
-    - GTMSessionFetcher
-    - PromisesObjC
 
 EXTERNAL SOURCES:
-  connectivity_plus:
-    :path: Flutter/ephemeral/.symlinks/plugins/connectivity_plus/macos
-  desktop_drop:
-    :path: Flutter/ephemeral/.symlinks/plugins/desktop_drop/macos
-  device_info_plus:
-    :path: Flutter/ephemeral/.symlinks/plugins/device_info_plus/macos
-  file_selector_macos:
-    :path: Flutter/ephemeral/.symlinks/plugins/file_selector_macos/macos
   firebase_ai:
     :path: Flutter/ephemeral/.symlinks/plugins/firebase_ai/macos
-  firebase_app_check:
-    :path: Flutter/ephemeral/.symlinks/plugins/firebase_app_check/macos
-  firebase_auth:
-    :path: Flutter/ephemeral/.symlinks/plugins/firebase_auth/macos
-  firebase_core:
-    :path: Flutter/ephemeral/.symlinks/plugins/firebase_core/macos
-  flutter_secure_storage_darwin:
-    :path: Flutter/ephemeral/.symlinks/plugins/flutter_secure_storage_darwin/darwin
   FlutterMacOS:
     :path: Flutter/ephemeral
-  package_info_plus:
-    :path: Flutter/ephemeral/.symlinks/plugins/package_info_plus/macos
   passkeys_darwin:
     :path: Flutter/ephemeral/.symlinks/plugins/passkeys_darwin/darwin
   screen_retriever_macos:
     :path: Flutter/ephemeral/.symlinks/plugins/screen_retriever_macos/macos
-  shared_preferences_foundation:
-    :path: Flutter/ephemeral/.symlinks/plugins/shared_preferences_foundation/darwin
   ua_client_hints:
     :path: Flutter/ephemeral/.symlinks/plugins/ua_client_hints/macos
-  webview_flutter_wkwebview:
-    :path: Flutter/ephemeral/.symlinks/plugins/webview_flutter_wkwebview/darwin
-  window_manager:
-    :path: Flutter/ephemeral/.symlinks/plugins/window_manager/macos
 
 SPEC CHECKSUMS:
-  AppCheckCore: cc8fd0a3a230ddd401f326489c99990b013f0c4f
-  connectivity_plus: 4adf20a405e25b42b9c9f87feff8f4b6fde18a4e
-  desktop_drop: 10a3e6a7fa9dbe350541f2574092fecfa345a07b
-  device_info_plus: 4fb280989f669696856f8b129e4a5e3cd6c48f76
-  file_selector_macos: 9e9e068e90ebee155097d00e89ae91edb2374db7
-  Firebase: 065f2bb395062046623036d8e6dc857bc2521d56
   firebase_ai: 06132fc2e250706e325426f330a30e832418b57e
-  firebase_app_check: f537b491cf474f916fd60e3559328c7ba39a3ffa
-  firebase_auth: e48180de625a2d9c673f74790b4af512a08490ba
-  firebase_core: 82d678e9e10fc0b515ea1872dd446eee4722f144
-  FirebaseAppCheck: 94dae4d9bb682bdef85a778b0c1024a4613f1e89
-  FirebaseAppCheckInterop: 4bade10286cc977e516f75d2d8312cbdfa534789
-  FirebaseAuth: 3a39f6436c21ebfd7919b698228b4f89ff94c23b
-  FirebaseAuthInterop: f8f6ff72dc24621906497fbe5cf3c42ee815e59c
-  FirebaseCore: 428912f751178b06bef0a1793effeb4a5e09a9b8
-  FirebaseCoreExtension: e911052d59cd0da237a45d706fc0f81654f035c1
-  FirebaseCoreInternal: b321eafae5362113bc182956fafc9922cfc77b72
-  flutter_secure_storage_darwin: acdb3f316ed05a3e68f856e0353b133eec373a23
   FlutterMacOS: d0db08ddef1a9af05a5ec4b724367152bb0500b1
-  GoogleUtilities: 00c88b9a86066ef77f0da2fab05f65d7768ed8e1
-  GTMSessionFetcher: b8ab00db932816e14b0a0664a08cb73dda6d164b
-  package_info_plus: f0052d280d17aa382b932f399edf32507174e870
   passkeys_darwin: 0a09d3b26cea8de1ec3bb8f8c7c159981f63bbc7
-  PromisesObjC: f5707f49cb48b9636751c5b2e7d227e43fba9f47
   screen_retriever_macos: 452e51764a9e1cdb74b3c541238795849f21557f
-  shared_preferences_foundation: 7036424c3d8ec98dfe75ff1667cb0cd531ec82bb
   ua_client_hints: bb84da85d9d5d605d40598b3c1ae3bfd2598e201
-  webview_flutter_wkwebview: 8ebf4fded22593026f7dbff1fbff31ea98573c8d
-  window_manager: b729e31d38fb04905235df9ea896128991cad99e
 
 PODFILE CHECKSUM: 267f316c825d893e514caf3ff48f1042d9755925
 

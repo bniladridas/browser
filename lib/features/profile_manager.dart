@@ -115,7 +115,6 @@ class ProfileManager extends ChangeNotifier {
     const boolKeys = <String>[
       hideAppBarKey,
       useModernUserAgentKey,
-      enableGitFetchKey,
       privateBrowsingKey,
       adBlockingKey,
       strictModeKey,

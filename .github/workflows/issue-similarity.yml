@@ -1,5 +1,5 @@
----
 # SPDX-License-Identifier: MIT
+---
 #
 # Copyright 2026 bniladridas. All rights reserved.
 # Use of this source code is governed by a MIT license that can be
@@ -17,11 +17,19 @@ jobs:
     if: github.repository_owner == 'bniladridas'
     permissions:
       contents: read
-      issues: write
     steps:
+      - id: app-token
+        name: Create Browser app token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.BROWSER_APP_ID }}
+          private-key: ${{ secrets.BROWSER_APP_PRIVATE_KEY }}
+          permission-issues: write
+          permission-contents: read
+
       - uses: libnudget/echo@main
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          github_token: ${{ steps.app-token.outputs.token }}
           repository: ${{ github.repository }}
           issue_number: ${{ github.event.issue.number }}
           issue_title: ${{ github.event.issue.title }}

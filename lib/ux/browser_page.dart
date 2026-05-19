@@ -559,7 +559,6 @@ class SettingsDialog extends HookWidget {
     final homepage = useState<String?>(null);
     final hideAppBar = useState(false);
     final useModernUserAgent = useState(false);
-    final enableGitFetch = useState(false);
     final privateBrowsing = useState(false);
     final originalPrivateBrowsing = useRef<bool?>(null);
     final adBlocking = useState(false);
@@ -813,7 +812,6 @@ class SettingsDialog extends HookWidget {
         hideAppBar.value = readBool(hideAppBarKey, defaultValue: false);
         useModernUserAgent.value =
             readBool(useModernUserAgentKey, defaultValue: false);
-        enableGitFetch.value = readBool(enableGitFetchKey, defaultValue: false);
         privateBrowsing.value =
             readBool(privateBrowsingKey, defaultValue: false);
         originalPrivateBrowsing.value = privateBrowsing.value;
@@ -1036,15 +1034,6 @@ class SettingsDialog extends HookWidget {
                       title: const Text('Legacy UA'),
                       value: useModernUserAgent.value,
                       onChanged: (value) => useModernUserAgent.value = value,
-                      hoverColor: Colors.transparent,
-                    ),
-                  ),
-                  MouseRegion(
-                    cursor: SystemMouseCursors.click,
-                    child: SwitchListTile(
-                      title: const Text('Git fetch'),
-                      value: enableGitFetch.value,
-                      onChanged: (value) => enableGitFetch.value = value,
                       hoverColor: Colors.transparent,
                     ),
                   ),
@@ -1546,8 +1535,6 @@ class SettingsDialog extends HookWidget {
             await prefs.setBool(scopedKey(hideAppBarKey), hideAppBar.value);
             await prefs.setBool(
                 scopedKey(useModernUserAgentKey), useModernUserAgent.value);
-            await prefs.setBool(
-                scopedKey(enableGitFetchKey), enableGitFetch.value);
             await prefs.setBool(
                 scopedKey(privateBrowsingKey), privateBrowsing.value);
             await prefs.setBool(scopedKey(adBlockingKey), adBlocking.value);
@@ -2058,6 +2045,7 @@ class TabData {
   String? faviconUrl;
   String? pendingNavigationUrl;
   String? pendingNavigationSourceUrl;
+  bool isResolvingPageTitle = false;
   String? forwardUrl; // URL to go forward to when on home page
   String? homeLaunchedSiteFamily;
   bool hideStaleWebViewUntilPageFinish = false;
@@ -2080,197 +2068,12 @@ class _ThemeTone {
   const _ThemeTone({required this.brightness, this.seedColor});
 }
 
-Future<Map<String, dynamic>> _fetchGitHubRepo(String url) async {
-  final stopwatch = Stopwatch()..start();
-  try {
-    final response =
-        await http.get(Uri.parse(url)).timeout(const Duration(seconds: 10));
-    NetworkMonitor().logRequest(
-      url: url,
-      method: 'GET',
-      statusCode: response.statusCode,
-      duration: stopwatch.elapsed,
-    );
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body);
-    } else {
-      throw Exception('Failed to load repo: ${response.statusCode}');
-    }
-  } catch (e) {
-    NetworkMonitor().onRequestFailed(
-      url: url,
-      method: 'GET',
-      error: e is Exception ? e : Exception(e.toString()),
-      duration: stopwatch.elapsed,
-    );
-    rethrow;
-  }
-}
-
-class GitFetchDialog extends HookWidget {
-  const GitFetchDialog({super.key, required this.onOpenInNewTab});
-
-  final void Function(String url) onOpenInNewTab;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final repoController = useTextEditingController();
-    final isLoading = useState(false);
-    final repoData = useState<Map<String, dynamic>?>(null);
-    final errorMessage = useState<String?>(null);
-    final isDisposed = useRef(false);
-
-    useEffect(() {
-      return () {
-        isDisposed.value = true;
-      };
-    }, []);
-
-    Future<void> fetchRepo() async {
-      final repo = repoController.text.trim();
-      if (repo.isEmpty) return;
-
-      final parts = repo.split('/');
-      if (parts.length != 2) {
-        if (!isDisposed.value) {
-          errorMessage.value = 'Invalid format. Use owner/repo';
-        }
-        return;
-      }
-
-      if (!isDisposed.value) {
-        isLoading.value = true;
-        errorMessage.value = null;
-        repoData.value = null;
-      }
-
-      try {
-        final url = 'https://api.github.com/repos/${parts[0]}/${parts[1]}';
-        final response = await _fetchGitHubRepo(url);
-        if (!isDisposed.value) {
-          isLoading.value = false;
-          repoData.value = response;
-        }
-      } catch (e) {
-        if (!isDisposed.value) {
-          isLoading.value = false;
-          errorMessage.value = 'Failed to fetch repo: $e';
-        }
-      }
-    }
-
-    return AlertDialog(
-      title: Text(
-        'Git Fetch',
-        style: theme.textTheme.titleSmall?.copyWith(fontSize: 15),
-      ),
-      content: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 420),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            TextField(
-              controller: repoController,
-              style: theme.textTheme.bodyMedium?.copyWith(fontSize: 13),
-              decoration: InputDecoration(
-                labelText: 'GitHub Repo (owner/repo)',
-                hintText: 'e.g., flutter/flutter',
-                isDense: true,
-                filled: false,
-                enabledBorder: UnderlineInputBorder(
-                  borderSide: BorderSide(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                focusedBorder: UnderlineInputBorder(
-                  borderSide: BorderSide(
-                    color: theme.colorScheme.primary,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 10),
-            if (isLoading.value)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 6),
-                child: SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-              ),
-            if (errorMessage.value != null)
-              Text(
-                errorMessage.value!,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  fontSize: 12,
-                  color: theme.colorScheme.error,
-                ),
-              ),
-            if (repoData.value != null) ...[
-              const SizedBox(height: 8),
-              Text(
-                'Name: ${repoData.value!['name'] ?? 'N/A'}',
-                style: theme.textTheme.bodySmall?.copyWith(fontSize: 12),
-              ),
-              Text(
-                'Description: ${repoData.value!['description'] ?? 'No description'}',
-                style: theme.textTheme.bodySmall?.copyWith(fontSize: 12),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-              Text(
-                'Stars: ${repoData.value!['stargazers_count'] ?? 0}',
-                style: theme.textTheme.bodySmall?.copyWith(fontSize: 12),
-              ),
-              Text(
-                'Forks: ${repoData.value!['forks_count'] ?? 0}',
-                style: theme.textTheme.bodySmall?.copyWith(fontSize: 12),
-              ),
-              Text(
-                'Language: ${repoData.value!['language'] ?? 'N/A'}',
-                style: theme.textTheme.bodySmall?.copyWith(fontSize: 12),
-              ),
-              Text(
-                'Open Issues: ${repoData.value!['open_issues_count'] ?? 0}',
-                style: theme.textTheme.bodySmall?.copyWith(fontSize: 12),
-              ),
-            ],
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
-        ),
-        TextButton(
-          onPressed: fetchRepo,
-          child: const Text('Fetch'),
-        ),
-        if (repoData.value != null)
-          TextButton(
-            onPressed: () {
-              final url = 'https://github.com/${repoController.text}';
-              onOpenInNewTab(url);
-              Navigator.of(context).pop();
-            },
-            child: const Text('Open in New Tab'),
-          ),
-      ],
-    );
-  }
-}
-
 class BrowserPage extends StatefulWidget {
   const BrowserPage(
       {super.key,
       required this.initialUrl,
       this.hideAppBar = false,
       this.useModernUserAgent = false,
-      this.enableGitFetch = false,
       this.privateBrowsing = false,
       this.adBlocking = false,
       this.strictMode = false,
@@ -2291,7 +2094,6 @@ class BrowserPage extends StatefulWidget {
   final String initialUrl;
   final bool hideAppBar;
   final bool useModernUserAgent;
-  final bool enableGitFetch;
   final bool privateBrowsing;
   final bool adBlocking;
   final bool strictMode;
@@ -4835,6 +4637,14 @@ class _BrowserPageState extends State<BrowserPage>
     final normalized = _normalizeTabTitle(tab.pageTitle);
     if (normalized.isNotEmpty) return normalized;
     if (tab.currentUrl == defaultHomepageUrl) return '';
+    if (tab.state is BrowserError) {
+      return _tabFallbackTitleFromUrl(tab.currentUrl);
+    }
+    if (tab.isResolvingPageTitle ||
+        tab.pendingNavigationUrl != null ||
+        tab.state is Loading) {
+      return '';
+    }
     return _tabFallbackTitleFromUrl(tab.currentUrl);
   }
 
@@ -4850,16 +4660,26 @@ class _BrowserPageState extends State<BrowserPage>
   Future<void> _updateTabTitle(TabData tab, {String? hintedTitle}) async {
     if (!mounted || tab.isClosed) return;
     final controller = tab.webViewController;
-    if (controller == null) return;
+    if (controller == null) {
+      if (tab.isResolvingPageTitle && mounted && !tab.isClosed) {
+        setState(() {
+          tab.isResolvingPageTitle = false;
+        });
+      }
+      return;
+    }
 
+    final sourceUrl = tab.currentUrl;
     var candidate = _normalizeTabTitle(hintedTitle);
     if (candidate.isEmpty) {
       try {
         candidate = _normalizeTabTitle(await controller.getTitle());
+        if (!mounted || tab.isClosed || tab.currentUrl != sourceUrl) return;
       } catch (_) {
         // Best effort only.
       }
     }
+    if (!mounted || tab.isClosed || tab.currentUrl != sourceUrl) return;
     if (candidate.isEmpty) {
       try {
         candidate = _normalizeTabTitle(
@@ -4867,15 +4687,32 @@ class _BrowserPageState extends State<BrowserPage>
             await controller.runJavaScriptReturningResult('document.title'),
           ),
         );
+        if (!mounted || tab.isClosed || tab.currentUrl != sourceUrl) return;
       } catch (_) {
         // Best effort only.
       }
     }
 
-    if (!mounted || tab.isClosed) return;
-    if (candidate.isEmpty || candidate == tab.pageTitle) return;
+    if (!mounted || tab.isClosed || tab.currentUrl != sourceUrl) return;
+    if (candidate.isEmpty) {
+      if (tab.isResolvingPageTitle) {
+        setState(() {
+          tab.isResolvingPageTitle = false;
+        });
+      }
+      return;
+    }
+    if (candidate == tab.pageTitle) {
+      if (tab.isResolvingPageTitle) {
+        setState(() {
+          tab.isResolvingPageTitle = false;
+        });
+      }
+      return;
+    }
     setState(() {
       tab.pageTitle = candidate;
+      tab.isResolvingPageTitle = false;
     });
   }
 
@@ -4958,26 +4795,6 @@ class _BrowserPageState extends State<BrowserPage>
     required BoxFit fit,
     required Widget fallback,
   }) {
-    final isGoogleFavicon = url.contains('google.com/s2/favicons');
-    if (isGoogleFavicon) {
-      return FutureBuilder<bool>(
-        future: _faviconUrlReturns200(url),
-        builder: (context, snapshot) {
-          final isValid = snapshot.data ?? false;
-          if (!isValid) return fallback;
-          return ClipRRect(
-            borderRadius: BorderRadius.circular(3),
-            child: Image.network(
-              url,
-              width: width,
-              height: height,
-              fit: fit,
-              errorBuilder: (_, __, ___) => fallback,
-            ),
-          );
-        },
-      );
-    }
     return ClipRRect(
       borderRadius: BorderRadius.circular(3),
       child: Image.network(
@@ -5078,6 +4895,13 @@ class _BrowserPageState extends State<BrowserPage>
     return uri.replace(path: '/favicon.ico', queryParameters: null).toString();
   }
 
+  String? _cachedFaviconForUrl(String url) {
+    final host = _hostFromUrl(url);
+    if (host == null || host.isEmpty) return null;
+    final cached = _faviconCacheByHost[host];
+    return (cached == null || cached.isEmpty) ? null : cached;
+  }
+
   Future<bool> _isSafeFaviconUrl(String url) async {
     final normalized = url.trim();
     final uri = Uri.tryParse(normalized);
@@ -5118,7 +4942,8 @@ class _BrowserPageState extends State<BrowserPage>
   Future<void> _updateTabFavicon(TabData tab) async {
     final controller = tab.webViewController;
     if (controller == null || tab.isClosed) return;
-    final host = _hostFromUrl(tab.currentUrl);
+    final sourceUrl = tab.currentUrl;
+    final host = _hostFromUrl(sourceUrl);
     if (host != null) {
       final cached = _faviconCacheByHost[host];
       if (cached != null && cached.isNotEmpty) {
@@ -5180,8 +5005,9 @@ class _BrowserPageState extends State<BrowserPage>
     } catch (_) {
       // Best effort only.
     }
-    resolvedFavicon ??= _hostFaviconIcoUrlFor(tab.currentUrl);
-    resolvedFavicon ??= _defaultFaviconUrlFor(tab.currentUrl);
+    if (tab.currentUrl != sourceUrl || tab.isClosed) return;
+    resolvedFavicon ??= _hostFaviconIcoUrlFor(sourceUrl);
+    resolvedFavicon ??= _defaultFaviconUrlFor(sourceUrl);
     final isResolvedFaviconSafeAndRenderable =
         resolvedFavicon != null && resolvedFavicon.isNotEmpty
             ? await _isSafeAndRenderableFaviconUrl(resolvedFavicon)
@@ -5191,13 +5017,13 @@ class _BrowserPageState extends State<BrowserPage>
         !isResolvedFaviconSafeAndRenderable) {
       // Prefer the host favicon.ico when pages expose only non-renderable icons (e.g. SVG),
       // otherwise fall back to the current working favicon or a generic resolver.
-      final hostIco = _hostFaviconIcoUrlFor(tab.currentUrl);
+      final hostIco = _hostFaviconIcoUrlFor(sourceUrl);
       final hostIcoRenderable = hostIco != null && hostIco.isNotEmpty
           ? await _isSafeAndRenderableFaviconUrl(hostIco)
           : false;
       resolvedFavicon = hostIcoRenderable
           ? hostIco
-          : (tab.faviconUrl ?? _defaultFaviconUrlFor(tab.currentUrl));
+          : (tab.faviconUrl ?? _defaultFaviconUrlFor(sourceUrl));
     }
     final isResolvedFaviconSafe =
         resolvedFavicon != null && resolvedFavicon.isNotEmpty
@@ -5220,12 +5046,10 @@ class _BrowserPageState extends State<BrowserPage>
         resolvedFavicon.isNotEmpty &&
         isResolvedFaviconSafe &&
         faviconReturns200;
-    if (!useResolvedFavicon && host != null && host.isNotEmpty) {
-      _faviconHostSafetyCache[host] = false;
-    }
     if (resolvedFavicon == null || resolvedFavicon.isEmpty) return;
     if (resolvedFavicon == tab.faviconUrl || !mounted || tab.isClosed) return;
     if (!useResolvedFavicon) return;
+    if (tab.currentUrl != sourceUrl) return;
     setState(() {
       tab.faviconUrl = resolvedFavicon;
     });
@@ -6301,9 +6125,6 @@ class _BrowserPageState extends State<BrowserPage>
       case 'page_font':
         _showFontPicker();
         break;
-      case 'git_fetch':
-        _showGitFetchDialog();
-        break;
       case 'network_debug':
         _showNetworkDebug();
         break;
@@ -6377,13 +6198,6 @@ class _BrowserPageState extends State<BrowserPage>
         icon: Icons.history,
         label: 'History',
       ),
-      if (widget.enableGitFetch)
-        _buildMenuItem(
-          context,
-          value: 'git_fetch',
-          icon: Icons.code,
-          label: 'Git Fetch',
-        ),
       if (widget.aiAvailable)
         _buildMenuItem(
           context,
@@ -6470,38 +6284,6 @@ class _BrowserPageState extends State<BrowserPage>
           ),
         );
       },
-    );
-  }
-
-  void _showGitFetchDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => GitFetchDialog(
-        onOpenInNewTab: (url) {
-          final uri = Uri.tryParse(url);
-          if (uri == null) {
-            logger.w('Invalid URL: $url');
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Invalid URL')),
-            );
-            return; // Don't create a new tab for an invalid URL
-          }
-
-          _addNewTab();
-          activeTab.currentUrl = url;
-          activeTab.urlController.text = url;
-          try {
-            activeTab.webViewController?.loadRequest(uri);
-          } on PlatformException catch (e, s) {
-            if (!_isMissingPluginException(e)) {
-              logger.w(
-                  'Unexpected PlatformException on loadRequest (Git Fetch)',
-                  error: e,
-                  stackTrace: s);
-            }
-          }
-        },
-      ),
     );
   }
 
@@ -7007,6 +6789,7 @@ class _BrowserPageState extends State<BrowserPage>
             activeTab.homeLaunchedSiteFamily = null;
             activeTab.currentUrl = url;
             activeTab.pageTitle = null;
+            activeTab.isResolvingPageTitle = false;
             activeTab.pendingNavigationUrl = null;
             activeTab.pendingNavigationSourceUrl = null;
             activeTab.urlController.text = _displayUrl(url);
@@ -7030,6 +6813,8 @@ class _BrowserPageState extends State<BrowserPage>
           activeTab.pendingNavigationUrl = null;
           activeTab.pendingNavigationSourceUrl = null;
           activeTab.currentUrl = url;
+          activeTab.pageTitle = null;
+          activeTab.isResolvingPageTitle = false;
           activeTab.urlController.text = url;
           activeTab.state =
               const BrowserState.error('That address does not look valid.');
@@ -7044,8 +6829,10 @@ class _BrowserPageState extends State<BrowserPage>
     activeTab.pendingNavigationUrl = processedUrl;
     activeTab.pendingNavigationSourceUrl = previousUrl;
     activeTab.currentUrl = processedUrl;
+    activeTab.pageTitle = null;
+    activeTab.isResolvingPageTitle = true;
     activeTab.urlController.text = _displayUrl(processedUrl);
-    activeTab.faviconUrl = _defaultFaviconUrlFor(processedUrl);
+    activeTab.faviconUrl = _cachedFaviconForUrl(processedUrl);
     activeTab.hideStaleWebViewUntilPageFinish = wasOnHome;
     if (activeTab.webViewController == null && mounted) {
       setState(() {});
@@ -7108,121 +6895,139 @@ class _BrowserPageState extends State<BrowserPage>
           : colorScheme.surface,
       child: SafeArea(
         bottom: false,
-        child: Align(
-          alignment: Alignment.topCenter,
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(18, 14, 18, 12),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 560),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: colorScheme.primaryContainer,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Icon(
-                      Icons.security,
-                      size: 36,
-                      color: colorScheme.onPrimaryContainer,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    'Private search via torry.io.',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                      fontSize: 13,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 14),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10),
-                    decoration: BoxDecoration(
-                      color: colorScheme.surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(
-                        color: colorScheme.outline.withValues(alpha: 0.45),
-                      ),
-                    ),
-                    child: TextField(
-                      controller: tab.torrySearchController,
-                      focusNode: tab.torrySearchFocusNode,
-                      textInputAction: TextInputAction.search,
-                      textAlignVertical: TextAlignVertical.center,
-                      style: theme.textTheme.bodyMedium?.copyWith(fontSize: 13),
-                      onSubmitted: (s) => _performTorrySearch(tab, s),
-                      decoration: InputDecoration(
-                        hintText: 'Search',
-                        isDense: true,
-                        border: InputBorder.none,
-                        contentPadding:
-                            const EdgeInsets.symmetric(vertical: 10),
-                        prefixIcon: Icon(
-                          Icons.search,
-                          color: colorScheme.primary,
-                          size: 18,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            const horizontalPadding = 18.0;
+            const verticalPadding = 28.0;
+            final topBreathingRoom =
+                (constraints.maxHeight * 0.18).clamp(72.0, 220.0);
+
+            return SingleChildScrollView(
+              padding: EdgeInsets.fromLTRB(
+                horizontalPadding,
+                topBreathingRoom,
+                horizontalPadding,
+                verticalPadding,
+              ),
+              child: Align(
+                alignment: Alignment.topCenter,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 560),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: colorScheme.primaryContainer,
+                          borderRadius: BorderRadius.circular(16),
                         ),
-                        prefixIconConstraints:
-                            const BoxConstraints(minHeight: 36, minWidth: 42),
-                        suffixIcon: MouseRegion(
-                          cursor: SystemMouseCursors.click,
-                          child: GestureDetector(
-                            onTap: () => _performTorrySearch(tab),
-                            child: Padding(
-                              padding: const EdgeInsets.all(8),
-                              child: Icon(
-                                Icons.arrow_forward,
-                                color: colorScheme.primary,
-                                size: 22,
+                        child: Icon(
+                          Icons.security,
+                          size: 36,
+                          color: colorScheme.onPrimaryContainer,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Private search via torry.io.',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                          fontSize: 13,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 18),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        decoration: BoxDecoration(
+                          color: colorScheme.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: colorScheme.outline.withValues(alpha: 0.45),
+                          ),
+                        ),
+                        child: TextField(
+                          controller: tab.torrySearchController,
+                          focusNode: tab.torrySearchFocusNode,
+                          textInputAction: TextInputAction.search,
+                          textAlignVertical: TextAlignVertical.center,
+                          style: theme.textTheme.bodyMedium
+                              ?.copyWith(fontSize: 13),
+                          onSubmitted: (s) => _performTorrySearch(tab, s),
+                          decoration: InputDecoration(
+                            hintText: 'Search',
+                            isDense: true,
+                            border: InputBorder.none,
+                            contentPadding:
+                                const EdgeInsets.symmetric(vertical: 10),
+                            prefixIcon: Icon(
+                              Icons.search,
+                              color: colorScheme.primary,
+                              size: 18,
+                            ),
+                            prefixIconConstraints: const BoxConstraints(
+                              minHeight: 36,
+                              minWidth: 42,
+                            ),
+                            suffixIcon: MouseRegion(
+                              cursor: SystemMouseCursors.click,
+                              child: GestureDetector(
+                                onTap: () => _performTorrySearch(tab),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(8),
+                                  child: Icon(
+                                    Icons.arrow_forward,
+                                    color: colorScheme.primary,
+                                    size: 22,
+                                  ),
+                                ),
                               ),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 6,
-                    alignment: WrapAlignment.center,
-                    children: [
-                      TextButton.icon(
-                        onPressed: () =>
-                            _loadUrl('https://www.torry.io/learn/directory/'),
-                        icon: const Icon(Icons.list),
-                        label: const Text(
-                          'Onion directory',
-                          style: TextStyle(fontSize: 12),
-                        ),
-                        style: TextButton.styleFrom(
-                          visualDensity: VisualDensity.compact,
-                        ),
-                      ),
-                      TextButton.icon(
-                        onPressed: () =>
-                            _loadUrl('https://www.torry.io/anonymous-view/'),
-                        icon: const Icon(Icons.visibility),
-                        label: const Text(
-                          'Anonymous view',
-                          style: TextStyle(fontSize: 12),
-                        ),
-                        style: TextButton.styleFrom(
-                          visualDensity: VisualDensity.compact,
-                        ),
+                      const SizedBox(height: 14),
+                      Wrap(
+                        spacing: 10,
+                        runSpacing: 8,
+                        alignment: WrapAlignment.center,
+                        children: [
+                          TextButton.icon(
+                            onPressed: () => _loadUrl(
+                              'https://www.torry.io/learn/directory/',
+                            ),
+                            icon: const Icon(Icons.list),
+                            label: const Text(
+                              'Onion directory',
+                              style: TextStyle(fontSize: 12),
+                            ),
+                            style: TextButton.styleFrom(
+                              visualDensity: VisualDensity.compact,
+                            ),
+                          ),
+                          TextButton.icon(
+                            onPressed: () => _loadUrl(
+                              'https://www.torry.io/anonymous-view/',
+                            ),
+                            icon: const Icon(Icons.visibility),
+                            label: const Text(
+                              'Anonymous view',
+                              style: TextStyle(fontSize: 12),
+                            ),
+                            style: TextButton.styleFrom(
+                              visualDensity: VisualDensity.compact,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
-                ],
+                ),
               ),
-            ),
-          ),
+            );
+          },
         ),
       ),
     );
@@ -7415,6 +7220,7 @@ class _BrowserPageState extends State<BrowserPage>
             final normalizedTitle = _normalizeTabTitle(title);
             if (normalizedTitle.isNotEmpty) {
               tab.pageTitle = normalizedTitle;
+              tab.isResolvingPageTitle = false;
             }
           });
         }
@@ -7458,6 +7264,7 @@ class _BrowserPageState extends State<BrowserPage>
             tab.urlController.text = url;
           }
           tab.pageTitle = normalizedTitle;
+          tab.isResolvingPageTitle = false;
         });
       });
       tab.webViewController!.addJavaScriptChannel('PageTapChannel',
@@ -7577,6 +7384,7 @@ class _BrowserPageState extends State<BrowserPage>
             tab.urlController.text = tab.currentUrl;
             tab.state = const BrowserState.loading();
             tab.pageTitle = null;
+            tab.isResolvingPageTitle = true;
             tab.hasUserInteractedWithPage = false;
             tab.hasMediaPlaying = false;
             tab.isMuted = false;
@@ -7584,14 +7392,7 @@ class _BrowserPageState extends State<BrowserPage>
             tab.detectedSeedColor = null;
             tab.ambientSeedColor = null;
             tab.lastAmbientProbeAt = null;
-            final host = _hostFromUrl(actualUrl);
-            final nextFavicon = host != null
-                ? (_faviconCacheByHost[host] ??
-                    _defaultFaviconUrlFor(actualUrl))
-                : _defaultFaviconUrlFor(actualUrl);
-            if (nextFavicon != null && nextFavicon.isNotEmpty) {
-              tab.faviconUrl = nextFavicon;
-            }
+            tab.faviconUrl = _cachedFaviconForUrl(actualUrl);
             _recordHistory(tab, tab.currentUrl);
           });
           _syncPagePointerEvents(tab);
@@ -8147,6 +7948,7 @@ class _BrowserPageState extends State<BrowserPage>
                                 child: SizeTransition(
                                   sizeFactor: animation,
                                   axis: Axis.horizontal,
+                                  // ignore: deprecated_member_use
                                   axisAlignment: -1.0,
                                   child: child,
                                 ),
@@ -8356,6 +8158,7 @@ class _BrowserPageState extends State<BrowserPage>
                         ? ReorderableListView.builder(
                             scrollDirection: Axis.horizontal,
                             itemCount: tabs.length,
+                            // ignore: deprecated_member_use
                             onReorder: _reorderTab,
                             onReorderStart: (_) {
                               _setWindowMovable(false);

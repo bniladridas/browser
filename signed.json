@@ -1,6 +1,7 @@
 {
   "signed": [
     "bniladridas",
+    "browser-dart[bot]",
     "github-actions[bot]"
   ]
 }

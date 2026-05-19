@@ -1,5 +1,5 @@
----
 # SPDX-License-Identifier: MIT
+---
 #
 # Copyright 2026 bniladridas. All rights reserved.
 # Use of this source code is governed by a MIT license that can be
@@ -12,7 +12,7 @@ inputs:
   flutter-version:
     description: 'Flutter version to install'
     required: true
-    default: '3.41.5'
+    default: '3.44.0'
 
 runs:
   using: 'composite'
