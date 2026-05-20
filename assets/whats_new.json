@@ -272,5 +272,8 @@
   ],
   "1.28.15": [
     "include persist-credentials: false to release workflow checkout."
+  ],
+  "1.28.16": [
+    "normalize CI config names, step labels, and YAML document markers."
   ]
 }
