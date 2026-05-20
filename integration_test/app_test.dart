@@ -18,15 +18,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 const testTimeout = Timeout(Duration(minutes: 3));
 
 Future<void> _launchApp(WidgetTester tester,
-    {bool enableGitFetch = false,
-    bool aiSuggestionsEnabled = false,
-    bool resetPrefs = true}) async {
+    {bool aiSuggestionsEnabled = false, bool resetPrefs = true}) async {
   if (resetPrefs) {
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
     await prefs.setBool(hideAppBarKey, false);
     await prefs.setBool(useModernUserAgentKey, false);
-    await prefs.setBool(enableGitFetchKey, enableGitFetch);
     await prefs.setBool(privateBrowsingKey, false);
     await prefs.setBool(adBlockingKey, false);
     await prefs.setBool(strictModeKey, false);
@@ -46,8 +43,7 @@ Future<void> _launchApp(WidgetTester tester,
     await profileManager.initialize();
   }
 
-  await tester
-      .pumpWidget(MyApp(aiAvailable: false, enableGitFetch: enableGitFetch));
+  await tester.pumpWidget(const MyApp(aiAvailable: false));
   await tester.pumpAndSettle();
 }
 
@@ -114,17 +110,6 @@ void main() {
     expect(tileFinder, findsOneWidget);
     final tile = tester.widget<SwitchListTile>(tileFinder);
     return tile.value;
-  }
-
-  Future<void> enableGitFetch(WidgetTester tester) async {
-    await openOverflowMenu(tester);
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Settings'));
-    await tester.pumpAndSettle();
-    await setSwitchTile(tester, title: 'Git fetch', enabled: true);
-    await tester.tap(find.text('Save'));
-    await tester.pumpAndSettle();
-    await tester.pumpAndSettle(const Duration(seconds: 2));
   }
 
   group('Browser App Tests', () {
@@ -261,33 +246,6 @@ void main() {
 
       // Should show saved snackbar
       expect(find.text('Settings saved'), findsOneWidget);
-    }, timeout: testTimeout);
-
-    testWidgets('Git fetch dialog', (WidgetTester tester) async {
-      await _launchApp(tester, enableGitFetch: true);
-
-      // First, enable Git Fetch in settings
-      await enableGitFetch(tester);
-
-      // Wait for settings to fully close
-      await Future.delayed(const Duration(milliseconds: 500));
-
-      // Now open menu and go to Git Fetch
-      await openOverflowMenu(tester);
-      await tester.pumpAndSettle();
-      expect(find.text('Git Fetch'), findsOneWidget);
-      await tester.tap(find.text('Git Fetch'));
-      await tester.pumpAndSettle();
-
-      // Should show Git Fetch dialog
-      expect(find.text('Git Fetch'), findsOneWidget);
-      expect(find.bySemanticsLabel('GitHub Repo (owner/repo)'), findsOneWidget);
-      expect(find.text('Fetch'), findsOneWidget);
-      expect(find.text('Cancel'), findsOneWidget);
-
-      await tester.tap(find.text('Cancel'));
-      await tester.pumpAndSettle();
-      expect(find.text('Git Fetch'), findsNothing);
     }, timeout: testTimeout);
 
     testWidgets('New feature toggles in settings', (WidgetTester tester) async {
@@ -501,18 +459,6 @@ void main() {
       await waitForGone(aiSuggestionsSheet);
       expect(aiSuggestionsTitle, findsNothing);
       expect(aiSuggestionsSheet, findsNothing);
-    }, timeout: testTimeout);
-
-    testWidgets('Git Fetch visibility persists after relaunch',
-        (WidgetTester tester) async {
-      await _launchApp(tester);
-      await enableGitFetch(tester);
-
-      await _launchApp(tester, resetPrefs: false);
-      await openOverflowMenu(tester);
-      await tester.pumpAndSettle();
-
-      expect(find.text('Git Fetch'), findsOneWidget);
     }, timeout: testTimeout);
 
     testWidgets('Firebase configuration can be saved in settings',
