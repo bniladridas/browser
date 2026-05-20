@@ -248,5 +248,8 @@
   ],
   "1.28.7": [
     "track title resolution state to prevent stale fallback titles during navigation."
+  ],
+  "1.28.8": [
+    "use LayoutBuilder for responsive vertical centering on Torry search page."
   ]
 }
