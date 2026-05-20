@@ -260,5 +260,8 @@
   ],
   "1.28.11": [
     "bump auto-label action from v1 to v2."
+  ],
+  "1.28.12": [
+    "bump Flutter to 3.44.0, fix Firebase placeholders, and move SPDX headers before YAML markers."
   ]
 }
