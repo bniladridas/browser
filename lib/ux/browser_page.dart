@@ -643,7 +643,7 @@ class SettingsDialog extends HookWidget {
 
           if (Platform.isMacOS) {
             try {
-              final appName = 'browser.app';
+              final appName = 'Browser.app';
               final appPath = '/Applications/$appName';
 
               final mountResult = await Process.run(
