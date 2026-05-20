@@ -233,5 +233,8 @@
   ],
   "1.28.2": [
     "remove stale WebKit workaround and restore home back behavior."
+  ],
+  "1.28.3": [
+    "include splash screen with animated transition and window resize after startup."
   ]
 }
