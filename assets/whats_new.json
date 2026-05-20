@@ -263,5 +263,8 @@
   ],
   "1.28.12": [
     "bump Flutter to 3.44.0, fix Firebase placeholders, and move SPDX headers before YAML markers."
+  ],
+  "1.28.13": [
+    "remove persist-credentials: false from release workflow."
   ]
 }
