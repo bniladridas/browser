@@ -1,5 +1,5 @@
----
 # SPDX-License-Identifier: MIT
+---
 #
 # Copyright 2026 bniladridas. All rights reserved.
 # Use of this source code is governed by a MIT license that can be
@@ -24,6 +24,8 @@ jobs:
       app-name: 'browser'
       base-branch: 'main'
     secrets:
+      github-app-id: ${{ secrets.BROWSER_APP_ID }}
+      github-app-private-key: ${{ secrets.BROWSER_APP_PRIVATE_KEY }}
       macos-code-sign-identity: ${{ secrets.MACOS_CODE_SIGN_IDENTITY }}
       macos-certificate: ${{ secrets.MACOS_CERTIFICATE }}
       macos-certificate-password: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}

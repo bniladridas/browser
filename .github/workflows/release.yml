@@ -1,5 +1,5 @@
----
 # SPDX-License-Identifier: MIT
+---
 #
 # Copyright 2026 bniladridas. All rights reserved.
 # Use of this source code is governed by a MIT license that can be
@@ -18,7 +18,7 @@ on:
         required: true
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build-and-release:
@@ -28,11 +28,21 @@ jobs:
       MACOS_CODE_SIGN_IDENTITY: ${{ secrets.MACOS_CODE_SIGN_IDENTITY }}
 
     steps:
+      - id: app-token
+        name: Create Browser app token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.BROWSER_APP_ID }}
+          private-key: ${{ secrets.BROWSER_APP_PRIVATE_KEY }}
+          permission-contents: write
+
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           ref: ${{ github.event.inputs.tag || github.ref }}
           fetch-tags: true
+          token: ${{ steps.app-token.outputs.token }}
+          persist-credentials: false
 
       - uses: ./.github/actions/setup-flutter
         with:
@@ -153,6 +163,7 @@ jobs:
           files: build/macos/Build/Products/Release/browser.dmg
           generate_release_notes: false
           tag_name: ${{ steps.validate-tag.outputs.tag }}
+          token: ${{ steps.app-token.outputs.token }}
         continue-on-error: true
 
       - name: Verify upload
