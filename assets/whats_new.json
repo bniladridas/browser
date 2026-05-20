@@ -284,5 +284,8 @@
   ],
   "1.28.19": [
     "correct app bundle casing from browser.app to Browser.app."
+  ],
+  "1.28.20": [
+    "bump Flutter to 3.41.9 and fix SPDX header ordering."
   ]
 }
