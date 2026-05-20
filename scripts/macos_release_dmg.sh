@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-APP_PATH="${APP_PATH:-build/macos/Build/Products/Release/browser.app}"
+APP_PATH="${APP_PATH:-build/macos/Build/Products/Release/Browser.app}"
 DMG_PATH="${DMG_PATH:-build/macos/Build/Products/Release/browser.dmg}"
 VOLUME_NAME="${VOLUME_NAME:-browser}"
 TMP_ROOT="${TMP_ROOT:-}"
