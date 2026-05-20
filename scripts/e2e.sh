@@ -9,7 +9,10 @@ echo "Running integration tests..."
 
 test_target="integration_test/"
 artifact_dir="${E2E_ARTIFACT_DIR:-build/e2e-artifacts}"
-app_bundle_id="${E2E_APP_BUNDLE_ID:-com.example.browser}"
+app_bundle_id="${E2E_APP_BUNDLE_ID:-com.bniladridas.browser}"
+legacy_app_bundle_id="com.example.browser"
+app_process_name="${E2E_APP_PROCESS_NAME:-Browser}"
+legacy_app_process_name="browser"
 max_startup_retries="${E2E_STARTUP_RETRIES:-3}"
 mkdir -p "$artifact_dir"
 
@@ -42,20 +45,22 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
     capture_startup_diagnostics() {
         local attempt_label="$1"
         local crash_log
-        local crash_prefix="${app_bundle_id##*.}"
-        if [[ -z "$crash_prefix" || "$crash_prefix" == "$app_bundle_id" ]]; then
-            crash_prefix="browser"
-        fi
-        crash_log="$(ls -t "$HOME/Library/Logs/DiagnosticReports"/"${crash_prefix}"*.crash 2>/dev/null | head -n1 || true)"
+        local log_predicate
+        crash_log="$(ls -t "$HOME/Library/Logs/DiagnosticReports"/"${app_process_name}"*.crash \
+            "$HOME/Library/Logs/DiagnosticReports"/"${legacy_app_process_name}"*.crash \
+            2>/dev/null | head -n1 || true)"
         if [[ -n "$crash_log" && -f "$crash_log" ]]; then
             persist_e2e_log "$crash_log" "diagnostic-${attempt_label}.crash"
         fi
+        log_predicate="process == \"$app_process_name\" OR process == \"$legacy_app_process_name\""
+        log_predicate="$log_predicate OR process == \"FlutterTester\""
         /usr/bin/log show --last 3m \
-            --predicate 'process == "browser" OR process == "FlutterTester"' \
+            --predicate "$log_predicate" \
             > "$artifact_dir/diagnostic-${attempt_label}.log" 2>/dev/null || true
     }
     prepare_initial_environment() {
-        /usr/bin/pkill -x browser >/dev/null 2>&1 || true
+        /usr/bin/pkill -x "$app_process_name" >/dev/null 2>&1 || true
+        /usr/bin/pkill -x "$legacy_app_process_name" >/dev/null 2>&1 || true
         /usr/bin/pkill -f "FlutterTester" >/dev/null 2>&1 || true
         sleep 1
     }
@@ -64,6 +69,7 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
         prepare_initial_environment
         /usr/bin/pkill -P "$$" -x "xcodebuild" >/dev/null 2>&1 || true
         rm -rf "$HOME/Library/Saved Application State/${app_bundle_id}.savedState" || true
+        rm -rf "$HOME/Library/Saved Application State/${legacy_app_bundle_id}.savedState" || true
         rm -rf build/macos/Build/Intermediates.noindex/XCBuildData || true
         sleep 2
     }
@@ -78,7 +84,7 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
         E2E_LOG_FILE="$(mktemp -t flutter-e2e.XXXXXX.log)"
         # Prevent macOS state-restoration modal from blocking app startup after crashes.
         ApplePersistenceIgnoreState=YES \
-            flutter test --no-pub -d macos --dart-define=INTEGRATION_TEST=true $test_target "$@" \
+            flutter test --no-pub -d macos --dart-define=INTEGRATION_TEST=true "$test_target" "$@" \
             2>&1 | tee "$E2E_LOG_FILE"
         local status=${PIPESTATUS[0]}
         persist_e2e_log "$E2E_LOG_FILE" "integration-${attempt_label}.log"

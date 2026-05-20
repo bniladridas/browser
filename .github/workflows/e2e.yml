@@ -1,9 +1,9 @@
----
 # SPDX-License-Identifier: MIT
 #
 # Copyright 2026 bniladridas. All rights reserved.
 # Use of this source code is governed by a MIT license that can be
 # found in the LICENSE file.
+---
 
 name: E2E Tests
 
@@ -45,7 +45,7 @@ jobs:
               <key>API_KEY</key>
               <string>dummy_api_key</string>
               <key>BUNDLE_ID</key>
-              <string>com.example.browser</string>
+              <string>com.bniladridas.browser</string>
               <key>GCM_SENDER_ID</key>
               <string>1234567890</string>
               <key>GOOGLE_APP_ID</key>
