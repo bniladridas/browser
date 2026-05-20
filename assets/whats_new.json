@@ -281,5 +281,8 @@
   ],
   "1.28.18": [
     "include Release job name and fix app bundle casing to Browser.app."
+  ],
+  "1.28.19": [
+    "correct app bundle casing from browser.app to Browser.app."
   ]
 }
