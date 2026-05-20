@@ -266,5 +266,8 @@
   ],
   "1.28.13": [
     "remove persist-credentials: false from release workflow."
+  ],
+  "1.28.14": [
+    "suppress deprecated member warnings and exclude build dir from analysis."
   ]
 }
