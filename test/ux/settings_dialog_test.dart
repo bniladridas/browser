@@ -80,8 +80,6 @@ void main() {
       await prefs.setBool(
           profileManager.getScopedStorageKey(useModernUserAgentKey), true);
       await prefs.setBool(
-          profileManager.getScopedStorageKey(enableGitFetchKey), true);
-      await prefs.setBool(
           profileManager.getScopedStorageKey(aiSearchSuggestionsEnabledKey),
           true);
       await prefs.setBool(
@@ -102,7 +100,6 @@ void main() {
       );
 
       expect(_readSwitchTile(tester, 'Legacy UA').value, isTrue);
-      expect(_readSwitchTile(tester, 'Git fetch').value, isTrue);
       expect(_readSwitchTile(tester, 'AI suggestions').value, isTrue);
       expect(_readSwitchTile(tester, 'Erase suggestions').value, isTrue);
       expect(_readSwitchTile(tester, 'Hide URL').value, isTrue);

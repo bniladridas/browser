@@ -559,7 +559,6 @@ class SettingsDialog extends HookWidget {
     final homepage = useState<String?>(null);
     final hideAppBar = useState(false);
     final useModernUserAgent = useState(false);
-    final enableGitFetch = useState(false);
     final privateBrowsing = useState(false);
     final originalPrivateBrowsing = useRef<bool?>(null);
     final adBlocking = useState(false);
@@ -813,7 +812,6 @@ class SettingsDialog extends HookWidget {
         hideAppBar.value = readBool(hideAppBarKey, defaultValue: false);
         useModernUserAgent.value =
             readBool(useModernUserAgentKey, defaultValue: false);
-        enableGitFetch.value = readBool(enableGitFetchKey, defaultValue: false);
         privateBrowsing.value =
             readBool(privateBrowsingKey, defaultValue: false);
         originalPrivateBrowsing.value = privateBrowsing.value;
@@ -1036,15 +1034,6 @@ class SettingsDialog extends HookWidget {
                       title: const Text('Legacy UA'),
                       value: useModernUserAgent.value,
                       onChanged: (value) => useModernUserAgent.value = value,
-                      hoverColor: Colors.transparent,
-                    ),
-                  ),
-                  MouseRegion(
-                    cursor: SystemMouseCursors.click,
-                    child: SwitchListTile(
-                      title: const Text('Git fetch'),
-                      value: enableGitFetch.value,
-                      onChanged: (value) => enableGitFetch.value = value,
                       hoverColor: Colors.transparent,
                     ),
                   ),
@@ -1546,8 +1535,6 @@ class SettingsDialog extends HookWidget {
             await prefs.setBool(scopedKey(hideAppBarKey), hideAppBar.value);
             await prefs.setBool(
                 scopedKey(useModernUserAgentKey), useModernUserAgent.value);
-            await prefs.setBool(
-                scopedKey(enableGitFetchKey), enableGitFetch.value);
             await prefs.setBool(
                 scopedKey(privateBrowsingKey), privateBrowsing.value);
             await prefs.setBool(scopedKey(adBlockingKey), adBlocking.value);
@@ -2080,197 +2067,12 @@ class _ThemeTone {
   const _ThemeTone({required this.brightness, this.seedColor});
 }
 
-Future<Map<String, dynamic>> _fetchGitHubRepo(String url) async {
-  final stopwatch = Stopwatch()..start();
-  try {
-    final response =
-        await http.get(Uri.parse(url)).timeout(const Duration(seconds: 10));
-    NetworkMonitor().logRequest(
-      url: url,
-      method: 'GET',
-      statusCode: response.statusCode,
-      duration: stopwatch.elapsed,
-    );
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body);
-    } else {
-      throw Exception('Failed to load repo: ${response.statusCode}');
-    }
-  } catch (e) {
-    NetworkMonitor().onRequestFailed(
-      url: url,
-      method: 'GET',
-      error: e is Exception ? e : Exception(e.toString()),
-      duration: stopwatch.elapsed,
-    );
-    rethrow;
-  }
-}
-
-class GitFetchDialog extends HookWidget {
-  const GitFetchDialog({super.key, required this.onOpenInNewTab});
-
-  final void Function(String url) onOpenInNewTab;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final repoController = useTextEditingController();
-    final isLoading = useState(false);
-    final repoData = useState<Map<String, dynamic>?>(null);
-    final errorMessage = useState<String?>(null);
-    final isDisposed = useRef(false);
-
-    useEffect(() {
-      return () {
-        isDisposed.value = true;
-      };
-    }, []);
-
-    Future<void> fetchRepo() async {
-      final repo = repoController.text.trim();
-      if (repo.isEmpty) return;
-
-      final parts = repo.split('/');
-      if (parts.length != 2) {
-        if (!isDisposed.value) {
-          errorMessage.value = 'Invalid format. Use owner/repo';
-        }
-        return;
-      }
-
-      if (!isDisposed.value) {
-        isLoading.value = true;
-        errorMessage.value = null;
-        repoData.value = null;
-      }
-
-      try {
-        final url = 'https://api.github.com/repos/${parts[0]}/${parts[1]}';
-        final response = await _fetchGitHubRepo(url);
-        if (!isDisposed.value) {
-          isLoading.value = false;
-          repoData.value = response;
-        }
-      } catch (e) {
-        if (!isDisposed.value) {
-          isLoading.value = false;
-          errorMessage.value = 'Failed to fetch repo: $e';
-        }
-      }
-    }
-
-    return AlertDialog(
-      title: Text(
-        'Git Fetch',
-        style: theme.textTheme.titleSmall?.copyWith(fontSize: 15),
-      ),
-      content: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 420),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            TextField(
-              controller: repoController,
-              style: theme.textTheme.bodyMedium?.copyWith(fontSize: 13),
-              decoration: InputDecoration(
-                labelText: 'GitHub Repo (owner/repo)',
-                hintText: 'e.g., flutter/flutter',
-                isDense: true,
-                filled: false,
-                enabledBorder: UnderlineInputBorder(
-                  borderSide: BorderSide(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                focusedBorder: UnderlineInputBorder(
-                  borderSide: BorderSide(
-                    color: theme.colorScheme.primary,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 10),
-            if (isLoading.value)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 6),
-                child: SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-              ),
-            if (errorMessage.value != null)
-              Text(
-                errorMessage.value!,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  fontSize: 12,
-                  color: theme.colorScheme.error,
-                ),
-              ),
-            if (repoData.value != null) ...[
-              const SizedBox(height: 8),
-              Text(
-                'Name: ${repoData.value!['name'] ?? 'N/A'}',
-                style: theme.textTheme.bodySmall?.copyWith(fontSize: 12),
-              ),
-              Text(
-                'Description: ${repoData.value!['description'] ?? 'No description'}',
-                style: theme.textTheme.bodySmall?.copyWith(fontSize: 12),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-              Text(
-                'Stars: ${repoData.value!['stargazers_count'] ?? 0}',
-                style: theme.textTheme.bodySmall?.copyWith(fontSize: 12),
-              ),
-              Text(
-                'Forks: ${repoData.value!['forks_count'] ?? 0}',
-                style: theme.textTheme.bodySmall?.copyWith(fontSize: 12),
-              ),
-              Text(
-                'Language: ${repoData.value!['language'] ?? 'N/A'}',
-                style: theme.textTheme.bodySmall?.copyWith(fontSize: 12),
-              ),
-              Text(
-                'Open Issues: ${repoData.value!['open_issues_count'] ?? 0}',
-                style: theme.textTheme.bodySmall?.copyWith(fontSize: 12),
-              ),
-            ],
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
-        ),
-        TextButton(
-          onPressed: fetchRepo,
-          child: const Text('Fetch'),
-        ),
-        if (repoData.value != null)
-          TextButton(
-            onPressed: () {
-              final url = 'https://github.com/${repoController.text}';
-              onOpenInNewTab(url);
-              Navigator.of(context).pop();
-            },
-            child: const Text('Open in New Tab'),
-          ),
-      ],
-    );
-  }
-}
-
 class BrowserPage extends StatefulWidget {
   const BrowserPage(
       {super.key,
       required this.initialUrl,
       this.hideAppBar = false,
       this.useModernUserAgent = false,
-      this.enableGitFetch = false,
       this.privateBrowsing = false,
       this.adBlocking = false,
       this.strictMode = false,
@@ -2291,7 +2093,6 @@ class BrowserPage extends StatefulWidget {
   final String initialUrl;
   final bool hideAppBar;
   final bool useModernUserAgent;
-  final bool enableGitFetch;
   final bool privateBrowsing;
   final bool adBlocking;
   final bool strictMode;
@@ -6301,9 +6102,6 @@ class _BrowserPageState extends State<BrowserPage>
       case 'page_font':
         _showFontPicker();
         break;
-      case 'git_fetch':
-        _showGitFetchDialog();
-        break;
       case 'network_debug':
         _showNetworkDebug();
         break;
@@ -6377,13 +6175,6 @@ class _BrowserPageState extends State<BrowserPage>
         icon: Icons.history,
         label: 'History',
       ),
-      if (widget.enableGitFetch)
-        _buildMenuItem(
-          context,
-          value: 'git_fetch',
-          icon: Icons.code,
-          label: 'Git Fetch',
-        ),
       if (widget.aiAvailable)
         _buildMenuItem(
           context,
@@ -6470,38 +6261,6 @@ class _BrowserPageState extends State<BrowserPage>
           ),
         );
       },
-    );
-  }
-
-  void _showGitFetchDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => GitFetchDialog(
-        onOpenInNewTab: (url) {
-          final uri = Uri.tryParse(url);
-          if (uri == null) {
-            logger.w('Invalid URL: $url');
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Invalid URL')),
-            );
-            return; // Don't create a new tab for an invalid URL
-          }
-
-          _addNewTab();
-          activeTab.currentUrl = url;
-          activeTab.urlController.text = url;
-          try {
-            activeTab.webViewController?.loadRequest(uri);
-          } on PlatformException catch (e, s) {
-            if (!_isMissingPluginException(e)) {
-              logger.w(
-                  'Unexpected PlatformException on loadRequest (Git Fetch)',
-                  error: e,
-                  stackTrace: s);
-            }
-          }
-        },
-      ),
     );
   }
 

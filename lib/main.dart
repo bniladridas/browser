@@ -37,11 +37,9 @@ class MyApp extends StatefulWidget {
   const MyApp(
       {super.key,
       required this.aiAvailable,
-      this.enableGitFetch = false,
       this.splashDuration = const Duration(milliseconds: 1200)});
 
   final bool aiAvailable;
-  final bool enableGitFetch;
   final Duration splashDuration;
 
   @override
@@ -60,7 +58,6 @@ class _MyAppState extends State<MyApp> {
   String homepage = defaultHomepageUrl;
   bool hideAppBar = false;
   bool useModernUserAgent = false;
-  bool enableGitFetch = false;
   bool privateBrowsing = false;
   bool adBlocking = false;
   bool strictMode = false;
@@ -261,8 +258,6 @@ class _MyAppState extends State<MyApp> {
       final resolvedHideAppBar = readBool(hideAppBarKey, defaultValue: false);
       final resolvedUseModernUserAgent =
           readBool(useModernUserAgentKey, defaultValue: false);
-      final resolvedEnableGitFetch =
-          readBool(enableGitFetchKey, defaultValue: false);
       final resolvedPrivateBrowsing =
           readBool(privateBrowsingKey, defaultValue: false);
       final resolvedAdBlocking = readBool(adBlockingKey, defaultValue: false);
@@ -285,7 +280,6 @@ class _MyAppState extends State<MyApp> {
         homepage = resolvedHomepage;
         hideAppBar = resolvedHideAppBar;
         useModernUserAgent = resolvedUseModernUserAgent;
-        enableGitFetch = resolvedEnableGitFetch;
         privateBrowsing = resolvedPrivateBrowsing;
         adBlocking = resolvedAdBlocking;
         strictMode = resolvedStrictMode;
@@ -393,7 +387,6 @@ class _MyAppState extends State<MyApp> {
                   initialUrl: homepage,
                   hideAppBar: hideAppBar,
                   useModernUserAgent: useModernUserAgent,
-                  enableGitFetch: widget.enableGitFetch || enableGitFetch,
                   aiAvailable: widget.aiAvailable,
                   privateBrowsing: privateBrowsing,
                   adBlocking: adBlocking,
