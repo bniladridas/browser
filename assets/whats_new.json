@@ -290,5 +290,8 @@
   ],
   "1.28.21": [
     "normalize tone, casing, and wording across README and codex files."
+  ],
+  "1.28.22": [
+    "refresh README screenshot with transparent browser image."
   ]
 }
