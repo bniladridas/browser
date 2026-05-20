@@ -551,6 +551,8 @@ void main() {
       );
       expect(reopenedApiKeyField.controller?.text, 'test-api-key');
       expect(reopenedAppIdField.controller?.text, 'test-app-id');
+      await tester.tap(find.text('Cancel'), warnIfMissed: false);
+      await tester.pumpAndSettle();
     }, timeout: testTimeout);
 
     testWidgets('Profile section appears in Settings',
