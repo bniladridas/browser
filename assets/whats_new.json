@@ -269,5 +269,8 @@
   ],
   "1.28.14": [
     "suppress deprecated member warnings and exclude build dir from analysis."
+  ],
+  "1.28.15": [
+    "include persist-credentials: false to release workflow checkout."
   ]
 }
