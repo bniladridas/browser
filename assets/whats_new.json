@@ -287,5 +287,8 @@
   ],
   "1.28.20": [
     "bump Flutter to 3.41.9 and fix SPDX header ordering."
+  ],
+  "1.28.21": [
+    "normalize tone, casing, and wording across README and codex files."
   ]
 }
