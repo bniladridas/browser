@@ -236,5 +236,8 @@
   ],
   "1.28.3": [
     "include splash screen with animated transition and window resize after startup."
+  ],
+  "1.28.4": [
+    "remove AI tool configs, CI files, and stale dev artifacts."
   ]
 }
