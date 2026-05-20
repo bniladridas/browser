@@ -38,7 +38,6 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
           token: ${{ steps.app-token.outputs.token }}
-          persist-credentials: false
 
       - uses: libnudget/bump@main
         with:
