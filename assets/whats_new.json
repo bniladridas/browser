@@ -239,5 +239,8 @@
   ],
   "1.28.4": [
     "remove AI tool configs, CI files, and stale dev artifacts."
+  ],
+  "1.28.5": [
+    "remove Git fetch feature, settings toggle, and related tests."
   ]
 }
