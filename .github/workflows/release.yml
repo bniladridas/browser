@@ -46,15 +46,15 @@ jobs:
 
       - uses: ./.github/actions/setup-flutter
         with:
-          flutter-version: '3.41.7'
+          flutter-version: '3.44.0'
 
       - run: flutter pub get
       - name: Create .env file
         run: |
           {
-            echo "FIREBASE_API_KEY=dummy_api_key"
-            echo "FIREBASE_APP_ID=dummy_app_id"
-            echo "FIREBASE_MESSAGING_SENDER_ID=dummy_sender_id"
+            echo "FIREBASE_API_KEY=AIzaSy000000000000000000000000000000000"
+            echo "FIREBASE_APP_ID=1:1234567890:ios:0123456789abcdef012345"
+            echo "FIREBASE_MESSAGING_SENDER_ID=1234567890"
             echo "FIREBASE_PROJECT_ID=dummy_project_id"
             echo "FIREBASE_STORAGE_BUCKET=dummy_bucket"
           } > .env
@@ -69,10 +69,10 @@ jobs:
           <dict>
             <key>CLIENT_ID</key><string>dummy</string>
             <key>REVERSED_CLIENT_ID</key><string>com.google.ReverseClientId</string>
-            <key>API_KEY</key><string>dummy</string>
+            <key>API_KEY</key><string>AIzaSy000000000000000000000000000000000</string>
             <key>GCM_SENDER_ID</key><string>123456789</string>
             <key>PLIST_VERSION</key><string>1</string>
-            <key>BUNDLE_ID</key><string>com.example.browser</string>
+            <key>BUNDLE_ID</key><string>com.bniladridas.browser</string>
             <key>PROJECT_ID</key><string>dummy-project</string>
             <key>STORAGE_BUCKET</key><string>dummy-project.appspot.com</string>
             <key>IS_ADS_ENABLED</key><false/>
@@ -80,7 +80,7 @@ jobs:
             <key>IS_APPINVITE_ENABLED</key><true/>
             <key>IS_GCM_ENABLED</key><true/>
             <key>IS_SIGNIN_ENABLED</key><true/>
-            <key>GOOGLE_APP_ID</key><string>1:123456789:ios:abcdef</string>
+            <key>GOOGLE_APP_ID</key><string>1:1234567890:ios:0123456789abcdef012345</string>
           </dict>
           </plist>
           EOF
